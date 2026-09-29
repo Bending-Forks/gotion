@@ -3,7 +3,7 @@ title: Analysis
 nav_order: 3
 ---
 
-## Business requirements
+{% include business-requirements.md %}
 
 {% include functional-requirements.md %}
 
