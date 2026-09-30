@@ -12,7 +12,7 @@ The report is a set of chapter pages, each with `title` and `nav_order` front ma
 
 1. `introduction.md` — Deliverables, Glossary (stub)
 2. `domain-model.md` — the DDD domain model (stub)
-3. `analysis.md` — business requirements; pulls in `_includes/functional-requirements.md` (user stories, grouped by bounded context: Identity and Workspace, Pages and Hierarchy, Editor and Blocks, Permissions and Collaboration, Discussions/Search/Notifications) and `_includes/quality-attributes.md` (non-functional requirements as QA-xx six-part scenarios: Source → Stimulus → Artifact → Environment → Response → Response measure, grouped by category — Performance, Availability, Data Consistency, Security, Deployability, Modifiability, Accessibility)
+3. `analysis.md` — business requirements; pulls in `_includes/functional-requirements.md` (user stories, grouped by the Event Storming bounded contexts: Account, Membership, Editing, Discussion, Notification, plus an "Out of scope for now" table of stories kept aside without IDs, so active stories are numbered consecutively) and `_includes/quality-attributes.md` (non-functional requirements as QA-xx six-part scenarios: Source → Stimulus → Artifact → Environment → Response → Response measure, grouped by category — Performance, Availability, Data Consistency, Security, Deployability, Modifiability, Accessibility)
 4. `design.md` — Event Storming, Bounded Contexts, Architecture, Microservices, Patterns (stub)
 5. `implementation.md` — Microservices, Testing, Multiplatform, Experiments, Monitoring (stub)
 6. `devops.md` — Project Structure, VCS & Repo, Quality Assurance, CI/CD, Deployment, Benchmark (stub)
@@ -38,4 +38,4 @@ Requirements now live only in `_includes/functional-requirements.md` and `_inclu
 ## Working here
 
 - Trace every service and architectural decision back to a user story (`functional-requirements.md`) or QA scenario (`quality-attributes.md`); SPE/SAP evaluation both expect that traceability.
-- When proposing a new service or bounded context, check it against QA-11 (modifiability): a change should stay confined to the block-type registry / owning service, no shared-schema migration.
+- When proposing a new service or bounded context, check it against QA-09 (modifiability): a change should stay confined to the definition and rendering of the block type inside its owning service, with no shared-schema migration.

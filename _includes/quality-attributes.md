@@ -10,7 +10,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 
 ### Performance
 
-**QA-01 — Editor input latency** *(constrains US-08, US-09)*
+**QA-01 — Editor input latency** *(constrains US-06, US-07)*
 
 | Part | Value |
 |---|---|
@@ -21,7 +21,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 | Response | Character is rendered locally and durably persisted |
 | Response measure | Local render ≤ 50 ms (p95); server acknowledgement ≤ 500 ms (p95) |
 
-**QA-02 — Real-time propagation latency** *(constrains US-12)*
+**QA-02 — Real-time propagation latency** *(constrains US-08)*
 
 | Part | Value |
 |---|---|
@@ -32,18 +32,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 | Response | Change is applied and rendered in every other connected client |
 | Response measure | ≤ 300 ms (p95), ≤ 1 s (p99) from acknowledgement to remote render |
 
-**QA-03 — Search response time** *(constrains US-14)*
-
-| Part | Value |
-|---|---|
-| Source | User |
-| Stimulus | Submits a full-text query over the workspace |
-| Artifact | Search index |
-| Environment | Normal operation, reference workspace size |
-| Response | Ranked results are returned, scoped to the user's permissions |
-| Response measure | ≤ 500 ms (p95) for the first page of results |
-
-**QA-04 — Page open time** *(constrains US-04)*
+**QA-03 — Page open time** *(constrains US-04)*
 
 | Part | Value |
 |---|---|
@@ -56,7 +45,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 
 ### Availability
 
-**QA-05 — Process crash without data loss** *(constrains US-04, US-08)*
+**QA-04 — Process crash without data loss** *(constrains US-04, US-06)*
 
 | Part | Value |
 |---|---|
@@ -67,20 +56,9 @@ The reference deployment for every scenario is a **single self-hosted node with
 | Response | The service restarts; every acknowledged edit survives |
 | Response measure | Zero loss of acknowledged edits; service available again within 60 s |
 
-**QA-06 — Editing during network interruption** *(constrains US-08, US-12)*
-
-| Part | Value |
-|---|---|
-| Source | Network |
-| Stimulus | The client loses connectivity for up to 5 minutes while the user is editing |
-| Artifact | Editor client and local buffer |
-| Environment | Degraded mode |
-| Response | The editor stays usable, buffers edits locally, and reconciles them on reconnect without prompting the user to resolve conflicts |
-| Response measure | 100 % of buffered edits are applied; reconnection completes within 10 s of link restoration |
-
 ### Data Consistency
 
-**QA-07 — Concurrent edit convergence** *(constrains US-12)*
+**QA-05 — Concurrent edit convergence** *(constrains US-08)*
 
 | Part | Value |
 |---|---|
@@ -93,31 +71,31 @@ The reference deployment for every scenario is a **single self-hosted node with
 
 ### Security
 
-**QA-08 — Unauthorized page access** *(constrains US-11)*
+**QA-06 — Unauthorized page access** *(constrains US-03)*
 
 | Part | Value |
 |---|---|
-| Source | Authenticated user without permission on the target page |
-| Stimulus | Requests the page directly by identifier, bypassing the UI |
+| Source | Authenticated user who is not a member of the workspace, or a Viewer of it |
+| Stimulus | Requests a page directly by identifier, or submits a change to it, bypassing the UI |
 | Artifact | Authorization layer |
 | Environment | Normal operation |
-| Response | The request is denied and recorded in the audit log |
-| Response measure | 100 % of such requests denied; responses for "forbidden" and "non-existent" are indistinguishable, leaking no title or metadata; audit entry written within 1 s |
+| Response | The request is denied |
+| Response measure | 100 % of such requests denied; for a non-member, responses for "forbidden" and "non-existent" are indistinguishable, leaking no title or metadata |
 
-**QA-09 — Credential protection** *(constrains US-01)*
+**QA-07 — Brute-force login** *(constrains US-01)*
 
 | Part | Value |
 |---|---|
 | Source | Attacker |
-| Stimulus | Obtains a database dump, or attempts repeated logins against one account |
+| Stimulus | Attempts repeated logins against one account, guessing its password |
 | Artifact | Authentication subsystem |
 | Environment | Normal operation |
-| Response | Stored credentials are unusable; repeated attempts are throttled |
-| Response measure | No password stored in plaintext or reversibly (Argon2id, per-user salt); more than 5 failed attempts per account per 15 minutes triggers rate limiting |
+| Response | Repeated failed attempts are throttled |
+| Response measure | More than 5 failed attempts per account per 15 minutes triggers rate limiting |
 
 ### Deployability
 
-**QA-10 — Fresh self-hosted installation**
+**QA-08 — Fresh self-hosted installation**
 
 | Part | Value |
 |---|---|
@@ -130,7 +108,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 
 ### Modifiability
 
-**QA-11 — Adding a block type** *(constrains US-09)*
+**QA-09 — Adding a block type** *(constrains US-07)*
 
 | Part | Value |
 |---|---|
@@ -138,12 +116,12 @@ The reference deployment for every scenario is a **single self-hosted node with
 | Stimulus | Adds a new block type, for example a table |
 | Artifact | Block model, editor, renderer |
 | Environment | Development time |
-| Response | The type is available end to end: creation, persistence, rendering, search |
-| Response measure | Completed in under one day; changes confined to the block-type registry and the new type's renderer, with no change to the synchronization engine or the persistence schema |
+| Response | The type is available end to end: creation, persistence, rendering |
+| Response measure | Changes confined to the definition and the rendering of the new type; no change to real-time synchronization or to the persistence schema |
 
 ### Accessibility
 
-**QA-12 — Keyboard-only and assistive-technology editing** *(constrains US-08, US-09)*
+**QA-10 — Keyboard-only and assistive-technology editing** *(constrains US-06, US-07)*
 
 | Part | Value |
 |---|---|
@@ -153,3 +131,10 @@ The reference deployment for every scenario is a **single self-hosted node with
 | Environment | Normal operation, screen reader active |
 | Response | Every block operation is reachable and announced |
 | Response measure | 100 % of block operations keyboard-accessible; editor and navigation conform to WCAG 2.1 level AA |
+
+### Out of scope for now
+
+| Scenario | Reason |
+|---|---|
+| **Search response time** | Search left the scope together with the search story. |
+| **Editing during network interruption** (offline editing, reconciled on reconnect) | Not covered: editing a page requires a connection to the server. |
