@@ -1,9 +1,13 @@
 ---
 title: Analysis
-nav_order: 3
+nav_order: 2
 ---
 
 {% include business-requirements.md %}
+
+{% include event-storming.md %}
+
+{% include ubiquitous-language.md %}
 
 {% include functional-requirements.md %}
 

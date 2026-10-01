@@ -8,7 +8,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 4 vCPU and 8 GB RAM**, serving a workspace of **50 members, 10 000 pages and
 1 000 000 blocks**, unless a scenario states otherwise.
 
-### Performance
+#### Performance
 
 **QA-01 — Editor input latency** *(constrains US-06, US-07)*
 
@@ -43,7 +43,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 | Response | Page is rendered and accepts input |
 | Response measure | Interactive within 1.5 s (p95) |
 
-### Availability
+#### Availability
 
 **QA-04 — Process crash without data loss** *(constrains US-04, US-06)*
 
@@ -56,7 +56,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 | Response | The service restarts; every acknowledged edit survives |
 | Response measure | Zero loss of acknowledged edits; service available again within 60 s |
 
-### Data Consistency
+#### Data Consistency
 
 **QA-05 — Concurrent edit convergence** *(constrains US-08)*
 
@@ -69,7 +69,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 | Response | All replicas converge to an identical document state; no acknowledged edit is silently discarded |
 | Response measure | 100 % convergence within 2 s of the last edit, verified by an automated test over 1 000 randomized operation interleavings |
 
-### Security
+#### Security
 
 **QA-06 — Unauthorized page access** *(constrains US-03)*
 
@@ -93,7 +93,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 | Response | Repeated failed attempts are throttled |
 | Response measure | More than 5 failed attempts per account per 15 minutes triggers rate limiting |
 
-### Deployability
+#### Deployability
 
 **QA-08 — Fresh self-hosted installation**
 
@@ -106,7 +106,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 | Response | A running instance with an initial administrator account |
 | Response measure | Reachable within 10 minutes using one documented command; schema migrations run automatically, with no manual database step |
 
-### Modifiability
+#### Modifiability
 
 **QA-09 — Adding a block type** *(constrains US-07)*
 
@@ -119,7 +119,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 | Response | The type is available end to end: creation, persistence, rendering |
 | Response measure | Changes confined to the definition and the rendering of the new type; no change to real-time synchronization or to the persistence schema |
 
-### Accessibility
+#### Accessibility
 
 **QA-10 — Keyboard-only and assistive-technology editing** *(constrains US-06, US-07)*
 
@@ -132,7 +132,7 @@ The reference deployment for every scenario is a **single self-hosted node with
 | Response | Every block operation is reachable and announced |
 | Response measure | 100 % of block operations keyboard-accessible; editor and navigation conform to WCAG 2.1 level AA |
 
-### Out of scope for now
+#### Out of scope for now
 
 | Scenario | Reason |
 |---|---|

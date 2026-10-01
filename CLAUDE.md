@@ -10,13 +10,12 @@ Current state: analysis phase. The repo is a Jekyll report site (published via `
 
 The report is a set of chapter pages, each with `title` and `nav_order` front matter, rendered through `_layouts/chapter.html` (sidebar nav built automatically from `nav_order`, right-hand "on this page" from headings). Chapters, in order:
 
-1. `introduction.md` — Deliverables, Glossary (stub)
-2. `domain-model.md` — the DDD domain model (stub)
-3. `analysis.md` — business requirements; pulls in `_includes/functional-requirements.md` (user stories, grouped by the Event Storming bounded contexts: Account, Membership, Editing, Discussion, Notification, plus an "Out of scope for now" table of stories kept aside without IDs, so active stories are numbered consecutively) and `_includes/quality-attributes.md` (non-functional requirements as QA-xx six-part scenarios: Source → Stimulus → Artifact → Environment → Response → Response measure, grouped by category — Performance, Availability, Data Consistency, Security, Deployability, Modifiability, Accessibility)
-4. `design.md` — Event Storming, Bounded Contexts, Architecture, Microservices, Patterns (stub)
-5. `implementation.md` — Microservices, Testing, Multiplatform, Experiments, Monitoring (stub)
-6. `devops.md` — Project Structure, VCS & Repo, Quality Assurance, CI/CD, Deployment, Benchmark (stub)
-7. `conclusions.md` (stub)
+1. `introduction.md` — Team, Scenario, Deliverables (stub)
+2. `analysis.md` — pulls in, in order, `_includes/business-requirements.md`, `_includes/event-storming.md` (the ten steps of the board, numbered, plus the open pain points), `_includes/ubiquitous-language.md` (the glossary, one table per bounded context), `_includes/functional-requirements.md` (user stories, grouped by the Event Storming bounded contexts: Account, Membership, Editing, Discussion, Notification, plus an "Out of scope for now" table of stories kept aside without IDs, so active stories are numbered consecutively) and `_includes/quality-attributes.md` (non-functional requirements as QA-xx six-part scenarios: Source → Stimulus → Artifact → Environment → Response → Response measure, grouped by category — Performance, Availability, Data Consistency, Security, Deployability, Modifiability, Accessibility)
+3. `design.md` — an intro, then pulls in `_includes/strategic-design.md` (Subdomains, Bounded Contexts, Context Map), `_includes/tactical-design.md` (Tactical Design: the aggregates per bounded context with Mermaid class diagrams, rules across aggregates, roles, changes from the board), `_includes/architecture.md` (Components and Connectors, Hexagonal Architecture), `_includes/microservices.md` and `_includes/patterns.md` (both stubs)
+4. `implementation.md` — Microservices, Testing, Multiplatform, Experiments, Monitoring (stub)
+5. `devops.md` — Project Structure, VCS & Repo, Quality Assurance, CI/CD, Deployment, Benchmark (stub)
+6. `conclusions.md` (stub)
 
 Requirements now live only in `_includes/functional-requirements.md` and `_includes/quality-attributes.md` (plain Markdown, included from `analysis.md`) — there is no separate DDD/Gherkin spec anymore, and no `ddd/` or `features/` directory. Don't recreate that structure; extend the two includes instead. When a chapter's content is written, fill its existing stub headings rather than restructuring — the chapter order and headings were already agreed with the co-author.
 
@@ -24,7 +23,7 @@ Requirements now live only in `_includes/functional-requirements.md` and `_inclu
 
 - Distributed system, **microservices** architectural style.
 - Each service internally follows **Clean** or **Hexagonal Architecture** (domain isolated from frameworks/IO).
-- **DDD** end-to-end: domain model and bounded contexts identified before/alongside design (`domain-model.md`, `design.md`).
+- **DDD** end-to-end: domain model and bounded contexts identified before/alongside design (`design.md`).
 - Components-and-Connectors diagrams and **ADRs** go in `design.md` / a dedicated section once the first architecturally significant decision needs recording — don't scaffold it empty.
 - Prototype: business logic and architectural infrastructure matter, polished UI does not.
 
