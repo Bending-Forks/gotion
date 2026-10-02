@@ -4,9 +4,9 @@ nav_order: 3
 ---
 
 The design turns the [Event Storming](analysis.html#event-storming) board into the model the
-services implement, at the two levels DDD distinguishes. The strategic design works from the
-problem space: it finds the subdomains of the business, ranks them, and settles the bounded
-contexts and their relations. The tactical design works in the solution space: for each bounded
+services implement, at the two levels DDD distinguishes. The strategic design starts from the
+[subdomains](analysis.html#subdomains) found in the analysis, in the problem space, and settles
+the bounded contexts and their relations. The tactical design works in the solution space: for each bounded
 context it describes the aggregates, the rules they protect and the events they publish.
 
 Every name below is a term of the [ubiquitous language](analysis.html#ubiquitous-language),

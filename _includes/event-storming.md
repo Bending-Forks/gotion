@@ -67,6 +67,11 @@ We went back over the timeline to spot the points that need attention: bottlenec
 
 The events where the context or the phase changes are marked with a vertical bar dividing the events before and after. They are the first indicator of bounded context boundaries.
 
+Each pivotal event opens one of the [subdomains](#subdomains) found from the requirements, which
+the board thus confirms: User Registered (Identity), Workspace Created (Workspace organisation),
+Member Invited (Membership and roles), Page Created and Block Inserted (Page content), Session
+Joined (Real-time collaboration), Comment Posted (Discussion), Notification Raised (Notification).
+
 <!-- TODO step 4: link to the frame of this step on the board, e.g.
 [Open step 4 on the board](https://miro.com/app/board/uXjVHlfP04g=/?moveToWidget=FRAME_ID)
 -->
