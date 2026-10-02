@@ -78,37 +78,19 @@ language: [`gotion.cml`]({{ '/assets/context-map/gotion.cml' | relative_url }}) 
 | Editing | Discussion | OHS, PL → CF | Page Deleted, Block Deleted (*delete its comment threads*) |
 | Discussion | Notification | OHS, PL → ACL | Comment Posted (*notify the mentioned user*) |
 
-The roles travel as the Membership events that change them: Member Joined, Member Role Changed,
-Member Removed, Member Left and Workspace Membership Deleted. Discussion needs all of them but
-Member Role Changed, since it only cares who is a member.
+Membership shares the roles through the events that change them: Member Joined, Member Role Changed, Member Removed, Member Left and Workspace Membership Deleted. Discussion listens to all of them except Member Role Changed, because it only needs to know who is a member.
 
-The five contexts are built by the same two-person team, so as an organisation every relation
-would be a partnership. The map records them as customer–supplier relations all the same,
-because each context becomes a microservice that is deployed and versioned on its own: what
-matters is which side owns each contract and which side translates it.
+The same two people build all five contexts, so from a team point of view every relation would be a partnership. The map shows customer-supplier relations anyway, because each context becomes its own microservice, deployed and versioned separately.
 
-- **Every upstream is an open-host service with a published language.** It publishes its domain
-  events in an integration format kept apart from its internal model, so the model can change
-  without breaking the consumers. The events carry identities (`UserId`, `WorkspaceId`,
-  `PageId`, `BlockId`) as plain values of that language: there is no shared kernel, and no
-  library is shared between services.
-- **A downstream conforms when it takes the events as they are.** Membership, Editing and
-  Discussion only need the identities in Workspace Created, Workspace Deleted, Page Deleted and
-  Block Deleted, Account uses the roles with their own names, and Discussion only who is a member.
-- **A downstream translates when the upstream concepts do not belong in its model.**
-  Notification turns Member Invited and Comment Posted into its own `Subject` (an invitation, a
-  mention), and so never learns the models of Membership and Discussion. Editing holds a core
-  subdomain, which is where the course recommends an anticorruption layer: it turns the roles
-  into the only thing its model needs, whether a user may read or change the content, so a new
-  role changes the translation and not the Editing model.
+- **Upstream, open-host service with a published language (OHS, PL).** Every upstream publishes its events in a format kept separate from its internal model, so it can change the model without breaking the contexts downstream. The events carry identities (`UserId`, `WorkspaceId`, `PageId`, `BlockId`) as plain values. There is no shared kernel and no library shared between services.
+- **Downstream conformist (CF): it uses the events as they are.** Membership and Editing only need the workspace identity from Workspace Created and Workspace Deleted. Discussion only needs the identities in Page Deleted and Block Deleted, and who is a member. Account uses the roles with the names Membership gives them.
+- **Downstream anticorruption layer (ACL): it translates the events into its own terms.** Notification turns Member Invited and Comment Posted into its own `Subject` (an invitation, a mention), so it never needs to know the models of Membership and Discussion. Editing turns the roles into the one thing it cares about: can this user read the content, or also change it? Editing holds a core subdomain, which is where the course recommends an anticorruption layer, and with it a new role only changes the translation, not the Editing model.
 
-Account and Membership are upstream of each other: the life of a workspace flows from Account
-to Membership, the roles flow back. It is the tightest coupling on the map, and the first place
-to look if the two contexts keep changing together.
+Account and Membership depend on each other: Account tells Membership when a workspace is created or deleted, and Membership sends the roles back. This is the tightest coupling on the map. If the two contexts keep changing together, this is the first place to look.
 
-The relations above settle *what* Account, Editing and Discussion receive from Membership; *how*
-the roles, and the membership itself, reach them is still PP-04. Either each context keeps a local copy of the roles, fed by
-the events, which takes no call while a command runs (QA-01, QA-02) but lets a removed member act
-until the event arrives (QA-06); or it asks Membership on every command, which is always up to
-date but puts a call to another service in the path of every edit. The choice is recorded as an
-Architecture Decision Record.
+The table says *what* Account, Editing and Discussion get from Membership, but not *how* the roles and the membership reach them. That is still open (PP-04), with two options:
+
+- Each context keeps a local copy of the roles, updated by the events. A command needs no extra call (QA-01, QA-02), but a removed member can still act until the event arrives (QA-06).
+- Each context asks Membership on every command. The answer is always up to date, but every edit waits on a call to another service.
+
+The choice will be recorded in an Architecture Decision Record.
