@@ -382,13 +382,13 @@ A conversation attached to a page or to one of its blocks (US-09).
 - A thread is never empty: its factory opens it together with its first comment.
 - A resolved thread accepts no new comments.
 - A mention names a member of the workspace.
-- Only a member who may change the content posts and resolves: a Viewer only reads the
-  workspace, comments included.
+- Any member of the workspace posts and resolves, whatever their role: a comment does not
+  change the content of the page, so a Viewer can take part in the discussion too.
 
 | Command | Issued by | Event |
 |---|---|---|
-| Post comment | Collaborator with the Editor role | Comment Posted |
-| Resolve thread | Collaborator with the Editor role | Thread Resolved |
+| Post comment | Collaborator | Comment Posted |
+| Resolve thread | Collaborator | Thread Resolved |
 | Delete thread | Policies *whenever a page is deleted, delete its comment threads* and *whenever a block is deleted, delete its comment threads* | Thread Deleted |
 
 ### Notification
@@ -461,8 +461,8 @@ root page may not exist, and the read models must allow for it.
 ### Roles
 
 The roles live in Membership, but most of the commands that need them belong to other contexts.
-The table states which role each command requires; how Account, Editing and Discussion learn the
-roles is PP-04, settled with the context map.
+The table states which role each command requires; the relations that carry them are in the
+[Context Map](#context-map), and how the roles reach the other contexts is PP-04.
 
 | Command | Context | Admin | Editor | Viewer |
 |---|---|---|---|---|
@@ -471,10 +471,10 @@ roles is PP-04, settled with the context map.
 | Leave workspace | Membership | ✓ | ✓ | ✓ |
 | Set title, icon, cover; Submit edit | Editing | ✓ | ✓ | |
 | Join session | Editing | ✓ | ✓ | ✓ |
-| Post comment, Resolve thread | Discussion | ✓ | ✓ | |
 
-Two more checks read Membership without a role: the main workspace of a user is one the user is
-a member of, and a mention names a member of the workspace.
+Three more checks read Membership without a role: the main workspace of a user is one the user
+is a member of, only a member posts a comment or resolves a thread, and a mention names a member
+of the workspace.
 
 ### Changes from the board
 
