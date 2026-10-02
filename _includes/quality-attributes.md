@@ -1,4 +1,4 @@
-## Non functional requirements
+## Quality Attributes
 
 Non-functional requirements, expressed as six-part scenarios (*source, stimulus,
 artifact, environment, response, response measure*). Each scenario is testable:
