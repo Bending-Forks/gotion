@@ -1,0 +1,45 @@
+/*
+ * Context map of Gotion, in Context Mapper's CML (https://contextmapper.org).
+ * The diagram in the report is generated from this file:
+ *   cm generate -i assets/context-map/gotion.cml -g context-map -o assets/context-map
+ */
+
+ContextMap Gotion {
+	type = SYSTEM_LANDSCAPE
+	state = TO_BE
+	contains Account, Membership, Editing, Discussion, Notification
+
+	/* Workspace Created, Workspace Deleted */
+	Account [U,OHS,PL] -> [D,CF] Membership
+	Account [U,OHS,PL] -> [D,CF] Editing
+
+	/* the roles: Member Joined, Member Role Changed, Member Removed, Member Left, Workspace Membership Deleted */
+	Membership [U,OHS,PL] -> [D,CF] Account
+	Membership [U,OHS,PL] -> [D,ACL] Editing
+	Membership [U,OHS,PL] -> [D,CF] Discussion
+
+	/* Member Invited */
+	Membership [U,OHS,PL] -> [D,ACL] Notification
+
+	/* Page Deleted, Block Deleted */
+	Editing [U,OHS,PL] -> [D,CF] Discussion
+
+	/* Comment Posted, with its mentions */
+	Discussion [U,OHS,PL] -> [D,ACL] Notification
+}
+
+BoundedContext Account implements Identity, WorkspaceOrganisation
+BoundedContext Membership implements MembershipAndRoles
+BoundedContext Editing implements PageContent, RealTimeCollaboration
+BoundedContext Discussion implements Discussion
+BoundedContext Notification implements Notification
+
+Domain Gotion {
+	Subdomain Identity { type = GENERIC_SUBDOMAIN }
+	Subdomain WorkspaceOrganisation { type = SUPPORTING_DOMAIN }
+	Subdomain MembershipAndRoles { type = SUPPORTING_DOMAIN }
+	Subdomain PageContent { type = CORE_DOMAIN }
+	Subdomain RealTimeCollaboration { type = CORE_DOMAIN }
+	Subdomain Discussion { type = SUPPORTING_DOMAIN }
+	Subdomain Notification { type = GENERIC_SUBDOMAIN }
+}

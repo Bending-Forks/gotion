@@ -55,22 +55,59 @@ supporting one: if identity is covered by an existing component, Account is wher
 
 ### Context Map
 
-The policies of the board that cross the boundaries of the bounded contexts are their integration
-points, and those of the future microservices:
+The context map shows how the five bounded contexts depend on each other, in the notation of
+Khononov used in the course: every relation has an upstream end (**U**), whose model the other
+side depends on, and a downstream end (**D**), each marked with the integration pattern it
+plays. Each context is filled with the type of the [subdomains](#subdomains) it implements:
+Account is half generic (identity) and half supporting (workspace organisation).
 
-| From | Event | Policy | To |
+![Context map of Gotion]({{ '/assets/context-map/context-map.svg' | relative_url }})
+
+The map is kept as code, as the course suggests, in [Context Mapper](https://contextmapper.org)'s
+language: [`gotion.cml`]({{ '/assets/context-map/gotion.cml' | relative_url }}) is the source, and
+`assets/context-map/render.sh` regenerates the picture from it.
+
+| Upstream | Downstream | Patterns | What crosses the boundary |
 |---|---|---|---|
-| Account | Workspace Created | Accept the creator as Admin | Membership |
-| Account | Workspace Created | Create its root page | Editing |
-| Account | Workspace Deleted | Delete its root page | Editing |
-| Membership | Member Invited | Send the invitation | Notification |
-| Discussion | Comment Posted | Notify the mentioned user | Notification |
-| Account | Workspace Deleted | Delete its membership | Membership |
-| Editing | Page Deleted | Delete its comment threads | Discussion |
-| Editing | Block Deleted | Delete its comment threads | Discussion |
+| Account | Membership | OHS, PL → CF | Workspace Created (*accept the creator as Admin*), Workspace Deleted (*delete its membership*) |
+| Account | Editing | OHS, PL → CF | Workspace Created (*create its root page*), Workspace Deleted (*delete its root page*) |
+| Membership | Account | OHS, PL → CF | The roles: only an Admin renames or deletes a workspace, and the main workspace is one the user is a member of |
+| Membership | Editing | OHS, PL → ACL | The roles, read as whether a user may read or change the content |
+| Membership | Discussion | OHS, PL → CF | The roles, and who is a member, for the mentions |
+| Membership | Notification | OHS, PL → ACL | Member Invited (*send the invitation*) |
+| Editing | Discussion | OHS, PL → CF | Page Deleted, Block Deleted (*delete its comment threads*) |
+| Discussion | Notification | OHS, PL → ACL | Comment Posted (*notify the mentioned user*) |
 
-Besides these policies, Account, Editing and Discussion need the roles held by Membership, as
-listed under [Roles](#roles).
+The roles travel as the Membership events that change them: Member Joined, Member Role Changed,
+Member Removed, Member Left and Workspace Membership Deleted.
 
-<!-- TODO context map: upstream/downstream relation and integration pattern of each pair of
-contexts, and how the roles reach the other contexts (PP-04). -->
+The five contexts are built by the same two-person team, so as an organisation every relation
+would be a partnership. The map records them as customer–supplier relations all the same,
+because each context becomes a microservice that is deployed and versioned on its own: what
+matters is which side owns each contract and which side translates it.
+
+- **Every upstream is an open-host service with a published language.** It publishes its domain
+  events in an integration format kept apart from its internal model, so the model can change
+  without breaking the consumers. The events carry identities (`UserId`, `WorkspaceId`,
+  `PageId`, `BlockId`) as plain values of that language: there is no shared kernel, and no
+  library is shared between services.
+- **A downstream conforms when it takes the events as they are.** Membership, Editing and
+  Discussion only need the identities in Workspace Created, Workspace Deleted, Page Deleted and
+  Block Deleted, and Account and Discussion use the roles with their own names.
+- **A downstream translates when the upstream concepts do not belong in its model.**
+  Notification turns Member Invited and Comment Posted into its own `Subject` (an invitation, a
+  mention), and so never learns the models of Membership and Discussion. Editing holds a core
+  subdomain, which is where the course recommends an anticorruption layer: it turns the roles
+  into the only thing its model needs, whether a user may read or change the content, so a new
+  role changes the translation and not the Editing model.
+
+Account and Membership are upstream of each other: the life of a workspace flows from Account
+to Membership, the roles flow back. It is the tightest coupling on the map, and the first place
+to look if the two contexts keep changing together.
+
+The relations above settle *what* Account, Editing and Discussion receive from Membership; *how*
+the roles reach them is still PP-04. Either each context keeps a local copy of the roles, fed by
+the events, which takes no call while a command runs (QA-01, QA-02) but lets a removed member act
+until the event arrives (QA-06); or it asks Membership on every command, which is always up to
+date but puts a call to another service in the path of every edit. The choice is recorded as an
+Architecture Decision Record.

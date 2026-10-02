@@ -461,8 +461,8 @@ root page may not exist, and the read models must allow for it.
 ### Roles
 
 The roles live in Membership, but most of the commands that need them belong to other contexts.
-The table states which role each command requires; how Account, Editing and Discussion learn the
-roles is PP-04, settled with the context map.
+The table states which role each command requires; the relations that carry them are in the
+[Context Map](#context-map), and how the roles reach the other contexts is PP-04.
 
 | Command | Context | Admin | Editor | Viewer |
 |---|---|---|---|---|
