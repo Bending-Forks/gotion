@@ -24,7 +24,7 @@ current scope are kept aside, without an identifier, in [Out of scope](#out-of-s
 
 #### Discussion
 
-- **US-09 — Discuss content in context**: As a collaborator, I want to add comment threads to pages or individual blocks, resolve them, and mention a member of the workspace in a comment so that conversations stay connected to the relevant content.
+- **US-09 — Discuss content in context**: As a collaborator, I want to add comment threads to pages or individual blocks, resolve them, and mention a member of the workspace in a comment so that conversations stay connected to the relevant content. Any member of the workspace can comment and resolve threads, whatever their role, Viewers included.
 
 #### Notification
 

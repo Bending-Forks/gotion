@@ -73,13 +73,14 @@ language: [`gotion.cml`]({{ '/assets/context-map/gotion.cml' | relative_url }}) 
 | Account | Editing | OHS, PL → CF | Workspace Created (*create its root page*), Workspace Deleted (*delete its root page*) |
 | Membership | Account | OHS, PL → CF | The roles: only an Admin renames or deletes a workspace, and the main workspace is one the user is a member of |
 | Membership | Editing | OHS, PL → ACL | The roles, read as whether a user may read or change the content |
-| Membership | Discussion | OHS, PL → CF | The roles, and who is a member, for the mentions |
+| Membership | Discussion | OHS, PL → CF | Who is a member: only members post, resolve and are mentioned, whatever their role |
 | Membership | Notification | OHS, PL → ACL | Member Invited (*send the invitation*) |
 | Editing | Discussion | OHS, PL → CF | Page Deleted, Block Deleted (*delete its comment threads*) |
 | Discussion | Notification | OHS, PL → ACL | Comment Posted (*notify the mentioned user*) |
 
 The roles travel as the Membership events that change them: Member Joined, Member Role Changed,
-Member Removed, Member Left and Workspace Membership Deleted.
+Member Removed, Member Left and Workspace Membership Deleted. Discussion needs all of them but
+Member Role Changed, since it only cares who is a member.
 
 The five contexts are built by the same two-person team, so as an organisation every relation
 would be a partnership. The map records them as customer–supplier relations all the same,
@@ -93,7 +94,7 @@ matters is which side owns each contract and which side translates it.
   library is shared between services.
 - **A downstream conforms when it takes the events as they are.** Membership, Editing and
   Discussion only need the identities in Workspace Created, Workspace Deleted, Page Deleted and
-  Block Deleted, and Account and Discussion use the roles with their own names.
+  Block Deleted, Account uses the roles with their own names, and Discussion only who is a member.
 - **A downstream translates when the upstream concepts do not belong in its model.**
   Notification turns Member Invited and Comment Posted into its own `Subject` (an invitation, a
   mention), and so never learns the models of Membership and Discussion. Editing holds a core
@@ -106,7 +107,7 @@ to Membership, the roles flow back. It is the tightest coupling on the map, and 
 to look if the two contexts keep changing together.
 
 The relations above settle *what* Account, Editing and Discussion receive from Membership; *how*
-the roles reach them is still PP-04. Either each context keeps a local copy of the roles, fed by
+the roles, and the membership itself, reach them is still PP-04. Either each context keeps a local copy of the roles, fed by
 the events, which takes no call while a command runs (QA-01, QA-02) but lets a removed member act
 until the event arrives (QA-06); or it asks Membership on every command, which is always up to
 date but puts a call to another service in the path of every edit. The choice is recorded as an

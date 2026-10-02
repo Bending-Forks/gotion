@@ -16,6 +16,8 @@ ContextMap Gotion {
 	/* the roles: Member Joined, Member Role Changed, Member Removed, Member Left, Workspace Membership Deleted */
 	Membership [U,OHS,PL] -> [D,CF] Account
 	Membership [U,OHS,PL] -> [D,ACL] Editing
+
+	/* who is a member, whatever the role: the same events but Member Role Changed */
 	Membership [U,OHS,PL] -> [D,CF] Discussion
 
 	/* Member Invited */
