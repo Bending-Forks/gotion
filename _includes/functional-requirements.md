@@ -2,7 +2,7 @@
 
 Expressed as user stories and grouped by the bounded contexts found with the Event Storming.
 Non-functional constraints on these behaviours are specified separately as
-[Non functional requirements](#non-functional-requirements). Stories outside the
+[Quality Attributes](#quality-attributes). Stories outside the
 current scope are kept aside, without an identifier, in [Out of scope](#out-of-scope-for-now).
 
 #### Account
