@@ -64,3 +64,4 @@ main code { background: var(--sidebar-bg); padding: .15rem .35rem; border-radius
   main { padding: 1.5rem 1.25rem 4rem; }
 }
 figure.diagram { margin: 1.5rem 0; text-align: center; }
+main img { display: block; max-width: 100%; height: auto; margin: 1.5rem auto; }
