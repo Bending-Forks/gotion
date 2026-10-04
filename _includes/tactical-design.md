@@ -184,8 +184,11 @@ classDiagram
       <<Aggregate Root>>
       id: PageId
       workspace: WorkspaceId
-      parent: PageId [0..1]
       metadata: PageMetadata
+    }
+    class RootPage
+    class SubPage {
+      parent: PageId
     }
     class PageMetadata {
       <<Value Object>>
@@ -203,23 +206,41 @@ classDiagram
     class Block {
       <<Entity>>
       id: BlockId
-      type: BlockType
-      content: Markdown
+      content: BlockContent
       children: Block[*]
-      subPage: PageId [0..1]
     }
-    class BlockType {
+    class BlockContent {
       <<Value Object>>
-      Text
-      Heading
-      BulletedList
-      NumberedList
-      ToDo
-      Code
-      Page
     }
-    class Markdown {
+    class TextContent {
       <<Value Object>>
+      text: Markdown
+    }
+    class HeadingContent {
+      <<Value Object>>
+      level
+      text: Markdown
+    }
+    class BulletedListContent {
+      <<Value Object>>
+      text: Markdown
+    }
+    class NumberedListContent {
+      <<Value Object>>
+      text: Markdown
+    }
+    class ToDoContent {
+      <<Value Object>>
+      text: Markdown
+      checked: Boolean
+    }
+    class CodeContent {
+      <<Value Object>>
+      code
+    }
+    class PageBlockContent {
+      <<Value Object>>
+      subPage: PageId
     }
   }
   namespace Real_time_Editing_Session_aggregate {
@@ -251,13 +272,21 @@ classDiagram
   Page --> PageMetadata
   PageBlockTree "1" *-- "*" Block
   Block "1" *-- "*" Block : children
-  Block --> BlockType
-  Block --> Markdown
+  Block --> BlockContent
+  BlockContent <|-- TextContent
+  BlockContent <|-- HeadingContent
+  BlockContent <|-- BulletedListContent
+  BlockContent <|-- NumberedListContent
+  BlockContent <|-- ToDoContent
+  BlockContent <|-- CodeContent
+  BlockContent <|-- PageBlockContent
   RealTimeEditingSession --> Presence
   RealTimeEditingSession ..> Edit : merges
-  Page ..> Page : parent, by id
+  Page <|-- RootPage
+  Page <|-- SubPage
+  SubPage ..> Page : parent, by id
   PageBlockTree ..> Page : page, by id
-  Block ..> Page : subPage, by id
+  PageBlockContent ..> SubPage : subPage, by id
   RealTimeEditingSession ..> Page : page, by id
   PageRepository ..> Page : stores
   PageBlockTreeRepository ..> PageBlockTree : stores
@@ -268,10 +297,8 @@ classDiagram
 
 A document of a workspace, with its metadata and its place in the page tree (US-04, US-05).
 
-- **Each workspace has exactly one root page**, the only page without a parent. It is created
-  only by the policy on Workspace Created and deleted only by the policy on Workspace Deleted.
-  The rule spans every page of the workspace, so the Page factory checks the `PageRepository`
-  before creating a root page.
+- **A page is either the root page of its workspace or a sub-page.** `RootPage` and `SubPage` are the two forms of the one root of the Page aggregate, and a page never turns from one into the other. Only a sub-page has a parent, and it always has one.
+- **Each workspace has exactly one root page.** It is created only by the policy on Workspace Created and deleted only by the policy on Workspace Deleted. Its `PageId` is derived from the `WorkspaceId`, so a second root page of the same workspace would have the same identity and cannot be stored: the rule holds without looking at the other pages.
 - **A sub-page is created, moved and deleted only through its page block.** Inserting, moving or
   deleting the page block in the tree of the parent page fires the matching command on Page. Each
   sub-page therefore has exactly one page block, and nothing flows back from Page to the block,
@@ -297,12 +324,11 @@ empty together with it.
 - The blocks form an ordered tree: every block has exactly one parent, the page or another block,
   and a position among its siblings. A block cannot be nested under itself or one of its
   descendants.
-- The content of a block is Markdown (BR-03) and fits its type. A page block, and only a page
-  block, refers to a sub-page.
+- The type of a block is the subtype of its `BlockContent`, and each subtype holds only the fields its type needs. Text is Markdown (BR-03), so a heading also has its level, as a Markdown heading does. A to-do has its checkbox, and a page block holds only its sub-page, so no other block can refer to one.
+- Update block can turn a block into another type by replacing its content. The block keeps its `BlockId`, its place in the tree and the comment threads anchored to it. Page blocks are the exception: no block becomes a page block and a page block becomes nothing else, because a sub-page is created and deleted only by inserting and deleting its page block.
 - Deleting a block deletes the blocks nested in it. Block Deleted lists the page blocks removed
   with them, so that every sub-page underneath is deleted, not only the top one.
-- A new block type is a new value of `BlockType` and its rendering, both inside Editing, with no
-  change to any other aggregate or context (QA-09).
+- A new block type is a new subtype of `BlockContent` and its rendering, both inside Editing, with no change to any other aggregate or context (QA-09). The content is saved as the name of its type plus its fields, so a new type needs no change to the persistence schema.
 
 | Command | Issued by | Event |
 |---|---|---|
@@ -351,7 +377,13 @@ classDiagram
     class Anchor {
       <<Value Object>>
       page: PageId
-      block: BlockId [0..1]
+    }
+    class PageAnchor {
+      <<Value Object>>
+    }
+    class BlockAnchor {
+      <<Value Object>>
+      block: BlockId
     }
     class Comment {
       <<Entity>>
@@ -369,6 +401,8 @@ classDiagram
     <<Repository>>
   }
   CommentThread --> Anchor
+  Anchor <|-- PageAnchor
+  Anchor <|-- BlockAnchor
   CommentThread "1" *-- "1..*" Comment
   Comment --> Mention
   CommentThreadRepository ..> CommentThread : stores
@@ -378,7 +412,7 @@ classDiagram
 
 A conversation attached to a page or to one of its blocks (US-09).
 
-- The anchor is fixed when the thread opens and never changes.
+- The anchor is fixed when the thread opens and never changes. A page anchor holds a thread on the whole page, a block anchor a thread on one block. Both name the page, because a `BlockId` alone does not tell Discussion which page the block is on, and the threads of a page must be found when it is shown or deleted.
 - A thread is never empty: its factory opens it together with its first comment.
 - A resolved thread accepts no new comments.
 - A mention names a member of the workspace.
@@ -450,7 +484,7 @@ root page may not exist, and the read models must allow for it.
 |---|---|---|
 | A new user has a workspace, and it is their main one | *Whenever a user registers, create their first workspace*; *whenever a user's first workspace is created, make it their main workspace* | US-01, US-02 |
 | A workspace has an Admin from its creation | *Whenever a workspace is created, accept the creator as Admin* | US-03 |
-| A workspace has exactly one root page | *Whenever a workspace is created, create its root page*, plus the check of the Page factory | US-04 |
+| A workspace has exactly one root page | *Whenever a workspace is created, create its root page*, plus the identity of the root page, derived from its workspace | US-04 |
 | Every page block has its sub-page, and every sub-page its page block | *Whenever a page block is inserted, moved, deleted, updated…* | US-04 |
 | Merged edits reach the content of the page | *When edits are merged, apply them to the page block tree* | US-08 |
 | Deleting a workspace deletes everything in it | *Whenever a workspace is deleted, delete its root page*, then the cascade below; *whenever a workspace is deleted, delete its membership* | US-02, PP-05 |

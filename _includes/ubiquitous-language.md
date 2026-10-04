@@ -30,13 +30,14 @@ This glossary records the ubiquitous language of Gotion. Following DDD, the lang
 
 | Term | Definition | Not to be confused with |
 |---|---|---|
-| Page | A document of a workspace, with its metadata and its place in the page tree (US-04). Every page except the root page is also a block of its parent page. | *Page Block Tree*, the content of the page. |
+| Page | A document of a workspace, with its metadata and its place in the page tree (US-04). A page is either the root page or a sub-page, which is also a block of its parent page. | *Page Block Tree*, the content of the page. |
 | Root page | The only page of a workspace that has no parent, created together with the workspace. It holds content like any other page, and it is where new pages start: every other page is created inside it or inside one of its sub-pages, so every page of the workspace descends from it. A workspace has exactly one root page: no other can be created, and it is deleted only together with its workspace. | *Main workspace*. |
 | Sub-page | Any page other than the root page: a page whose page block lives inside another page, its parent. | — |
 | Page tree | The hierarchy of the pages of a workspace, rooted at the root page and given by the parent of each page. | *Page Block Tree*. |
 | Page metadata | The title, icon and cover of a page (US-05). | *Page content*. |
-| Block | The unit of content of a page: formatted text, heading, bulleted, numbered or to-do list, code (US-06, US-07). Blocks are ordered and can be nested. | — |
-| Page block | The block that stands for a sub-page. Inserting, moving, deleting or updating it creates, moves, deletes or updates the metadata of that sub-page. | *Page*, which the page block points to. |
+| Block | The unit of content of a page: formatted text, heading, bulleted, numbered or to-do list, code (US-06, US-07). Blocks are ordered and can be nested. The type of a block comes from its block content. | — |
+| Block content | What a block holds, in the shape its type needs: Markdown text for most types, plus a level for a heading and a checkbox for a to-do, the code for a code block, only the sub-page for a page block. Replacing it turns the block into another type, and the block stays the same block. | *Page Block Tree*, the content of the whole page. |
+| Page block | The block that stands for a sub-page. Inserting, moving, deleting or updating it creates, moves, deletes or updates the metadata of that sub-page. A page block never turns into another type, and no other block turns into one. | *Page*, which the page block points to. |
 | Page Block Tree | The ordered, nestable tree of the blocks of one page: the page content. There is one per page, and it is deleted as a whole when its page is deleted. | *Page tree*, which is made of pages. |
 | Real-time Editing Session | The shared editing of one page by the collaborators who have it open (US-08). Their edits are merged and then applied to the Page Block Tree. The session is closed when its page is deleted. | *Workspace*: a session belongs to a single page. |
 | Collaborator | A user who has joined the editing session of a page, or who takes part in a discussion. | *Member*, which is about belonging to the workspace. |
@@ -56,6 +57,7 @@ This glossary records the ubiquitous language of Gotion. Following DDD, the lang
 | Term | Definition | Not to be confused with |
 |---|---|---|
 | Comment Thread | A conversation attached to a page or to a single block (US-09). It can be resolved when the discussion is over. | *Notification*. |
+| Anchor | Where a comment thread is attached: the whole page (page anchor) or one block of it (block anchor). It is set when the thread opens and never changes. | *Mention*, which points at a member, not at content. |
 | Comment | A message posted in a comment thread by any member of the workspace. Posting it does not change the content of the page. | *Edit*, which changes the content. |
 | Mention | A reference to a member of the workspace written in a comment (US-09). It makes that member receive a notification. | — |
 

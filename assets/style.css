@@ -12,7 +12,7 @@
 body {
   margin: 0;
   display: grid;
-  grid-template-columns: 16.5rem minmax(0, 1fr) 16rem;
+  grid-template-columns: var(--left, 16.5rem) minmax(0, 1fr) var(--right, 16rem);
   font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -29,6 +29,21 @@ a:hover { text-decoration: underline; }
   padding: 1.75rem 1rem;
   font-size: .9rem;
 }
+body:has(.chapters.closed) { --left: 3rem; }
+body:has(.on-this-page.closed) { --right: 3rem; }
+.closed { padding-inline: .5rem; }
+/* the column width animates; the content fades instead of disappearing, so it doesn't rewrap while the column moves */
+body { transition: grid-template-columns .25s ease; }
+.chapters, .on-this-page { overflow-x: hidden; transition: padding .25s ease; }
+.chapters > :not(.toggle), .on-this-page > :not(.toggle) { min-width: 13rem; transition: opacity .2s, visibility .2s; }
+.closed > :not(.toggle) { opacity: 0; visibility: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  body, .chapters, .on-this-page, .chapters > *, .on-this-page > * { transition: none; }
+}
+.toggle { float: right; border: 0; border-radius: 6px; padding: .1rem .5rem; background: none; color: var(--text-light); font: inherit; cursor: pointer; }
+.toggle:hover { background: var(--hover); color: var(--text); }
+.chapters .toggle::before, .on-this-page.closed .toggle::before { content: "«"; }
+.on-this-page .toggle::before, .chapters.closed .toggle::before { content: "»"; }
 .chapters { background: var(--sidebar-bg); border-right: 1px solid var(--border); }
 .brand { display: block; font-size: 1.05rem; font-weight: 600; color: var(--text); margin: .2rem .5rem 1.5rem; }
 .chapters ol { list-style: none; margin: 0; padding: 0; counter-reset: ch; display: flex; flex-direction: column; gap: 1px; }
@@ -38,7 +53,9 @@ a:hover { text-decoration: underline; }
 .chapters li a:hover { background: var(--hover); text-decoration: none; }
 .chapters .current a { background: var(--hover); font-weight: 600; }
 
-main { padding: 3rem 4rem 8rem; max-width: 76rem; width: 100%; margin: 0 auto; }
+main { padding: 3rem 4rem 8rem; }
+/* text keeps a readable width, images and diagrams take all the room the sidebars leave */
+main > :not(figure, p:has(> img)) { max-width: 68rem; margin-inline: auto; }
 main h1 { margin: 0 0 2rem; font-size: 2.25rem; font-weight: 700; letter-spacing: -.01em; }
 main h2 { margin: 2.75rem 0 1rem; font-size: 1.4rem; font-weight: 600; scroll-margin-top: 1.25rem; }
 main h3 { margin: 1.75rem 0 .75rem; font-size: 1.1rem; font-weight: 600; scroll-margin-top: 1.25rem; }
@@ -61,6 +78,7 @@ main code { background: var(--sidebar-bg); padding: .15rem .35rem; border-radius
   body { grid-template-columns: 1fr; }
   .chapters, .on-this-page { position: static; max-height: none; border: 0; }
   .on-this-page { display: none; }
+  .closed > :not(.toggle) { display: none; }
   main { padding: 1.5rem 1.25rem 4rem; }
 }
 figure.diagram { margin: 1.5rem 0; text-align: center; }
