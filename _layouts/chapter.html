@@ -9,6 +9,7 @@
 <body>
 
 <nav class="chapters">
+  <button class="toggle" aria-label="Toggle chapters" aria-expanded="true"></button>
   <a class="brand" href="{{ '/' | relative_url }}">{{ site.title }}</a>
   <ol>
   {% assign chapters = site.pages | where_exp: "p", "p.nav_order" | sort: "nav_order" %}
@@ -23,7 +24,7 @@
   {{ content }}
 </main>
 
-<aside class="on-this-page"><b>Contents</b><ul></ul></aside>
+<aside class="on-this-page"><button class="toggle" aria-label="Toggle contents" aria-expanded="true"></button><b>Contents</b><ul></ul></aside>
 
 <script>
 // right sidebar: built from the rendered headings, kramdown already gave them ids
@@ -39,13 +40,20 @@ for (const h of headings) {
 }
 if (!headings.length) asideEl.hidden = true;
 
-// scroll-spy: highlight whichever heading is in the top band of the viewport
-// ponytail: "top 30% of viewport" is an approximation, not exact closest-heading math — good enough for chapter-length pages
-const linkByHeadingId = new Map(headings.map(h => [h.id, list.querySelector('a[href="#' + h.id + '"]')]));
-const spy = new IntersectionObserver(entries => {
-  for (const entry of entries) linkByHeadingId.get(entry.target.id)?.classList.toggle('active', entry.isIntersecting);
-}, { rootMargin: '0px 0px -70% 0px' });
-headings.forEach(h => spy.observe(h));
+// scroll-spy: the current section is the last heading scrolled past the top 30% of the viewport,
+// so its link stays lit while reading the body below it
+const links = headings.map(h => list.querySelector('a[href="#' + h.id + '"]'));
+function spy() {
+  const current = headings.findLastIndex(h => h.getBoundingClientRect().top < innerHeight * 0.3);
+  links.forEach((a, i) => a.classList.toggle('active', i === current));
+}
+addEventListener('scroll', spy, { passive: true });
+spy();
+
+// both sidebars fold to a thin strip, so images and diagrams get the room
+for (const b of document.querySelectorAll('.toggle')) {
+  b.onclick = () => b.setAttribute('aria-expanded', !b.parentElement.classList.toggle('closed'));
+}
 </script>
 
 <script type="module">
