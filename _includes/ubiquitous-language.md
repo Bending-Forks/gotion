@@ -23,8 +23,8 @@ This glossary records the ubiquitous language of Gotion. Following DDD, the lang
 | Admin | The role that can do everything an Editor can, and also invite members, remove them and change their role (US-03). The creator of a workspace becomes its first Admin. | — |
 | Editor | The role that can create, change and delete the pages and blocks of the workspace. | — |
 | Viewer | The role that can read the pages of the workspace and take part in their discussions, but cannot change their content. | — |
-| Invitation | The request an Admin sends to a person to join a workspace. Accepting it turns the invitee into a member. | *Notification*, which only delivers the invitation. |
-| Invitee | The person an invitation is addressed to, until they accept it. | *Member*. |
+| Invitation | The request an Admin sends to a person to join a workspace. Accepting it turns the invitee into a member; declining it ends it. It does not expire. | *Notification*, which only delivers the invitation. |
+| Invitee | The person an invitation is addressed to, until they accept or decline it. | *Member*. |
 
 #### Editing
 

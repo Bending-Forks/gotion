@@ -16,7 +16,7 @@ current scope are kept aside, without an identifier, in [Out of scope](#out-of-s
 
 #### Membership and roles
 
-- **US-03 — Manage workspace members**: As a workspace Admin, I want to invite people to the workspace, remove members, and assign them the Admin, Editor, or Viewer role so that I can control who can read and who can change its content. A workspace always keeps at least one Admin.
+- **US-03 — Manage workspace members**: As a workspace Admin, I want to invite people to the workspace, remove members, and assign them the Admin, Editor, or Viewer role so that I can control who can read and who can change its content. A workspace always keeps at least one Admin. An invitee can accept or decline the invitation, which does not expire.
 
 #### Page content
 
