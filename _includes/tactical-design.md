@@ -192,9 +192,9 @@ classDiagram
     }
     class PageMetadata {
       <<Value Object>>
-      title
-      icon
-      cover
+      title: String
+      icon: IconName[0..1]
+      cover: Url[0..1]
     }
   }
   namespace Page_Block_Tree_aggregate {
@@ -218,7 +218,7 @@ classDiagram
     }
     class HeadingContent {
       <<Value Object>>
-      level
+      level: Integer
       text: Markdown
     }
     class BulletedListContent {
@@ -236,7 +236,8 @@ classDiagram
     }
     class CodeContent {
       <<Value Object>>
-      code
+      code: String
+      language: CodeLanguage[0..1]
     }
     class PageBlockContent {
       <<Value Object>>
@@ -308,6 +309,7 @@ A document of a workspace, with its metadata and its place in the page tree (US-
   policies.
 - The metadata is set on the page itself or by updating its page block; both end up on Page. The
   page block shows the title, icon and cover through the read model, without keeping a copy.
+- The title is plain text. Icon and cover are optional. The icon is the name of an icon from the Lucide set, which the client draws, so the page stores no image. The cover is a link to an image, because no story asks for uploading files.
 
 | Command | Issued by | Event |
 |---|---|---|
@@ -324,7 +326,7 @@ empty together with it.
 - The blocks form an ordered tree: every block has exactly one parent, the page or another block,
   and a position among its siblings. A block cannot be nested under itself or one of its
   descendants.
-- The type of a block is the subtype of its `BlockContent`, and each subtype holds only the fields its type needs. Text is Markdown (BR-03), so a heading also has its level, as a Markdown heading does. A to-do has its checkbox, and a page block holds only its sub-page, so no other block can refer to one.
+- The type of a block is the subtype of its `BlockContent`, and each subtype holds only the fields its type needs. Text is Markdown (BR-03), so a heading also has its level, from 1 to 6 as in Markdown. A to-do has its checkbox, and a page block holds only its sub-page, so no other block can refer to one. A code block keeps its code as plain text, not Markdown, and may name its language in one word, the one written after the opening fence of a Markdown code block (`python`).
 - Update block can turn a block into another type by replacing its content. The block keeps its `BlockId`, its place in the tree and the comment threads anchored to it. Page blocks are the exception: no block becomes a page block and a page block becomes nothing else, because a sub-page is created and deleted only by inserting and deleting its page block.
 - Deleting a block deletes the blocks nested in it. Block Deleted lists the page blocks removed
   with them, so that every sub-page underneath is deleted, not only the top one.
