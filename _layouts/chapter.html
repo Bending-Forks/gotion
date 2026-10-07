@@ -50,9 +50,16 @@ function spy() {
 addEventListener('scroll', spy, { passive: true });
 spy();
 
-// both sidebars fold to a thin strip, so images and diagrams get the room
+// both sidebars fold to a thin strip, so images and diagrams get the room;
+// localStorage keeps them folded across reloads and chapters
 for (const b of document.querySelectorAll('.toggle')) {
-  b.onclick = () => b.setAttribute('aria-expanded', !b.parentElement.classList.toggle('closed'));
+  const side = b.parentElement, key = 'gotion-closed-' + side.classList[0];
+  const fold = closed => {
+    b.setAttribute('aria-expanded', !side.classList.toggle('closed', closed));
+    try { localStorage[key] = closed ? '1' : ''; } catch {}
+  };
+  try { fold(localStorage[key] === '1'); } catch {}
+  b.onclick = () => fold(!side.classList.contains('closed'));
 }
 </script>
 

@@ -2,10 +2,7 @@
 
 ### Building blocks
 
-Each bounded context has its own model, drawn as a UML class diagram with the DDD stereotypes:
-`Aggregate Root`, `Entity`, `Value Object`, `Repository`. A box groups the classes of one
-aggregate. Every aggregate root has a repository that stores and loads it whole; factories and
-domain services are named in the text where creation or a rule needs one.
+Each bounded context has its own model, drawn as a UML class diagram with the DDD stereotypes `Aggregate Root`, `Entity`, `Value Object`, `Repository`, `Factory` and `Domain Service`. A box groups the classes of one aggregate. Every aggregate root has a repository that stores and loads it whole; factories are named in the text where creation needs one.
 
 Three rules shape every aggregate:
 
@@ -58,20 +55,28 @@ classDiagram
   class WorkspaceRepository {
     <<Repository>>
   }
+  class UserFactory {
+    <<Factory>>
+  }
+  class AuthService {
+    <<Domain Service>>
+  }
   User --> Email
   User --> PasswordHash
   Workspace --> WorkspaceName
   User ..> Workspace : mainWorkspace, by id
   UserRepository ..> User : stores
   WorkspaceRepository ..> Workspace : stores
+  UserFactory ..> User : creates
+  UserFactory ..> AuthService : uses
+  AuthService ..> UserRepository : uses
 ```
 
 #### User
 
 The identity that signs in (US-01), and the owner of the user's preferences.
 
-- The email address is unique among users. The rule spans every User, so the User factory checks
-  it against the `UserRepository` when a user registers.
+- The email address is unique among users. The rule spans every User, so before a new user is created the User factory asks the `AuthService` to check the address against the `UserRepository`.
 - The password is kept only as a `PasswordHash`; signing in compares against it and changes no
   state.
 - The main workspace is one the user is a member of. Membership holds that fact, so the check is
