@@ -37,7 +37,7 @@ language: [`gotion.cml`]({{ '/assets/context-map/gotion.cml' | relative_url }}) 
 
 | Upstream | Downstream | Patterns | What crosses the boundary |
 |---|---|---|---|
-| Account | Membership | OHS, PL → CF | Workspace Created (*accept the creator as Admin*), Workspace Deleted (*delete its membership*) |
+| Account | Membership | OHS, PL → CF | Workspace Created (*accept the creator as Admin*), Workspace Deleted (*delete its membership*); on request, the `UserId` registered with an email address (*invite member*) |
 | Account | Editing | OHS, PL → CF | Workspace Created (*create its root page*), Workspace Deleted (*delete its root page*) |
 | Membership | Account | OHS, PL → CF | The roles: only an Admin renames or deletes a workspace, and the main workspace is one the user is a member of |
 | Membership | Editing | OHS, PL → ACL | The roles, read as whether a user may read or change the content |
@@ -50,11 +50,11 @@ Membership shares the roles through the events that change them: Member Joined, 
 
 The same two people build all five contexts, so from a team point of view every relation would be a partnership. The map shows customer-supplier relations anyway, because each context becomes its own microservice, deployed and versioned separately.
 
-- **Upstream, open-host service with a published language (OHS, PL).** Every upstream publishes its events in a format kept separate from its internal model, so it can change the model without breaking the contexts downstream. The events carry identities (`UserId`, `WorkspaceId`, `PageId`, `BlockId`) as plain values. There is no shared kernel and no library shared between services.
-- **Downstream conformist (CF): it uses the events as they are.** Membership and Editing only need the workspace identity from Workspace Created and Workspace Deleted. Discussion only needs the identities in Page Deleted and Block Deleted, and who is a member. Account uses the roles with the names Membership gives them.
+- **Upstream, open-host service with a published language (OHS, PL).** Every upstream publishes its events in a format kept separate from its internal model, so it can change the model without breaking the contexts downstream. The events carry identities (`UserId`, `WorkspaceId`, `PageId`, `BlockId`) as plain values. There is no shared kernel and no library shared between services. Account's open-host service also answers one query, synchronously, in the same published language: which user is registered with an email address, which Membership asks before adding an invitation.
+- **Downstream conformist (CF): it uses the events as they are.** Membership and Editing only need the workspace identity from Workspace Created and Workspace Deleted, and Membership takes the `UserId` returned by the user lookup as it is. Discussion only needs the identities in Page Deleted and Block Deleted, and who is a member. Account uses the roles with the names Membership gives them.
 - **Downstream anticorruption layer (ACL): it translates the events into its own terms.** Notification turns Member Invited and Comment Posted into its own `Subject` (an invitation, a mention), so it never needs to know the models of Membership and Discussion. Editing turns the roles into the one thing it cares about: can this user read the content, or also change it? Editing holds a core subdomain, which is where the course recommends an anticorruption layer, and with it a new role only changes the translation, not the Editing model.
 
-Account and Membership depend on each other: Account tells Membership when a workspace is created or deleted, and Membership sends the roles back. This is the tightest coupling on the map. If the two contexts keep changing together, this is the first place to look.
+Account and Membership depend on each other: Account tells Membership when a workspace is created or deleted and which user an email address belongs to, and Membership sends the roles back. This is the tightest coupling on the map. If the two contexts keep changing together, this is the first place to look.
 
 The table says *what* Account, Editing and Discussion get from Membership, but not *how* the roles and the membership reach them. That is still open (PP-04), with two options:
 

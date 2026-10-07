@@ -9,8 +9,10 @@ ContextMap Gotion {
 	state = TO_BE
 	contains Account, Membership, Editing, Discussion, Notification
 
-	/* Workspace Created, Workspace Deleted */
+	/* Workspace Created, Workspace Deleted, and on request the user registered with an email address */
 	Account [U,OHS,PL] -> [D,CF] Membership
+
+	/* Workspace Created, Workspace Deleted */
 	Account [U,OHS,PL] -> [D,CF] Editing
 
 	/* the roles: Member Joined, Member Role Changed, Member Removed, Member Left, Workspace Membership Deleted */

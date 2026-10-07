@@ -164,7 +164,7 @@ classDiagram
   Invitation --> Role
   WorkspaceMembershipRepository ..> WorkspaceMembership : stores
   WorkspaceMembershipFactory ..> WorkspaceMembership : creates
-  UserLookupService ..> WorkspaceMembership : uses
+  WorkspaceMembership ..> UserLookupService : uses
 ```
 
 #### Workspace Membership
