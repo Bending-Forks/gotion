@@ -206,6 +206,8 @@ classDiagram
       id: PageId
       workspace: WorkspaceId
       metadata: PageMetadata
+      createSubPage(id) SubPage
+      openSession(collaborator) RealTimeEditingSession
     }
     class RootPage
     class SubPage {
@@ -269,6 +271,7 @@ classDiagram
     class RealTimeEditingSession {
       <<Aggregate Root>>
       page: PageId
+      workspace: WorkspaceId
       presence: Presence
       closed: Boolean
     }
@@ -290,6 +293,11 @@ classDiagram
   }
   class RealTimeEditingSessionRepository {
     <<Repository>>
+  }
+  class AccessLookupService {
+    <<Domain Service>>
+    canRead(user, workspace) Boolean
+    canChange(user, workspace) Boolean
   }
   Page --> PageMetadata
   PageBlockTree "1" *-- "*" Block
@@ -313,6 +321,10 @@ classDiagram
   PageRepository ..> Page : stores
   PageBlockTreeRepository ..> PageBlockTree : stores
   RealTimeEditingSessionRepository ..> RealTimeEditingSession : stores
+  Page ..> SubPage : creates
+  Page ..> RealTimeEditingSession : creates
+  Page ..> AccessLookupService : uses
+  RealTimeEditingSession ..> AccessLookupService : uses
 ```
 
 #### Page
@@ -325,11 +337,12 @@ A document of a workspace, with its metadata and its place in the page tree (US-
   deleting the page block in the tree of the parent page fires the matching command on Page. Each
   sub-page therefore has exactly one page block, and nothing flows back from Page to the block,
   so the loop raised while reviewing the board cannot happen.
-- The parent of a sub-page is the page whose tree holds its page block, in the same workspace.
+- The parent of a sub-page is the page whose tree holds its page block, in the same workspace. The parent creates it, through `createSubPage` on Page, so the sub-page always gets the workspace of its parent, and the `PageId` that its page block already holds. The parent itself does not change, so one command still changes one aggregate.
 - Deleting a page is final (US-04): its content and its sub-pages are deleted with it, by
   policies.
 - The metadata is set on the page itself or by updating its page block; both end up on Page. The
   page block shows the title, icon and cover through the read model, without keeping a copy.
+- Setting the metadata on the page itself needs a role that may change the content. The roles live in Membership, so Page asks the `AccessLookupService`, which only says whether a user of the workspace can read the content or also change it. How the service learns the roles is PP-04. When the metadata comes from an updated page block, Page checks nothing: the edit was checked when it was submitted, and refusing it now would drop an acknowledged edit (QA-05).
 - The title is plain text. Icon and cover are optional. The icon is the name of an icon from the Lucide set, which the client draws, so the page stores no image. The cover is a link to an image, because no story asks for uploading files.
 
 | Command | Issued by | Event |
@@ -341,8 +354,7 @@ A document of a workspace, with its metadata and its place in the page tree (US-
 
 #### Page Block Tree
 
-The content of one page (US-06, US-07). It is identified by the `PageId` of its page and starts
-empty together with it.
+The content of one page (US-06, US-07). It is identified by the `PageId` of its page and starts empty together with it. It needs no factory: no command creates it, and the first Insert block finds it empty and stores it.
 
 - The blocks form an ordered tree: every block has exactly one parent, the page or another block,
   and a position among its siblings. A block cannot be nested under itself or one of its
@@ -367,8 +379,8 @@ The shared editing of one page (US-08). It is identified by the `PageId` of its 
 while reviewing the board, the session exists even with a single collaborator: the first Join
 session opens it, so editing alone and editing together follow the same path.
 
-- Only a collaborator who has joined can submit edits, and only with a role that may change the
-  content. A Viewer can join to follow the edits and appear in the presence, but cannot submit.
+- Opening goes through `openSession` on Page, so a session exists only for a page that exists, and it starts with the collaborator who joined in its presence. It keeps the workspace of its page, which never changes, for the checks on later joins and edits. The page itself does not change, so one command still changes one aggregate.
+- Only a collaborator who has joined can submit edits, and only with a role that may change the content. A Viewer can join to follow the edits and appear in the presence, but cannot submit. The session, and Page when it opens one, ask the `AccessLookupService` whether whoever joins can read the content and whoever submits an edit can also change it.
 - Concurrent edits are merged into one result that every collaborator converges to, and no
   acknowledged edit is dropped (QA-05). Where edits are ordered and merged is PP-01, settled by an
   ADR; the `change` carried by an `Edit` takes its form from that decision.
