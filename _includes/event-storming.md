@@ -163,14 +163,16 @@ bounded contexts in [Strategic Design](design.html#strategic-design).
 
 The pain points still open at the end of the session, each traced to the user story or quality
 attribute scenario it puts at risk. The architectural ones are settled in an Architecture
-Decision Record, the others in the [domain model](design.html#tactical-design).
+Decision Record, the others in the [domain model](design.html#tactical-design); the last column
+says where each one was settled. The session also fed back into the requirements: the answers to
+PP-02 and PP-03 refined [US-03](#functional-requirements), and the domain model implements them.
 
 <!-- TODO: verify this table against the pain points of step 3 when steps 1-8 are updated. -->
 
-| Pain point | Context | Traces to |
-|---|---|---|
-| **PP-01** — Where concurrent edits are ordered and merged: a central sequencer in the Editing service, or replicas that merge on their own | Editing | US-08, QA-02, QA-05 |
-| **PP-02** — Whether an invitation expires, and what happens when it is refused | Membership | US-03 |
-| **PP-03** — How a member leaves a workspace, given that the last Admin cannot | Membership | US-03 |
-| **PP-04** — How Editing and Discussion enforce what Membership holds, the roles for Editing and the membership itself for Discussion: no policy on the board carries them out of Membership | Membership, Editing, Discussion | US-03, QA-06 |
-| **PP-05** — What happens to the comment threads of a deleted page, block or workspace, and to the Workspace Membership of a deleted workspace: no policy removes them | Discussion, Membership | US-02, US-04, US-09 |
+| Pain point | Context | Traces to | Settled in |
+|---|---|---|---|
+| **PP-01** — Where concurrent edits are ordered and merged: a central sequencer in the Editing service, or replicas that merge on their own | Editing | US-08, QA-02, QA-05 | Open: an ADR |
+| **PP-02** — Whether an invitation expires, and what happens when it is refused | Membership | US-03 | [US-03](#functional-requirements): an invitation does not expire, and the invitee can decline it; modelled in [Workspace Membership](design.html#workspace-membership) |
+| **PP-03** — How a member leaves a workspace, given that the last Admin cannot | Membership | US-03 | [US-03](#functional-requirements): any member can leave, except the last Admin; modelled in [Workspace Membership](design.html#workspace-membership) as *Leave workspace* |
+| **PP-04** — How Editing and Discussion enforce what Membership holds, the roles for Editing and the membership itself for Discussion: no policy on the board carries them out of Membership | Membership, Editing, Discussion | US-03, QA-06 | What they receive: [Context Map](design.html#context-map); how it reaches them: open, an ADR |
+| **PP-05** — What happens to the comment threads of a deleted page, block or workspace, and to the Workspace Membership of a deleted workspace: no policy removes them | Discussion, Membership | US-02, US-04, US-09 | [Rules across aggregates](design.html#rules-across-aggregates): deletion policies |
