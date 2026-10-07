@@ -31,6 +31,7 @@ classDiagram
       email: Email
       password: PasswordHash
       mainWorkspace: WorkspaceId
+      createWorkspace(name) Workspace
     }
     class Email {
       <<Value Object>>
@@ -62,6 +63,10 @@ classDiagram
   class AuthService {
     <<Domain Service>>
   }
+  class UserRegistered {
+    <<Domain Event>>
+    user: UserId
+  }
   User --> Email
   User --> PasswordHash
   Workspace --> WorkspaceName
@@ -71,6 +76,8 @@ classDiagram
   UserFactory ..> User : creates
   UserFactory ..> AuthService : uses
   AuthService ..> UserRepository : uses
+  UserRegistered ..> User : createFirstWorkspace
+  User ..> Workspace : creates
 ```
 
 #### User
@@ -99,6 +106,7 @@ and no policy reacting to it, served by the *Workspace directory* read model.
 
 A separate space of pages (US-02). The name is a `WorkspaceName`, never blank.
 
+- A workspace is created by a user, through `createWorkspace` on User, so it always has a registered creator, whom Workspace Created carries. The user itself does not change, so one command still changes one aggregate: making it the main workspace stays a separate command.
 - Only an Admin of the workspace renames or deletes it.
 - A deleted workspace accepts no further command. Its root page and its Workspace Membership are
   removed by policies, not in the same transaction.
@@ -479,29 +487,14 @@ classDiagram
   class NotificationRepository {
     <<Repository>>
   }
-  class MemberInvited {
-    <<Domain Event>>
-    workspace: WorkspaceId
-    invitee: UserId
-    invitedBy: UserId
-    role: Role
-  }
-  class CommentPosted {
-    <<Domain Event>>
-    thread: ThreadId
-    author: UserId
-    mentions: UserId[*]
-  }
   Notification --> Subject
   Notification --> Status
   NotificationRepository ..> Notification : stores
-  MemberInvited ..> Notification : raises
-  CommentPosted ..> Notification : raises
 ```
 
 #### Notification
 
-A message telling one user about an invitation or a mention (US-10). It is raised only by policies, in reaction to Member Invited from Membership and Comment Posted from Discussion. Those events belong to the contexts that publish them; the diagram shows them here, with the fields Notification reads, because they are the only way a notification is created.
+A message telling one user about an invitation or a mention (US-10).
 
 - The status only moves forward: Raised, then Delivered, then Read.
 - Delivery is best effort and may be repeated: delivering an already delivered notification
