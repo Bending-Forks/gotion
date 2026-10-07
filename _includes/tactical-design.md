@@ -2,7 +2,7 @@
 
 ### Building blocks
 
-Each bounded context has its own model, drawn as a UML class diagram with the DDD stereotypes `Aggregate Root`, `Entity`, `Value Object`, `Repository`, `Factory` and `Domain Service`. A box groups the classes of one aggregate. Every aggregate root has a repository that stores and loads it whole; factories are named in the text where creation needs one.
+Each bounded context has its own model, drawn as a UML class diagram with the DDD stereotypes `Aggregate Root`, `Entity`, `Value Object`, `Repository`, `Factory`, `Domain Service` and `Domain Event`. A box groups the classes of one aggregate. Every aggregate root has a repository that stores and loads it whole, and a factory only where creating it has a rule to keep.
 
 Three rules shape every aggregate:
 
@@ -57,6 +57,7 @@ classDiagram
   }
   class UserFactory {
     <<Factory>>
+    create(email, password) User
   }
   class AuthService {
     <<Domain Service>>
@@ -126,8 +127,7 @@ classDiagram
       role: Role
     }
     class Invitation {
-      <<Entity>>
-      id: InvitationId
+      <<Value Object>>
       invitee: UserId
       role: Role
       invitedBy: UserId
@@ -142,11 +142,21 @@ classDiagram
   class WorkspaceMembershipRepository {
     <<Repository>>
   }
+  class WorkspaceMembershipFactory {
+    <<Factory>>
+    create(workspace, creator) WorkspaceMembership
+  }
+  class UserLookupService {
+    <<Domain Service>>
+    findByEmail(email) UserId
+  }
   WorkspaceMembership "1" *-- "1..*" Member
   WorkspaceMembership "1" *-- "*" Invitation
   Member --> Role
   Invitation --> Role
   WorkspaceMembershipRepository ..> WorkspaceMembership : stores
+  WorkspaceMembershipFactory ..> WorkspaceMembership : creates
+  UserLookupService ..> WorkspaceMembership : uses
 ```
 
 #### Workspace Membership
@@ -158,21 +168,19 @@ identified by the `WorkspaceId` of its workspace.
   workspace are refused when they would leave no Admin: the last Admin has to promote another
   member before stepping down or leaving. The board had this rule as a purple sticky, but it
   forbids an operation rather than reacting to an event, so it is an invariant, not a policy.
-- The membership starts with the creator of the workspace as its only member, an Admin. Its
-  factory takes the creator, so there is no moment without an Admin.
+- The membership starts with the creator of the workspace as its only member, an Admin. The `WorkspaceMembershipFactory` creates it that way, with no invitation, so there is no moment without an Admin.
 - A user is a member at most once, with exactly one role.
 - Only an Admin invites, changes roles and removes members. This check is local, since the roles
   live here.
-- An invitation is addressed to a registered user, who receives it as an in-app notification
-  (US-10), and who is neither a member nor already invited. It carries the role the invitee will
-  have, chosen by the Admin.
-- Only the invitee accepts or declines an invitation, and either answer ends it. An invitation
-  does not expire: it stays pending until the invitee answers.
+- An invitation is addressed to a registered user, who receives it as an in-app notification (US-10), and who is neither a member nor already invited. It carries the role the invitee will have, chosen by the Admin.
+- The Admin invites by email. The `UserLookupService` asks Account whether the address belongs to a registered user and gets their `UserId`; only then does the membership add the invitation. The other checks are local to the membership.
+- Only the invitee accepts or declines an invitation, and either answer ends it. An invitation does not expire: it stays pending until the invitee answers. It never changes in between, and a user has at most one pending invitation per workspace, so it is a value object told apart by its invitee.
 
 | Command | Issued by | Event |
 |---|---|---|
+| Create workspace membership | Policy *whenever a workspace is created, accept the creator as Admin*, carried out by the factory | Member Joined |
 | Invite member | Admin | Member Invited |
-| Accept invitation | Invitee; policy *whenever a workspace is created, accept the creator as Admin*, carried out by the factory | Member Joined |
+| Accept invitation | Invitee | Member Joined |
 | Decline invitation | Invitee | Invitation Declined |
 | Change member role | Admin | Member Role Changed |
 | Remove member | Admin | Member Removed |
@@ -407,12 +415,23 @@ classDiagram
   class CommentThreadRepository {
     <<Repository>>
   }
+  class CommentThreadFactory {
+    <<Factory>>
+    open(anchor, author, text) CommentThread
+  }
+  class MembershipLookupService {
+    <<Domain Service>>
+    isMember(user, workspace) Boolean
+  }
   CommentThread --> Anchor
   Anchor <|-- PageAnchor
   Anchor <|-- BlockAnchor
   CommentThread "1" *-- "1..*" Comment
   Comment --> Mention
   CommentThreadRepository ..> CommentThread : stores
+  CommentThreadFactory ..> CommentThread : creates
+  CommentThreadFactory ..> MembershipLookupService : uses
+  CommentThread ..> MembershipLookupService : uses
 ```
 
 #### Comment Thread
@@ -420,9 +439,9 @@ classDiagram
 A conversation attached to a page or to one of its blocks (US-09).
 
 - The anchor is fixed when the thread opens and never changes. A page anchor holds a thread on the whole page, a block anchor a thread on one block. Both name the page, because a `BlockId` alone does not tell Discussion which page the block is on, and the threads of a page must be found when it is shown or deleted.
-- A thread is never empty: its factory opens it together with its first comment.
+- A thread is never empty: the `CommentThreadFactory` opens it together with its first comment.
 - A resolved thread accepts no new comments.
-- A mention names a member of the workspace.
+- A mention names a member of the workspace. The members live in Membership, so the thread and its factory ask the `MembershipLookupService` whether the author of a comment, every user it mentions and whoever resolves the thread are members. How the service learns the members is PP-04.
 - Any member of the workspace posts and resolves, whatever their role: a comment does not
   change the content of the page, so a Viewer can take part in the discussion too.
 
@@ -460,14 +479,29 @@ classDiagram
   class NotificationRepository {
     <<Repository>>
   }
+  class MemberInvited {
+    <<Domain Event>>
+    workspace: WorkspaceId
+    invitee: UserId
+    invitedBy: UserId
+    role: Role
+  }
+  class CommentPosted {
+    <<Domain Event>>
+    thread: ThreadId
+    author: UserId
+    mentions: UserId[*]
+  }
   Notification --> Subject
   Notification --> Status
   NotificationRepository ..> Notification : stores
+  MemberInvited ..> Notification : raises
+  CommentPosted ..> Notification : raises
 ```
 
 #### Notification
 
-A message telling one user about an invitation or a mention (US-10).
+A message telling one user about an invitation or a mention (US-10). It is raised only by policies, in reaction to Member Invited from Membership and Comment Posted from Discussion. Those events belong to the contexts that publish them; the diagram shows them here, with the fields Notification reads, because they are the only way a notification is created.
 
 - The status only moves forward: Raised, then Delivered, then Read.
 - Delivery is best effort and may be repeated: delivering an already delivered notification
