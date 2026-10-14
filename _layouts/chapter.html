@@ -64,6 +64,21 @@ for (const b of document.querySelectorAll('.toggle')) {
 </script>
 
 <script type="module">
+import { highlightGherkin } from "{{ '/assets/gherkin.mjs' | relative_url }}";
+
+const terms = [...document.querySelectorAll('main table')]
+  .filter(table => table.querySelector('th')?.textContent.trim() === 'Term')
+  .flatMap(table => [...table.querySelectorAll('tbody tr')]
+    .map(row => row.cells[0].textContent.trim()));
+
+for (const code of document.querySelectorAll('.language-gherkin code, code.language-gherkin')) {
+  code.parentElement.tabIndex = 0;
+  code.parentElement.setAttribute('aria-label', code.textContent.split('\n')[0]);
+  code.innerHTML = highlightGherkin(code.textContent, terms);
+}
+</script>
+
+<script type="module">
 // ```mermaid fences come out of kramdown as plain code blocks, wrapped in a div when rouge
 // highlights them (GitHub Pages) and bare otherwise: hand their source to Mermaid
 const diagrams = document.querySelectorAll('div.language-mermaid, pre:has(> code.language-mermaid)');
