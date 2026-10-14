@@ -105,7 +105,8 @@ follow the [Ubiquitous language](#ubiquitous-language); an Admin can also do eve
 - The invitee declines. Gotion ends the invitation without adding a member.
 - The invitee leaves the invitation unanswered. It stays pending and does not expire.
 - If the address is not registered, or the user already belongs to the workspace or has a pending invitation, Gotion refuses the invitation.
-- Gotion refuses an invitation sent by an Editor or Viewer. Only the invitee can accept or decline their invitation.
+- Gotion refuses an invitation sent by an Editor or Viewer. 
+- Only the invitee can accept or decline their invitation.
 
 **Outcome:** the invitee becomes a member only after accepting, with the role chosen by the Admin.
 
@@ -257,7 +258,6 @@ follow the [Ubiquitous language](#ubiquitous-language); an Admin can also do eve
 
 **Alternative flows:**
 
-- Delivery is best effort. Repeated delivery of the same notification does not create a second notification or reset its read status.
 - Someone other than the recipient tries to mark the notification as read. Gotion refuses the change.
 
 **Outcome:** the recipient has read the notification and Gotion records that status. Reading an invitation notification does not itself accept the invitation.

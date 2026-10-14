@@ -43,9 +43,7 @@ Feature: US-01 Sign up and sign in
 
 #### Workspace organisation
 
-- **US-02 — Manage workspaces**: As a user, I want to create, rename, delete, and switch between multiple workspaces, and choose my main one, so that I can keep different projects or teams separate.
-
-A user can be removed from a workspace only if they also belong to another one.
+- **US-02 — Manage workspaces**: As a user, I want to create, rename, delete, and switch between multiple workspaces, and choose my main one, so that I can keep different projects or teams separate. A user can be removed from a workspace only if they also belong to another one.
 If the removed workspace is their main one, Gotion automatically sets one of their remaining workspaces as main.
 
 ```gherkin
@@ -74,7 +72,8 @@ Feature: US-02 Manage workspaces
   Scenario: Choose a main workspace
     Given Alice belongs to "Research" and "Teaching"
     When she chooses "Teaching" as her main workspace
-    Then Gotion saves "Teaching" as her default workspace
+    Then Gotion saves "Teaching" as her default workspace 
+    And every login takes her there
 
   Scenario: Automatically replace the main workspace after removal by another Admin
     Given Alice and Bob are Admins of "Research"
@@ -124,9 +123,7 @@ Feature: US-02 Manage workspaces
 
 #### Membership and roles
 
-- **US-03 — Manage workspace members**: As a workspace Admin, I want to invite people to the workspace, remove members, and assign them the Admin, Editor, or Viewer role so that I can control who can read and who can change its content. A workspace always keeps at least one Admin.
-
-A member can be removed only if they also belong to another workspace.
+- **US-03 — Manage workspace members**: As a workspace Admin, I want to invite people to the workspace, remove members, and assign them the Admin, Editor, or Viewer role so that I can control who can read and who can change its content. A workspace always keeps at least one Admin. A member can be removed only if they also belong to another workspace.
 
 ```gherkin
 Feature: US-03 Manage workspace members
