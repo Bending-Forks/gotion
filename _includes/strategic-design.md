@@ -62,3 +62,10 @@ The table says *what* Account, Editing and Discussion get from Membership, but n
 - Each context asks Membership on every command. The answer is always up to date, but every edit waits on a call to another service.
 
 The choice will be recorded in an Architecture Decision Record.
+
+<!-- TODO ADR PP-04: weigh the second option with a number, not only in words. Asking
+Membership on every command puts one call to another service on the path of every edit, and
+that call has to fit in the budget QA-01 already gives: 500 ms (p95) from the edit to the
+server acknowledgement. The check runs before the ack, so it does not touch the 300 ms of
+QA-02, which starts from the ack. Measure the round trip to Membership on the reference
+deployment and record in the ADR how much of the QA-01 budget it takes. -->
