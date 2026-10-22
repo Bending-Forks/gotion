@@ -1,9 +1,8 @@
 ## Event Storming
 
 The domain was explored with an [Event Storming](https://www.eventstorming.com) session,
-following the ten steps taught in the course, after Alberto Brandolini and chapter 12 of
-Khononov. The process is iterative: the model is enriched one step at a time, and every step is
-shown below.
+in ten steps, after Alberto Brandolini and chapter 12 of Khononov. The process is iterative:
+the model is enriched one step at a time, and every step is shown below.
 
 The board is on [Miro](https://miro.com/): [Gotion Event Storming](https://miro.com/app/board/uXjVHlfP04g=/).
 Each section below links to the frame holding the wall at that step.
@@ -171,7 +170,7 @@ PP-02 and PP-03 refined [US-03](#functional-requirements), and the domain model 
 
 | Pain point | Context | Traces to | Settled in |
 |---|---|---|---|
-| **PP-01** — Where concurrent edits are ordered and merged: a central sequencer in the Editing service, or replicas that merge on their own | Editing | US-08, QA-01, QA-02, QA-04, QA-05 | Open: an ADR |
+| **PP-01** — Where concurrent edits are ordered and merged: a central sequencer in the Editing service, or replicas that merge on their own | Editing | US-08, QA-01, QA-02, QA-04, QA-05 | [ADR-01](design.html#adr-01-use-blocknote-as-the-block-editor-synchronized-by-our-own-crdt) (proposed): replicas merge on their own, with a CRDT of ours, and Editing checks, stores and relays the operations; when an edit counts as acknowledged: open, an ADR |
 | **PP-02** — Whether an invitation expires, and what happens when it is refused | Membership | US-03 | [US-03](#functional-requirements): an invitation does not expire, and the invitee can decline it; modelled in [Workspace Membership](design.html#workspace-membership) |
 | **PP-03** — How a member leaves a workspace, given that the last Admin cannot | Membership | US-03 | [US-03](#functional-requirements): any member can leave, except the last Admin; modelled in [Workspace Membership](design.html#workspace-membership) as *Leave workspace* |
 | **PP-04** — How Editing and Discussion enforce what Membership holds, the roles for Editing and the membership itself for Discussion: no policy on the board carries them out of Membership | Membership, Editing, Discussion | US-03, QA-06 | What they receive: [Context Map](design.html#context-map); how it reaches them: open, an ADR |

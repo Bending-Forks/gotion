@@ -368,6 +368,16 @@ The content of one page (US-06, US-07). It is identified by the `PageId` of its 
 - Deleting a block deletes the blocks nested in it. Block Deleted lists the page blocks removed
   with them, so that every sub-page underneath is deleted, not only the top one.
 - A new block type is a new subtype of `BlockContent` and its rendering, both inside Editing, with no change to any other aggregate or context (QA-09). The content is saved as the name of its type plus its fields, so a new type needs no change to the persistence schema.
+  <!-- TODO ADR-01: with BlockNote synchronized by our own CRDT, every replica applies an
+  operation as soon as it gets it, and the commands below become operations of that CRDT.
+  Settle, and then rewrite this aggregate: (1) Editing checks each operation before relaying
+  it and refuses one that breaks a rule above, and its author reverts it: say which rules are
+  checked there; (2) a move of the tree CRDT must keep the tree acyclic when two moves are
+  concurrent (A under B while B goes under A), after Kleppmann et al., "A highly-available
+  move operation for replicated trees"; (3) BlockNote text is styled text, not Markdown:
+  restrict the styles to those Markdown expresses, so that the Markdown of BR-03 loses
+  nothing. -->
+
 
 | Command | Issued by | Event |
 |---|---|---|
@@ -386,8 +396,11 @@ session opens it, so editing alone and editing together follow the same path.
 - Opening goes through `openSession` on Page, so a session exists only for a page that exists, and it starts with the collaborator who joined in its presence. It keeps the workspace of its page, which never changes, for the checks on later joins and edits. The page itself does not change, so one command still changes one aggregate.
 - Only a collaborator who has joined can submit edits, and only with a role that may change the content. A Viewer can join to follow the edits and appear in the presence, but cannot submit. The session, and Page when it opens one, ask the `AccessLookupService` whether whoever joins can read the content and whoever submits an edit can also change it.
 - Concurrent edits are merged into one result that every collaborator converges to, and no
-  acknowledged edit is dropped (QA-05). Where edits are ordered and merged is PP-01, settled by an
-  ADR; the `change` carried by an `Edit` takes its form from that decision.
+  acknowledged edit is dropped (QA-05). Where edits are ordered and merged is PP-01, settled by
+  [ADR-01](#adr-01-use-blocknote-as-the-block-editor-synchronized-by-our-own-crdt): every
+  replica merges on its own with a CRDT of ours, so the `change` carried by an `Edit` is an
+  operation of that CRDT, which the session checks, stores and relays to the other
+  collaborators.
   <!-- TODO ADR PP-01: the ADR must also decide when an edit counts as acknowledged.
   QA-01 times the server acknowledgement and asks for the character to be durably persisted,
   QA-04 asks that every acknowledged edit survives a crash, QA-05 that none is silently

@@ -49,16 +49,16 @@ response measures that depend on them, the Benchmark in DevOps and the SLOs in M
 
 #### Availability
 
-**QA-04 — Process crash without data loss** *(constrains US-04, US-06)*
+**QA-04 — Editing crash without data loss** *(constrains US-04, US-06, US-08)*
 
 | Part | Value |
 |---|---|
 | Source | Infrastructure fault |
-| Stimulus | The server process terminates abnormally |
-| Artifact | Persistence layer |
+| Stimulus | An instance of the Editing service terminates abnormally while collaborators are editing a page |
+| Artifact | Editing service and the store of acknowledged edits |
 | Environment | Normal operation, edits in flight |
-| Response | The service restarts; every acknowledged edit survives |
-| Response measure | Zero loss of acknowledged edits; service available again within 60 s |
+| Response | The instance is restarted; the clients reconnect and resynchronize the page; every acknowledged edit survives |
+| Response measure | Zero loss of acknowledged edits; Editing accepts edits again within 60 s |
 
 #### Data Consistency
 
@@ -135,6 +135,11 @@ response measures that depend on them, the Benchmark in DevOps and the SLOs in M
 | Environment | Normal operation, screen reader active |
 | Response | Every block operation is reachable and announced |
 | Response measure | 100 % of block operations keyboard-accessible; editor and navigation conform to WCAG 2.1 level AA |
+
+<!-- TODO QA-10: to be reviewed. With BlockNote (ADR-01) the editor nests blocks with Tab and
+Shift+Tab and offers moveBlocksUp and moveBlocksDown, but claims no WCAG conformance. Decide
+whether to keep the full measure, adding the missing shortcuts and checking them with axe-core
+and a keyboard-only test, or to narrow it to the block operations of the editor. -->
 
 #### Out of scope for now
 

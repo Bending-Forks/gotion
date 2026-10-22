@@ -24,14 +24,14 @@ supporting one: if identity is covered by an existing component, Account is wher
 ### Context Map
 
 The context map shows how the five bounded contexts depend on each other, in the notation of
-Khononov used in the course: every relation has an upstream end (**U**), whose model the other
+Khononov: every relation has an upstream end (**U**), whose model the other
 side depends on, and a downstream end (**D**), each marked with the integration pattern it
 plays. Each context is filled with the type of the [subdomains](analysis.html#subdomains) it implements:
 Account is half generic (identity) and half supporting (workspace organisation).
 
 ![Context map of Gotion]({{ '/assets/context-map/context-map.svg' | relative_url }})
 
-The map is kept as code, as the course suggests, in [Context Mapper](https://contextmapper.org)'s
+The map is kept as code, in [Context Mapper](https://contextmapper.org)'s
 language: [`gotion.cml`]({{ '/assets/context-map/gotion.cml' | relative_url }}) is the source, and
 `assets/context-map/render.sh` regenerates the picture from it.
 
@@ -52,7 +52,7 @@ The same two people build all five contexts, so from a team point of view every 
 
 - **Upstream, open-host service with a published language (OHS, PL).** Every upstream publishes its events in a format kept separate from its internal model, so it can change the model without breaking the contexts downstream. The events carry identities (`UserId`, `WorkspaceId`, `PageId`, `BlockId`) as plain values. There is no shared kernel and no library shared between services. Account's open-host service also answers one query, synchronously, in the same published language: which user is registered with an email address, which Membership asks before adding an invitation.
 - **Downstream conformist (CF): it uses the events as they are.** Membership and Editing only need the workspace identity from Workspace Created and Workspace Deleted, and Membership takes the `UserId` returned by the user lookup as it is. Discussion only needs the identities in Page Deleted and Block Deleted, and who is a member. Account uses the roles with the names Membership gives them.
-- **Downstream anticorruption layer (ACL): it translates the events into its own terms.** Notification turns Member Invited and Comment Posted into its own `Subject` (an invitation, a mention), so it never needs to know the models of Membership and Discussion. Editing turns the roles into the one thing it cares about: can this user read the content, or also change it? Editing holds a core subdomain, which is where the course recommends an anticorruption layer, and with it a new role only changes the translation, not the Editing model.
+- **Downstream anticorruption layer (ACL): it translates the events into its own terms.** Notification turns Member Invited and Comment Posted into its own `Subject` (an invitation, a mention), so it never needs to know the models of Membership and Discussion. Editing turns the roles into the one thing it cares about: can this user read the content, or also change it? Editing holds a core subdomain, which is where an anticorruption layer pays off most, and with it a new role only changes the translation, not the Editing model.
 
 Account and Membership depend on each other: Account tells Membership when a workspace is created or deleted and which user an email address belongs to, and Membership sends the roles back. This is the tightest coupling on the map. If the two contexts keep changing together, this is the first place to look.
 
