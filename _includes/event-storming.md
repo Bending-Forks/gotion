@@ -1,9 +1,8 @@
 ## Event Storming
 
 The domain was explored with an [Event Storming](https://www.eventstorming.com) session,
-following the ten steps taught in the course, after Alberto Brandolini and chapter 12 of
-Khononov. The process is iterative: the model is enriched one step at a time, and every step is
-shown below.
+in ten steps, after Alberto Brandolini and chapter 12 of Khononov. The process is iterative:
+the model is enriched one step at a time, and every step is shown below.
 
 The board is on [Miro](https://miro.com/): [Gotion Event Storming](https://miro.com/app/board/uXjVHlfP04g=/).
 Each section below links to the frame holding the wall at that step.
