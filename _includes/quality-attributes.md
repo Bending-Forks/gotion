@@ -49,16 +49,16 @@ response measures that depend on them, the Benchmark in DevOps and the SLOs in M
 
 #### Availability
 
-**QA-04 — Process crash without data loss** *(constrains US-04, US-06)*
+**QA-04 — Editing crash without data loss** *(constrains US-04, US-06, US-08)*
 
 | Part | Value |
 |---|---|
 | Source | Infrastructure fault |
-| Stimulus | The server process terminates abnormally |
-| Artifact | Persistence layer |
+| Stimulus | An instance of the Editing service terminates abnormally while collaborators are editing a page |
+| Artifact | Editing service and the store of acknowledged edits |
 | Environment | Normal operation, edits in flight |
-| Response | The service restarts; every acknowledged edit survives |
-| Response measure | Zero loss of acknowledged edits; service available again within 60 s |
+| Response | The instance is restarted; the clients reconnect and resynchronize the page; every acknowledged edit survives |
+| Response measure | Zero loss of acknowledged edits; Editing accepts edits again within 60 s |
 
 #### Data Consistency
 
