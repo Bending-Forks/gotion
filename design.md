@@ -21,3 +21,5 @@ and every aggregate is one of the large yellow stickies of [step 9](analysis.htm
 {% include microservices.md %}
 
 {% include patterns.md %}
+
+{% include adr.md %}
