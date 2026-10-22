@@ -26,6 +26,7 @@ deployment, started by the same documented command of QA-08. -->
 ## Benchmark
 
 <!-- TODO SLO: before a release, run the runtime scenarios as tests on the reference
-deployment (4 vCPU, 8 GB RAM, 50 members, 10 000 pages, 1 000 000 blocks): QA-01, QA-02 with
+deployment (4 vCPU, 8 GB RAM, 50 members, 10 000 pages, 1 000 000 blocks, a placeholder: see
+the TODO in Quality Attributes): QA-01, QA-02 with
 5 concurrent editors, QA-03 with a cold cache, QA-04 recovery after a crash. The benchmark
 checks each scenario in one run; Monitoring checks the SLO over time on a running instance. -->

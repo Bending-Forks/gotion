@@ -8,6 +8,10 @@ The reference deployment for every scenario is a **single self-hosted node with
 4 vCPU and 8 GB RAM**, serving a workspace of **50 members, 10 000 pages and
 1 000 000 blocks**, unless a scenario states otherwise.
 
+<!-- TODO reference deployment: these figures are a placeholder. Before delivery, replace them
+with the specifications of the machines the system was actually tested on, then update the
+response measures that depend on them, the Benchmark in DevOps and the SLOs in Monitoring. -->
+
 #### Performance
 
 **QA-01 — Editor input latency** *(constrains US-06, US-07)*
