@@ -19,6 +19,13 @@ The report is a set of chapter pages, each with `title` and `nav_order` front ma
 
 Requirements now live only in `_includes/functional-requirements.md` and `_includes/quality-attributes.md` (plain Markdown, included from `analysis.md`) — there is no separate DDD/Gherkin spec anymore, and no `ddd/` or `features/` directory. Don't recreate that structure; extend the two includes instead. When a chapter's content is written, fill its existing stub headings rather than restructuring — the chapter order and headings were already agreed with the co-author.
 
+## Git workflow
+
+- Signed commits only, titles in Conventional Commits. The `.husky/commit-msg` hook checks the title; `npm install` installs it through husky. CI checks every commit of a PR again, so `--no-verify` doesn't skip it.
+- Work on a feature branch and open a PR; `main` and `gh-pages` take no direct pushes.
+- Merge only by local rebase + fast-forward: `git rebase origin/<base>`, `git push --force-with-lease`, then after green CI and approval `git switch <base> && git merge --ff-only <feature> && git push origin <base>`. Never the "Rebase and merge" or "Create a merge commit" buttons: the first drops the signatures, the second breaks the linear history.
+- Squash merge only for Dependabot PRs and exceptions.
+
 ## Architectural constraints (SAP)
 
 - Distributed system, **microservices** architectural style.
