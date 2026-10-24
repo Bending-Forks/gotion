@@ -12,3 +12,7 @@ jekyll serve --livereload
 ```
 
 Then open <http://127.0.0.1:4000/gotion/>. The `/gotion` path comes from `baseurl` in `_config.yml`, the same path GitHub Pages serves it under.
+
+## Contributing
+
+Run `npm install` once after cloning: it installs the git hooks (through [husky](https://typicode.github.io/husky/)) that check every commit title against [Conventional Commits](https://www.conventionalcommits.org/).

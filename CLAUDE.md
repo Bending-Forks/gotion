@@ -21,7 +21,7 @@ Requirements now live only in `_includes/functional-requirements.md` and `_inclu
 
 ## Git workflow
 
-- Signed commits only, titles in Conventional Commits. The `.githooks/commit-msg` hook checks the title: enable it once with `git config core.hooksPath .githooks`. CI checks every commit of a PR again, so `--no-verify` doesn't skip it.
+- Signed commits only, titles in Conventional Commits. The `.husky/commit-msg` hook checks the title; `npm install` installs it through husky. CI checks every commit of a PR again, so `--no-verify` doesn't skip it.
 - Work on a feature branch and open a PR; `main` and `gh-pages` take no direct pushes.
 - Merge only by local rebase + fast-forward: `git rebase origin/<base>`, `git push --force-with-lease`, then after green CI and approval `git switch <base> && git merge --ff-only <feature> && git push origin <base>`. Never the "Rebase and merge" or "Create a merge commit" buttons: the first drops the signatures, the second breaks the linear history.
 - Squash merge only for Dependabot PRs and exceptions.
