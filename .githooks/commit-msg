@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Rejects commits whose title does not follow Conventional Commits.
+title=$(grep -v '^#' "$1" | head -n 1)
+types='build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test'
+if echo "$title" | grep -Eq "^(($types)(\([a-z0-9._/-]+\))?!?: .+|Merge .+|Revert .+|(fixup|squash)! .+)$"; then
+  exit 0
+fi
+echo "✖ Commit message does not follow Conventional Commits: \"$title\"" >&2
+echo "  Format: <type>[(scope)][!]: <description>   types: ${types//|/, }" >&2
+exit 1
