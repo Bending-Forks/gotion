@@ -51,7 +51,8 @@ within QA-01.
   nest one under itself.
 - Editing defines when an edit is acknowledged. It can append each operation to a durable log
   before acknowledging it, as QA-01 and QA-04 ask, and that log is the Event Sourcing of
-  Editing. The log itself is settled in its own record.
+  Editing. The log itself is settled in
+  [ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log).
 - The merge of concurrent edits, part of the core subdomain, is our own code.
 - There is no Yjs server to run, and nothing keeps editing while disconnected: the editor
   becomes read-only when the connection drops, as the
@@ -77,3 +78,57 @@ On the bad side, each to be settled before or while Editing is built:
   edits concurrent with a move.
 - A fitness function checks that only the adapter of the client imports the editor library or
   ProseMirror, and never the CRDT module or the domain of Editing.
+
+### ADR-02: Editing acknowledges an operation once it is in a durable log
+
+**Status:** Proposed.
+
+**Context.** [ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)
+makes Editing the one relay of the operations of a page, so Editing decides when an edit counts
+as acknowledged. Three scenarios depend on that moment: QA-01 times the server acknowledgement
+and asks for the character to be durably persisted, QA-04 asks that every acknowledged edit
+survives a crash of Editing, and QA-05 that none is silently discarded. The session merges an
+operation, and the policy *when edits are merged, apply them to the page block tree* stores it.
+The alternatives were:
+
+- acknowledge after the merge, and apply the operation to the tree asynchronously;
+- acknowledge after the operation is applied to the tree and the tree is saved;
+- acknowledge after the operation is appended to a durable log of the session, then apply it to
+  the tree.
+
+Acknowledging after the merge breaks QA-04: a crash between the ack and the store loses an
+acknowledged edit, and the SLI of QA-01 would time less than the real path. Saving the tree
+before every ack is durable, but it puts a whole write of the tree on the path of every
+keystroke, against the 500 ms (p95) of QA-01.
+
+**Decision.** We will acknowledge an operation only once it is appended to a durable log:
+
+- Editing checks the operation, appends it to the log of the session of its page, acknowledges
+  it to its author, relays it to the other collaborators and then applies it to the page block
+  tree;
+- the log is the Event Sourcing of Editing: after a restart Editing replays it onto the tree
+  from the last snapshot;
+- the ack is where the timer of the QA-01 SLI stops, and where the timer of QA-02 starts.
+
+**Consequences.** On the good side:
+
+- One append per operation is the cheapest durable write, so the ack stays within QA-01.
+- No acknowledged edit is lost in a crash (QA-04): what the tree misses is still in the log.
+- Replaying the same order of operations keeps every replica converging (QA-05).
+- The log also feeds the snapshot for a collaborator who joins late, one of the bad sides of
+  ADR-01.
+
+On the bad side:
+
+- The log grows with every keystroke: it needs snapshots of the tree and a compaction of the
+  operations before them.
+- The tree lags behind the log for a moment, so anything that reads the tree, such as the page
+  open of QA-03, may miss the last operations.
+- The store of the log is still to choose; it must make an append durable before it returns.
+
+**Compliance.**
+
+- The chaos test of QA-04 kills Editing under load and checks that every acknowledged operation
+  is in the page after the restart.
+- The SLI of QA-01 is measured from the submit to the ack, so an ack sent before the append
+  shows up as a broken test, not as a better number.

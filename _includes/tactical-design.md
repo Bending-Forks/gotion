@@ -401,19 +401,9 @@ session opens it, so editing alone and editing together follow the same path.
   replica merges on its own with a CRDT of ours, so the `change` carried by an `Edit` is an
   operation of that CRDT, which the session checks, stores and relays to the other
   collaborators.
-  <!-- TODO ADR PP-01: the ADR must also decide when an edit counts as acknowledged.
-  QA-01 times the server acknowledgement and asks for the character to be durably persisted,
-  QA-04 asks that every acknowledged edit survives a crash, QA-05 that none is silently
-  discarded. Here the session merges the edit and the policy "when edits are merged, apply
-  them to the page block tree" stores it, but nothing says whether the ack comes after the
-  merge or after the store: acknowledged after the merge, with the policy running
-  asynchronously, a crash in between loses an acknowledged edit (QA-04 broken) and the SLI of
-  QA-01 would time less than the real path. Suggestion: acknowledge an edit only once it is
-  durably stored. The cheapest way that keeps the ack within the 500 ms (p95) of QA-01 is one
-  local write: append the merged edit to a durable log of the session, acknowledge, then apply
-  it to the tree; after a restart the log is replayed onto the tree (QA-04), and replaying
-  the same merged order keeps every replica converging (QA-05). The ack is also where the
-  timer of the QA-01 SLI stops. -->
+  When an edit counts as acknowledged is settled by
+  [ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log): once it is
+  appended to a durable log of the session, before it is applied to the page block tree.
 - A closed session accepts no join and no edit. It is closed when its page is deleted, and the
   collaborators learn it from Session Closed itself: the *notify its participants* of the policy
   is that event, not an in-app notification, which US-10 keeps for invitations and mentions.
