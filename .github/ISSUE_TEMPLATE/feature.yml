@@ -1,0 +1,19 @@
+name: Feature
+description: Something new to build or change
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+      description: What should be added or changed
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
