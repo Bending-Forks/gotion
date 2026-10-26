@@ -3,8 +3,10 @@
   --sidebar-bg: #fbfbfa;
   --text: #37352f;
   --text-light: #9b9a97;
+  --sidebar-text: #5f5e5b;
   --border: #ebece9;
   --hover: rgba(55, 53, 47, .08);
+  --active: rgba(55, 53, 47, .04);
   --accent: #2383e2;
 }
 * { box-sizing: border-box; }
@@ -12,7 +14,7 @@
 body {
   margin: 0;
   display: grid;
-  grid-template-columns: var(--left, 16.5rem) minmax(0, 1fr) var(--right, 16rem);
+  grid-template-columns: var(--left, 18rem) minmax(0, 1fr);
   font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -20,38 +22,69 @@ body {
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-.chapters, .on-this-page {
-  position: sticky;
-  top: 0;
-  align-self: start;
-  max-height: 100vh;
-  overflow-y: auto;
-  padding: 1.75rem 1rem;
-  font-size: .9rem;
+.chapters { padding: 1.75rem 1rem; font-size: .9rem; background: var(--sidebar-bg); view-transition-name: sidebar; }
+/* from chapter to chapter the browser keeps the sidebar in place and only cross-fades the page, instead of redrawing it */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
 }
-body:has(.chapters.closed) { --left: 3rem; }
-body:has(.on-this-page.closed) { --right: 3rem; }
-.closed { padding-inline: .5rem; }
-/* the column width animates; the content fades instead of disappearing, so it doesn't rewrap while the column moves */
+body:has(.chapters.closed) { --left: 0; }
+/* the column the pinned sidebar keeps free animates as it is pinned and unpinned */
 body { transition: grid-template-columns .25s ease; }
-.chapters, .on-this-page { overflow-x: hidden; transition: padding .25s ease; }
-.chapters > :not(.toggle), .on-this-page > :not(.toggle) { min-width: 13rem; transition: opacity .2s, visibility .2s; }
-.closed > :not(.toggle) { opacity: 0; visibility: hidden; }
 @media (prefers-reduced-motion: reduce) {
-  body, .chapters, .on-this-page, .chapters > *, .on-this-page > * { transition: none; }
+  body, .chapters > * { transition: none; }
 }
-.toggle { float: right; border: 0; border-radius: 6px; padding: .1rem .5rem; background: none; color: var(--text-light); font: inherit; cursor: pointer; }
+.toggle { float: right; display: grid; place-items: center; width: 1.75rem; height: 1.875rem; border: 0; border-radius: 6px; padding: 0; background: none; color: var(--text-light); cursor: pointer; transition: opacity .15s; }
 .toggle:hover { background: var(--hover); color: var(--text); }
-.chapters .toggle::before, .on-this-page.closed .toggle::before { content: "«"; }
-.on-this-page .toggle::before, .chapters.closed .toggle::before { content: "»"; }
-.chapters { background: var(--sidebar-bg); border-right: 1px solid var(--border); }
-.brand { display: block; font-size: 1.05rem; font-weight: 600; color: var(--text); margin: .2rem .5rem 1.5rem; }
-.chapters ol { list-style: none; margin: 0; padding: 0; counter-reset: ch; display: flex; flex-direction: column; gap: 1px; }
-.chapters li { counter-increment: ch; }
-.chapters li a { display: flex; gap: .55rem; align-items: baseline; padding: .4rem .5rem; border-radius: 6px; color: var(--text); }
-.chapters li a::before { content: counter(ch); color: var(--text-light); font-size: .78em; min-width: 1em; }
-.chapters li a:hover { background: var(--hover); text-decoration: none; }
-.chapters .current a { background: var(--hover); font-weight: 600; }
+/* pinned, the button shows only while the pointer is on the sidebar, as in Notion; touch screens always show it */
+@media (hover: hover) {
+  .chapters:not(.closed, :hover) .toggle:not(:focus-visible) { opacity: 0; }
+}
+/* Notion's collapse button, two chevrons painted through a mask so they take the text colour; folded, they point the other way */
+.toggle::before {
+  content: ""; width: 1rem; height: 1rem; background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.5 5 4.5 10l5 5M15.5 5l-5 5 5 5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.closed .toggle::before { transform: scaleX(-1); }
+/* the workspace and the chapters are Notion sidebar rows: icon, title, rounded hover */
+.brand, .chapters ol > li > a { display: flex; gap: .5rem; align-items: center; min-height: 1.875rem; padding: .25rem .5rem; border-radius: 6px; line-height: 1.3; }
+.brand { margin-bottom: 1.25rem; font-weight: 600; color: var(--text); }
+.chapters ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.chapters ol > li > a { color: var(--sidebar-text); font-weight: 500; }
+.chapters .icon { flex: none; width: 1.25rem; text-align: center; font-size: 1.05rem; line-height: 1; }
+.chapters a:hover { background: var(--hover); text-decoration: none; }
+.chapters .current > a { background: var(--hover); color: var(--text); font-weight: 600; }
+
+/* the sidebar is a floating card, like Notion's, pinned or not. Pinned, it stays and the page keeps its column free;
+   unpinned, it parks past the left edge, the edge of the window or keyboard focus slides it in, and a short delay
+   keeps it from snapping shut when the pointer slips off */
+@media (width > 60rem) {
+  .chapters {
+    position: fixed; z-index: 10; top: 1rem; left: 0; width: 18rem; height: calc(100vh - 2rem); overflow-y: auto; padding: .75rem;
+    border-radius: 0 12px 12px 0;
+    box-shadow: 0 0 0 1px rgba(15, 15, 15, .05), 0 3px 6px rgba(15, 15, 15, .06), 0 9px 24px rgba(15, 15, 15, .12);
+    transition: left .2s ease .15s, visibility 0s .35s;
+  }
+  main { grid-column: 2; }
+  .chapters.closed { left: -18rem; visibility: hidden; }
+  .chapters.closed:is(:hover, :has(:focus-visible), .peek) { left: 0; visibility: visible; transition-delay: 0s; }
+  /* the strip on the left edge that brings the card in: a shadow as tall as the card, fading out towards the page and
+     at both ends so it has no edge, says the sidebar waits there. It slides in once the card has gone and fades while
+     the card is out; z-index -1 keeps it under the card's links where the two overlap, so they stay clickable */
+  .chapters::after {
+    content: ""; position: fixed; z-index: -1; top: 1rem; bottom: 1rem; left: 0; width: 1.5rem;
+    background: linear-gradient(to right, rgba(15, 15, 15, .14), rgba(15, 15, 15, .05) 50%, transparent);
+    mask: linear-gradient(transparent, #000 20%, #000 80%, transparent);
+    opacity: 0; transform: translateX(-100%); pointer-events: none;
+    transition: opacity .3s cubic-bezier(.16, 1, .3, 1), transform .3s cubic-bezier(.16, 1, .3, 1);
+  }
+  .chapters.closed::after { opacity: 1; transform: none; visibility: visible; pointer-events: auto; transition-delay: .25s; }
+  .chapters.closed:is(:hover, :has(:focus-visible), .peek)::after { opacity: 0; transition-delay: 0s; }
+  /* the pin button stays in the card, and Tab still reaches it while the card is parked: focusing it slides the card in */
+  .closed .toggle { visibility: visible; }
+  @media (prefers-reduced-motion: reduce) {
+    .chapters, .chapters::after { transition-duration: 0s; }
+  }
+}
 
 main { padding: 3rem 4rem 8rem; }
 /* text keeps a readable width, images and diagrams take all the room the sidebars leave */
@@ -95,18 +128,16 @@ main .use-case h4 { margin-top: 0; }
 main .use-case > :last-child { margin-bottom: 0; }
 main .use-case strong { color: #c2410c; font-weight: 700; }
 
-.on-this-page { border-left: 1px solid var(--border); }
-.on-this-page b { display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-light); font-weight: 600; margin: 0 0 .75rem .75rem; }
-.on-this-page ul { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--border); }
-.on-this-page li a { display: block; padding: .35rem .75rem; margin-left: -1px; border-left: 2px solid transparent; color: var(--text-light); font-size: .85rem; line-height: 1.3; }
-.on-this-page li.H3 a { padding-left: 1.5rem; font-size: .8rem; }
-.on-this-page li a:hover { color: var(--text); text-decoration: none; }
-.on-this-page li a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+/* the sections hang under their chapter like Notion sub-pages, indented to its title */
+.toc { list-style: none; margin: 1px 0 .5rem; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.toc a { display: block; padding: .3rem .5rem .3rem 2.25rem; border-radius: 6px; color: var(--sidebar-text); font-size: .85rem; line-height: 1.3; }
+.toc .H3 a { padding-left: 3rem; font-size: .8rem; }
+.toc a.active { background: var(--active); color: var(--text); }
+.toc a:hover { background: var(--hover); color: var(--text); }
 
 @media (max-width: 60rem) {
   body { grid-template-columns: 1fr; }
-  .chapters, .on-this-page { position: static; max-height: none; border: 0; }
-  .on-this-page { display: none; }
+  .toc { display: none; }
   .closed > :not(.toggle) { display: none; }
   main { padding: 1.5rem 1.25rem 4rem; }
 }

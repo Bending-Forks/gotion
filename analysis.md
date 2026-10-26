@@ -1,5 +1,6 @@
 ---
 title: Analysis
+icon: 🔍
 nav_order: 2
 ---
 

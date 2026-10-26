@@ -8,7 +8,7 @@ Current state: analysis phase. The repo is a Jekyll report site (published via `
 
 ## Repository conventions
 
-The report is a set of chapter pages, each with `title` and `nav_order` front matter, rendered through `_layouts/chapter.html` (sidebar nav built automatically from `nav_order`, right-hand "on this page" from headings). Chapters, in order:
+The report is a set of chapter pages, each with `title`, `icon` (an emoji, the chapter's icon in the Notion-like sidebar) and `nav_order` front matter, rendered through `_layouts/chapter.html` (sidebar nav built automatically from `nav_order`, the current chapter's headings nested under it). Chapters, in order:
 
 1. `introduction.md` — Team, Scenario, Deliverables (stub)
 2. `analysis.md` — pulls in, in order, `_includes/business-requirements.md`, `_includes/subdomains.md` (the subdomains of the business, found from the requirements, with their core/supporting/generic type), `_includes/functional-requirements.md` (user stories, grouped by those subdomains, plus an "Out of scope for now" table of stories kept aside without IDs, so active stories are numbered consecutively), `_includes/quality-attributes.md` (Quality Attributes as QA-xx six-part scenarios: Source → Stimulus → Artifact → Environment → Response → Response measure, grouped by category — Performance, Availability, Data Consistency, Security, Deployability, Modifiability, Accessibility), `_includes/event-storming.md` (the ten steps of the board, numbered, plus the open pain points; the pivotal events confirm the subdomains, and the bounded contexts of step 10 are the bridge to Design) and `_includes/ubiquitous-language.md` (the glossary, one table per bounded context)

@@ -1,5 +1,6 @@
 ---
 title: DevOps
+icon: 🚀
 nav_order: 5
 ---
 

@@ -10,27 +10,44 @@
 
 <nav class="chapters">
   <button class="toggle" aria-label="Toggle chapters" aria-expanded="true"></button>
-  <a class="brand" href="{{ '/' | relative_url }}">{{ site.title }}</a>
+  <a class="brand" href="{{ '/' | relative_url }}"><span class="icon" aria-hidden="true">🗒️</span>{{ site.title }}</a>
   <ol>
   {% assign chapters = site.pages | where_exp: "p", "p.nav_order" | sort: "nav_order" %}
   {% for c in chapters %}
-    <li{% if c.url == page.url %} class="current"{% endif %}><a href="{{ c.url | relative_url }}">{{ c.title }}</a></li>
+    <li{% if c.url == page.url %} class="current"{% endif %}><a href="{{ c.url | relative_url }}"><span class="icon" aria-hidden="true">{{ c.icon }}</span>{{ c.title }}</a>{% if c.url == page.url %}<ul class="toc"></ul>{% endif %}</li>
   {% endfor %}
   </ol>
 </nav>
+
+<script>
+// unpinned, the sidebar becomes a card that peeks in from the left edge, as in Notion; localStorage keeps the
+// choice across reloads and chapters, restored here, before anything is laid out, so it doesn't animate on load
+const nav = document.querySelector('.chapters');
+const toggle = nav.querySelector('.toggle');
+const fold = closed => {
+  toggle.setAttribute('aria-expanded', !nav.classList.toggle('closed', closed));
+  try { localStorage['gotion-closed-chapters'] = closed ? '1' : ''; } catch {}
+};
+try { fold(localStorage['gotion-closed-chapters'] === '1'); } catch {}
+toggle.onclick = () => fold(!nav.classList.contains('closed'));
+
+// a card open under the pointer when the page is left opens already on the next one, and stays until the pointer
+// moves and :hover takes over, instead of sliding out and back in
+try { nav.classList.toggle('peek', sessionStorage['gotion-peek'] === '1'); } catch {}
+addEventListener('pagehide', () => { try { sessionStorage['gotion-peek'] = nav.matches('.closed:hover') ? '1' : ''; } catch {} });
+addEventListener('pointermove', () => nav.classList.remove('peek'), { once: true });
+</script>
 
 <main>
   <h1>{{ page.title }}</h1>
   {{ content }}
 </main>
 
-<aside class="on-this-page"><button class="toggle" aria-label="Toggle contents" aria-expanded="true"></button><b>Contents</b><ul></ul></aside>
-
 <script>
-// right sidebar: built from the rendered headings, kramdown already gave them ids
-const asideEl = document.querySelector('.on-this-page');
-const list = asideEl.querySelector('ul');
-const headings = [...document.querySelectorAll('main h2, main h3')];
+// contents of the current chapter, nested under it in the sidebar: built from the rendered headings,
+// kramdown already gave them ids
+const list = nav.querySelector('.toc');
+const headings = list ? [...document.querySelectorAll('main h2, main h3')] : [];
 for (const h of headings) {
   const li = document.createElement('li');
   li.className = h.tagName;
@@ -38,7 +55,7 @@ for (const h of headings) {
   li.firstChild.textContent = h.textContent;
   list.append(li);
 }
-if (!headings.length) asideEl.hidden = true;
+if (!headings.length) list?.remove();
 
 // scroll-spy: the current section is the last heading scrolled past the top 30% of the viewport,
 // so its link stays lit while reading the body below it
@@ -50,17 +67,22 @@ function spy() {
 addEventListener('scroll', spy, { passive: true });
 spy();
 
-// both sidebars fold to a thin strip, so images and diagrams get the room;
-// localStorage keeps them folded across reloads and chapters
-for (const b of document.querySelectorAll('.toggle')) {
-  const side = b.parentElement, key = 'gotion-closed-' + side.classList[0];
-  const fold = closed => {
-    b.setAttribute('aria-expanded', !side.classList.toggle('closed', closed));
-    try { localStorage[key] = closed ? '1' : ''; } catch {}
-  };
-  try { fold(localStorage[key] === '1'); } catch {}
-  b.onclick = () => fold(!side.classList.contains('closed'));
-}
+// a sidebar link glides to its section with an ease-in-out curve instead of jumping; reduced motion keeps the jump
+list?.addEventListener('click', e => {
+  const i = links.indexOf(e.target.closest('a'));
+  if (i < 0 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  e.preventDefault();
+  const h = headings[i], from = scrollY, start = performance.now();
+  const to = Math.min(h.getBoundingClientRect().top + scrollY - parseFloat(getComputedStyle(h).scrollMarginTop),
+    document.documentElement.scrollHeight - innerHeight);
+  const ease = t => t < .5 ? 4 * t ** 3 : 1 - (2 - 2 * t) ** 3 / 2;
+  requestAnimationFrame(function step(now) {
+    const t = Math.min((now - start) / 600, 1);
+    scrollTo(0, from + (to - from) * ease(t));
+    if (t < 1) requestAnimationFrame(step);
+  });
+  history.pushState(null, '', '#' + h.id);
+});
 </script>
 
 <script type="module">
