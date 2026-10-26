@@ -1,5 +1,6 @@
 ---
 title: Introduction
+icon: 👋
 nav_order: 1
 ---
 

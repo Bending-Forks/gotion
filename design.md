@@ -1,5 +1,6 @@
 ---
 title: Design
+icon: 📐
 nav_order: 3
 ---
 

@@ -10,14 +10,33 @@
 
 <nav class="chapters">
   <button class="toggle" aria-label="Toggle chapters" aria-expanded="true"></button>
-  <a class="brand" href="{{ '/' | relative_url }}">{{ site.title }}</a>
+  <a class="brand" href="{{ '/' | relative_url }}"><span class="icon" aria-hidden="true">🗒️</span>{{ site.title }}</a>
   <ol>
   {% assign chapters = site.pages | where_exp: "p", "p.nav_order" | sort: "nav_order" %}
   {% for c in chapters %}
-    <li{% if c.url == page.url %} class="current"{% endif %}><a href="{{ c.url | relative_url }}">{{ c.title }}</a>{% if c.url == page.url %}<ul class="toc"></ul>{% endif %}</li>
+    <li{% if c.url == page.url %} class="current"{% endif %}><a href="{{ c.url | relative_url }}"><span class="icon" aria-hidden="true">{{ c.icon }}</span>{{ c.title }}</a>{% if c.url == page.url %}<ul class="toc"></ul>{% endif %}</li>
   {% endfor %}
   </ol>
 </nav>
+
+<script>
+// unpinned, the sidebar becomes a card that peeks in from the left edge, as in Notion; localStorage keeps the
+// choice across reloads and chapters, restored here, before anything is laid out, so it doesn't animate on load
+const nav = document.querySelector('.chapters');
+const toggle = nav.querySelector('.toggle');
+const fold = closed => {
+  toggle.setAttribute('aria-expanded', !nav.classList.toggle('closed', closed));
+  try { localStorage['gotion-closed-chapters'] = closed ? '1' : ''; } catch {}
+};
+try { fold(localStorage['gotion-closed-chapters'] === '1'); } catch {}
+toggle.onclick = () => fold(!nav.classList.contains('closed'));
+
+// a card open under the pointer when the page is left opens already on the next one, and stays until the pointer
+// moves and :hover takes over, instead of sliding out and back in
+try { nav.classList.toggle('peek', sessionStorage['gotion-peek'] === '1'); } catch {}
+addEventListener('pagehide', () => { try { sessionStorage['gotion-peek'] = nav.matches('.closed:hover') ? '1' : ''; } catch {} });
+addEventListener('pointermove', () => nav.classList.remove('peek'), { once: true });
+</script>
 
 <main>
   <h1>{{ page.title }}</h1>
@@ -27,7 +46,6 @@
 <script>
 // contents of the current chapter, nested under it in the sidebar: built from the rendered headings,
 // kramdown already gave them ids
-const nav = document.querySelector('.chapters');
 const list = nav.querySelector('.toc');
 const headings = list ? [...document.querySelectorAll('main h2, main h3')] : [];
 for (const h of headings) {
@@ -65,16 +83,6 @@ list?.addEventListener('click', e => {
   });
   history.pushState(null, '', '#' + h.id);
 });
-
-// the sidebar folds to a thin strip, so images and diagrams get the room;
-// localStorage keeps it folded across reloads and chapters
-const toggle = nav.querySelector('.toggle');
-const fold = closed => {
-  toggle.setAttribute('aria-expanded', !nav.classList.toggle('closed', closed));
-  try { localStorage['gotion-closed-chapters'] = closed ? '1' : ''; } catch {}
-};
-try { fold(localStorage['gotion-closed-chapters'] === '1'); } catch {}
-toggle.onclick = () => fold(!nav.classList.contains('closed'));
 </script>
 
 <script type="module">
