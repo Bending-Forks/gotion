@@ -19,11 +19,14 @@ sequencer in Editing, or do replicas merge on their own? The alternatives were:
 - Yjs, with any editor, including the collaboration built into BlockNote;
 - a CRDT of ours that every replica runs, with Editing as the relay of the operations.
 
-Yjs works against the domain model. Every replica merges an update as soon as it gets it, so
-Editing cannot refuse an edit, and the domain events must be derived by comparing the document
-before and after each update. A move is a deletion plus an insertion, so two concurrent moves
-of the same block can leave two copies of it. Yjs does not define when an edit is acknowledged.
-And the merge, a concern of the core subdomain, would be left to a generic library.
+Yjs works against the domain model. A Yjs update is an encoded change of its own types, XML
+elements and text, not an operation of the domain: to check a rule Editing would have to decode
+each update and apply it to a copy of the page, and the domain events would be derived from
+those low-level changes. Yjs has no move for an element, so a move is a deletion plus an
+insertion: two concurrent moves of the same block can leave two copies of it, and nesting a
+block is a move too, so what a collaborator types in it meanwhile goes with the deleted copy.
+Yjs does not define when an edit is acknowledged. And the merge, a concern of the core
+subdomain, would be left to a generic library.
 
 **Decision.** We will synchronize the replicas with a CRDT of ours. This settles PP-01:
 
@@ -33,13 +36,18 @@ And the merge, a concern of the core subdomain, would be left to a generic libra
 - the CRDT is a module with no dependency on any editor: a sequence of characters for the text
   of a block, with the styles as marks over its characters, and a tree of blocks with a move
   operation;
+- dividing a block in two and joining a block to the one before move text from the sequence of
+  one block to the sequence of another. The CRDT has no operation for that: the text is
+  deleted in one block and a copy of it is inserted in the other;
 - the editor of the client is only an adapter: it turns the changes of the editor into
   operations and applies the remote ones. The choice of the editor is a design choice behind
   the adapter, described in [Editing client](implementation.html#editing-client).
 
 A prototype confirmed the approach. Ten clients typed in the same block, the cursor and the
 selection held under remote edits, every client converged, and the local render stayed well
-within QA-01.
+within QA-01. That prototype edited a single block. Three later ones, with BlockNote, Slate and
+plain ProseMirror behind the same operations, also kept two clients in step while blocks
+were divided, joined and nested, and while each client undid its own edits only.
 
 **Consequences.** On the good side:
 
@@ -48,7 +56,8 @@ within QA-01.
   reverts it before any other replica sees it. Block Inserted, Block Moved and Block Deleted
   come from the operations.
 - The tree of blocks has its own move, so two concurrent moves can neither duplicate a block nor
-  nest one under itself.
+  nest one under itself. Nesting a block moves it without touching its text, so what a
+  collaborator types in it meanwhile stays.
 - Editing defines when an edit is acknowledged. It can append each operation to a durable log
   before acknowledging it, as QA-01 and QA-04 ask, and that log is the Event Sourcing of
   Editing. The log itself is settled in
@@ -58,11 +67,22 @@ within QA-01.
   becomes read-only when the connection drops, as the
   [scope](analysis.html#out-of-scope-for-now-1) requires.
 
-On the bad side, each to be settled before or while Editing is built:
+On the bad side, each to be settled before or while Editing is built, except the accepted
+risk:
 
 - **More to build:** the styles as marks, the tree of blocks with its move, a snapshot for a
   collaborator who joins late, reconnection and the resending of unacknowledged operations.
 - **Presence (US-08)** is part of our own protocol, with no Yjs awareness to rely on.
+- **Accepted risk: QA-05 does not hold for an edit concurrent with dividing or joining its
+  block.** The copy has new characters, so an operation that a collaborator makes meanwhile on
+  the moved text still targets the old ones: an insertion ends up in the block that keeps the
+  first part, a deletion is undone by the copy, dividing the same block at two points at once
+  duplicates the text between them, and an edit in a block that is joined to the one before at
+  the same time is lost. Every replica still converges, but these edits are discarded or
+  misplaced without anyone being told. We accept the risk: it takes a block divided or joined
+  within the round trip of another edit, in the text that moves, and avoiding it means changing
+  the CRDT itself, with an operation that divides a block and forwards the moved characters, or
+  one sequence for the whole page with a marker for each block.
 - **QA-09 holds only while the operations stay generic:** insert a block of any type with its
   properties, set a property, edit text. A block type that needs an operation of its own breaks
   it.
@@ -75,7 +95,11 @@ On the bad side, each to be settled before or while Editing is built:
 
 - The convergence test of QA-05, over 1 000 randomized interleavings, runs on the CRDT module
   alone. It includes concurrent moves of the same block, moves that would create a cycle, and
-  edits concurrent with a move.
+  edits concurrent with a move. It also divides and joins blocks while other edits change the
+  moved text, and divides the same block at two points at once: there it checks convergence
+  only.
+- Four deterministic tests pin down the outcomes of the accepted risk listed above, so that a
+  change to the CRDT that alters them is noticed.
 - A fitness function checks that only the adapter of the client imports the editor library or
   ProseMirror, and never the CRDT module or the domain of Editing.
 
