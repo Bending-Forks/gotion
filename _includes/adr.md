@@ -6,7 +6,7 @@ and is never edited once *Accepted*: a later decision supersedes it.
 
 ### ADR-01: Replicas merge concurrent edits with our own CRDT, Editing relays the operations
 
-**Status:** Proposed.
+**Status:** Accepted.
 
 **Context.** Pages are edited together in real time (US-08). Concurrent edits must converge
 without dropping an acknowledged one (QA-05), the local render must stay within 50 ms (QA-01),
