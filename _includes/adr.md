@@ -10,7 +10,8 @@ and is never edited once *Accepted*: a later decision supersedes it.
 
 **Context.** Pages are edited together in real time (US-08). Concurrent edits must converge
 without dropping an acknowledged one (QA-05), the local render must stay within 50 ms (QA-01),
-and a new block type must not touch synchronization or persistence (QA-09). The merge of
+an acknowledged edit must reach the other collaborators within 300 ms (QA-02), and a new block
+type must not touch synchronization or persistence (QA-09). The merge of
 concurrent edits is a concern of the core subdomain, so it is worth owning. The decision answers
 [PP-01](analysis.html#open-pain-points): are concurrent edits ordered and merged by a central
 sequencer in Editing, or do replicas merge on their own? The alternatives were:
@@ -18,6 +19,13 @@ sequencer in Editing, or do replicas merge on their own? The alternatives were:
 - operational transformation, with Editing as the central sequencer;
 - Yjs, with any editor, including the collaboration built into BlockNote;
 - a CRDT of ours that every replica runs, with Editing as the relay of the operations.
+
+Operational transformation needs a transformation for every pair of kinds of operation: text
+against text, text against a block inserted, moved or deleted, a move against a move, and so
+on. Each new kind of operation adds a transformation against every existing one, and each pair
+must be proved correct on its own. A move in a tree is a known hard case for it. A CRDT instead
+defines each operation so that it commutes with the others, its convergence is tested on the
+module alone, and a move in a tree has a published algorithm (Kleppmann et al.).
 
 Yjs works against the domain model. A Yjs update is an encoded change of its own types, XML
 elements and text, not an operation of the domain: to check a rule Editing would have to decode
@@ -52,8 +60,9 @@ were divided, joined and nested, and while each client undid its own edits only.
 **Consequences.** On the good side:
 
 - The commands of the [Page Block Tree](#page-block-tree) stay commands. Editing refuses an
-  operation that breaks a rule, for example a page block that changes type, and its author
-  reverts it before any other replica sees it. Block Inserted, Block Moved and Block Deleted
+  operation that breaks a rule, for example a page block that changes type, together with the
+  later operations of the same author that build on it, and the author reverts them before any
+  other replica sees them. Block Inserted, Block Moved and Block Deleted
   come from the operations.
 - The tree of blocks has its own move, so two concurrent moves can neither duplicate a block nor
   nest one under itself. Nesting a block moves it without touching its text, so what a
@@ -86,6 +95,15 @@ risk:
 - **QA-09 holds only while the operations stay generic:** insert a block of any type with its
   properties, set a property, edit text. A block type that needs an operation of its own breaks
   it.
+- **One instance of Editing relays a page at a time.** Through a single relay every
+  collaborator gets the operations of a page in an order that respects what each one builds on,
+  as the CRDT needs. With several instances, every operation of a page must reach the same one,
+  and the page moves to another when that instance fails (QA-04). How a page reaches its
+  instance is still to be settled.
+- **The CRDT runs on both sides.** Editing applies the operations to the Page Block Tree, so it
+  runs the CRDT module as the client does: either Editing shares the runtime of the client, or
+  the module is written twice and both versions pass the same tests. The runtimes are still to
+  be settled.
 - **Coupling between client and Editing.** Both share the protocol of the operations and the
   block schema, so they are upgraded together.
 - **The adapter is the fragile part.** It derives the operations from the editor, which is
@@ -149,6 +167,8 @@ On the bad side:
 - The tree lags behind the log for a moment, so anything that reads the tree, such as the page
   open of QA-03, may miss the last operations.
 - The store of the log is still to choose; it must make an append durable before it returns.
+- The operations in the log outlive the version of the protocol that wrote them: a change to the
+  operations needs a version on each one and a way to replay the older ones.
 
 **Compliance.**
 
