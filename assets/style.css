@@ -12,7 +12,7 @@
 body {
   margin: 0;
   display: grid;
-  grid-template-columns: var(--left, 16.5rem) minmax(0, 1fr) var(--right, 16rem);
+  grid-template-columns: var(--left, 18rem) minmax(0, 1fr);
   font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -20,7 +20,7 @@ body {
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-.chapters, .on-this-page {
+.chapters {
   position: sticky;
   top: 0;
   align-self: start;
@@ -30,28 +30,27 @@ a:hover { text-decoration: underline; }
   font-size: .9rem;
 }
 body:has(.chapters.closed) { --left: 3rem; }
-body:has(.on-this-page.closed) { --right: 3rem; }
 .closed { padding-inline: .5rem; }
 /* the column width animates; the content fades instead of disappearing, so it doesn't rewrap while the column moves */
 body { transition: grid-template-columns .25s ease; }
-.chapters, .on-this-page { overflow-x: hidden; transition: padding .25s ease; }
-.chapters > :not(.toggle), .on-this-page > :not(.toggle) { min-width: 13rem; transition: opacity .2s, visibility .2s; }
+.chapters { overflow-x: hidden; transition: padding .25s ease; }
+.chapters > :not(.toggle) { min-width: 13rem; transition: opacity .2s, visibility .2s; }
 .closed > :not(.toggle) { opacity: 0; visibility: hidden; }
 @media (prefers-reduced-motion: reduce) {
-  body, .chapters, .on-this-page, .chapters > *, .on-this-page > * { transition: none; }
+  body, .chapters, .chapters > * { transition: none; }
 }
 .toggle { float: right; border: 0; border-radius: 6px; padding: .1rem .5rem; background: none; color: var(--text-light); font: inherit; cursor: pointer; }
 .toggle:hover { background: var(--hover); color: var(--text); }
-.chapters .toggle::before, .on-this-page.closed .toggle::before { content: "«"; }
-.on-this-page .toggle::before, .chapters.closed .toggle::before { content: "»"; }
+.chapters .toggle::before { content: "«"; }
+.chapters.closed .toggle::before { content: "»"; }
 .chapters { background: var(--sidebar-bg); border-right: 1px solid var(--border); }
 .brand { display: block; font-size: 1.05rem; font-weight: 600; color: var(--text); margin: .2rem .5rem 1.5rem; }
 .chapters ol { list-style: none; margin: 0; padding: 0; counter-reset: ch; display: flex; flex-direction: column; gap: 1px; }
-.chapters li { counter-increment: ch; }
-.chapters li a { display: flex; gap: .55rem; align-items: baseline; padding: .4rem .5rem; border-radius: 6px; color: var(--text); }
-.chapters li a::before { content: counter(ch); color: var(--text-light); font-size: .78em; min-width: 1em; }
-.chapters li a:hover { background: var(--hover); text-decoration: none; }
-.chapters .current a { background: var(--hover); font-weight: 600; }
+.chapters ol > li { counter-increment: ch; }
+.chapters ol > li > a { display: flex; gap: .55rem; align-items: baseline; padding: .4rem .5rem; border-radius: 6px; color: var(--text); }
+.chapters ol > li > a::before { content: counter(ch); color: var(--text-light); font-size: .78em; min-width: 1em; }
+.chapters ol > li > a:hover { background: var(--hover); text-decoration: none; }
+.chapters .current > a { background: var(--hover); font-weight: 600; }
 
 main { padding: 3rem 4rem 8rem; }
 /* text keeps a readable width, images and diagrams take all the room the sidebars leave */
@@ -95,18 +94,16 @@ main .use-case h4 { margin-top: 0; }
 main .use-case > :last-child { margin-bottom: 0; }
 main .use-case strong { color: #c2410c; font-weight: 700; }
 
-.on-this-page { border-left: 1px solid var(--border); }
-.on-this-page b { display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-light); font-weight: 600; margin: 0 0 .75rem .75rem; }
-.on-this-page ul { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--border); }
-.on-this-page li a { display: block; padding: .35rem .75rem; margin-left: -1px; border-left: 2px solid transparent; color: var(--text-light); font-size: .85rem; line-height: 1.3; }
-.on-this-page li.H3 a { padding-left: 1.5rem; font-size: .8rem; }
-.on-this-page li a:hover { color: var(--text); text-decoration: none; }
-.on-this-page li a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+.toc { list-style: none; margin: .35rem 0 .75rem 1.1rem; padding: 0; border-left: 1px solid var(--border); }
+.toc a { display: block; padding: .35rem .75rem; margin-left: -1px; border-left: 2px solid transparent; color: var(--text-light); font-size: .85rem; line-height: 1.3; }
+.toc .H3 a { padding-left: 1.5rem; font-size: .8rem; }
+.toc a:hover { color: var(--text); text-decoration: none; }
+.toc a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
 
 @media (max-width: 60rem) {
   body { grid-template-columns: 1fr; }
-  .chapters, .on-this-page { position: static; max-height: none; border: 0; }
-  .on-this-page { display: none; }
+  .chapters { position: static; max-height: none; border: 0; }
+  .toc { display: none; }
   .closed > :not(.toggle) { display: none; }
   main { padding: 1.5rem 1.25rem 4rem; }
 }
