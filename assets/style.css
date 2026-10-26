@@ -67,12 +67,13 @@ body { transition: grid-template-columns .25s ease; }
   main { grid-column: 2; }
   .chapters.closed { left: -18rem; visibility: hidden; }
   .chapters.closed:is(:hover, :has(:focus-visible), .peek) { left: 0; visibility: visible; transition-delay: 0s; }
-  /* the strip on the left edge that brings the card in: a shadow as tall as the card and rounded like it says the
-     sidebar waits there. It slides in once the card has gone and fades while the card is out; z-index -1 keeps it
-     under the card's links where the two overlap, so they stay clickable */
+  /* the strip on the left edge that brings the card in: a shadow as tall as the card, fading out towards the page and
+     at both ends so it has no edge, says the sidebar waits there. It slides in once the card has gone and fades while
+     the card is out; z-index -1 keeps it under the card's links where the two overlap, so they stay clickable */
   .chapters::after {
-    content: ""; position: fixed; z-index: -1; top: 1rem; bottom: 1rem; left: 0; width: 1.5rem; border-radius: 0 12px 12px 0;
-    background: linear-gradient(to right, rgba(15, 15, 15, .16), rgba(15, 15, 15, .06));
+    content: ""; position: fixed; z-index: -1; top: 1rem; bottom: 1rem; left: 0; width: 1.5rem;
+    background: linear-gradient(to right, rgba(15, 15, 15, .14), rgba(15, 15, 15, .05) 50%, transparent);
+    mask: linear-gradient(transparent, #000 20%, #000 80%, transparent);
     opacity: 0; transform: translateX(-100%); pointer-events: none;
     transition: opacity .3s cubic-bezier(.16, 1, .3, 1), transform .3s cubic-bezier(.16, 1, .3, 1);
   }
