@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [gh-pages]
+    branches: [main]
 
 permissions:
   contents: read
@@ -30,7 +30,9 @@ jobs:
         with:
           ruby-version: ruby
       - run: gem install jekyll
-      - run: jekyll build --strict_front_matter
+      - run: jekyll build --strict_front_matter --source docs
+      - uses: actions/upload-pages-artifact@v5
+        if: github.event_name == 'push'
 
   commits:
     if: github.event_name == 'pull_request'
@@ -51,3 +53,18 @@ jobs:
     steps:
       - run: exit 1
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+
+  deploy:
+    needs: success
+    # Not just the push check: its implicit success() also looks at commits, which is skipped on push
+    if: ${{ !cancelled() && github.event_name == 'push' && needs.success.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
