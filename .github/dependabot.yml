@@ -2,23 +2,12 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
-    # ci.yml lives on gh-pages until development starts on main
-    target-branch: gh-pages
     schedule:
       interval: weekly
     commit-message:
       prefix: ci
-  # package.json (husky) lives on both branches
   - package-ecosystem: npm
     directory: /
-    target-branch: gh-pages
-    schedule:
-      interval: weekly
-    commit-message:
-      prefix: build
-  - package-ecosystem: npm
-    directory: /
-    target-branch: main
     schedule:
       interval: weekly
     commit-message:
