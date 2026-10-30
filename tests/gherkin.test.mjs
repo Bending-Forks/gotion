@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { highlightGherkin } from '../assets/gherkin.mjs';
+import { highlightGherkin } from '../docs/assets/gherkin.mjs';
 
 test('bolds step keywords and underlines whole glossary terms and plurals', () => {
   const source = '  Given a Viewer opens her main workspace\n' +

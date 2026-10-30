@@ -30,7 +30,7 @@ jobs:
         with:
           ruby-version: ruby
       - run: gem install jekyll
-      - run: jekyll build --strict_front_matter
+      - run: jekyll build --strict_front_matter --source docs
 
   commits:
     if: github.event_name == 'pull_request'

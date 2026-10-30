@@ -6,4 +6,3 @@ defaults:
       path: ""
     values:
       layout: chapter
-exclude: [package.json, package-lock.json]
