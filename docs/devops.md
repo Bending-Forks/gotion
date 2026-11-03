@@ -8,9 +8,53 @@ nav_order: 5
 
 ## VCS & Repo
 
+Gotion follows trunk-based development: `main` is the only long-lived branch, for both the
+code and this report. There is no develop branch and no release branch. Every change starts
+on a short-lived branch, named after the Conventional Commits type of the change (`feat/…`,
+`fix/…`, `docs/…`, `ci/…`), opened for a single pull request and deleted once it is merged.
+
+The ruleset of `main` lets a change in only from an approved pull request with its review
+threads resolved; every commit must be signed, the history must be linear, and force pushes
+and deletion are blocked. Merge commits are disabled in the repository settings.
+
+The ruleset also requires a green CI: the `success` check, emitted by GitHub Actions, must
+have passed on a branch that is up to date with `main`. We require this single check, not
+the individual jobs, because `success` is the job that collects all the others: adding a job
+or changing the test matrix does not touch the ruleset, while a failed or cancelled job still
+makes it fail. Tying the check to GitHub Actions means a status set by hand through the API
+cannot stand in for it. So a red CI keeps a change out whatever way it comes in: the merge
+script, a manual push, or the squash button used for Dependabot.
+
+A pull request is merged with `scripts/ff-merge.sh`: it rebases the branch on `main`, checks
+that the CI passed and the PR is approved, so it stops before the server would refuse, then
+pushes the head of the branch straight onto `main`. The server accepts only a fast-forward, so
+the commits keep their signatures and the history stays linear. Dependabot pull requests are
+squashed instead. Locally, each of us pulls with `pull.rebase = true`.
+
+Until [#15](https://github.com/Bending-Forks/gotion/pull/15) the report lived on a separate
+`gh-pages` branch, published by the legacy Pages build, while the repository tooling lived on
+`main`. The two branches had diverged right after the initial commit. To join them we moved
+`main` onto `gh-pages` with one force push, the only one in the history of the repository: the
+ruleset was lifted on `main` for that push alone, `--force-with-lease` made sure no one had
+pushed meanwhile, and both authors agreed on it beforehand. This kept the 48 commits of the
+report with their SHAs and signatures; the four commits of the old `main` were replayed on top
+in the same pull request. `gh-pages` is kept as the tag `archive/gh-pages`.
+
 ## Quality Assurance
 
 ## CI/CD
+
+The CI runs on every pull request and on every push to `main`:
+
+- `test` runs the Node tests on Linux, Windows and macOS, with Node 22 and 24;
+- `site` builds the report with Jekyll, failing on invalid front matter;
+- `commits`, on pull requests only, checks the title of every commit against Conventional
+  Commits, so skipping the local hook does not help;
+- `success` collects the result of the jobs above.
+
+On a push to `main`, and only if `success` passed, `deploy` publishes the report to GitHub
+Pages. The deployment goes to the `github-pages` environment, which accepts only `main`, so a
+pull request cannot publish anything.
 
 <!-- TODO SLO: the development time scenarios become gates in the pipeline: QA-08 (a
 fresh-install job on a clean runner: one documented command, reachable within 600 s, no
