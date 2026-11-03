@@ -25,7 +25,7 @@ Requirements now live only in `docs/_includes/functional-requirements.md` and `d
 - `main` is the only long-lived branch, for both the code and the report. Work on a feature branch and open a PR against `main`; `main` takes no other pushes.
 - Merge only with `scripts/ff-merge.sh <PR>`: it rebases the branch on `main` (after a rebase it force-pushes and stops, because CI and a new approval are needed), then checks CI and the approval and pushes the branch head straight onto `main` as a fast-forward. Never the "Rebase and merge" or "Create a merge commit" buttons: the first drops the signatures, the second breaks the linear history.
 - The ruleset of `main` also requires the `success` check of the CI (the job that collects all the others, emitted by GitHub Actions) on a branch up to date with `main`, so a red CI blocks every way in, the script, a manual push or a button. Renaming the `success` job breaks the rule: update the ruleset in the same change.
-- Squash merge only for Dependabot PRs (the script refuses bot PRs) and exceptions.
+- Renovate PRs (`renovate.json`) need an approval like any other; then Renovate squashes them itself once `success` is green (the script refuses bot PRs). Squash by hand only for exceptions.
 
 ## Architectural constraints (SAP)
 

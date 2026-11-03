@@ -23,13 +23,14 @@ the individual jobs, because `success` is the job that collects all the others: 
 or changing the test matrix does not touch the ruleset, while a failed or cancelled job still
 makes it fail. Tying the check to GitHub Actions means a status set by hand through the API
 cannot stand in for it. So a red CI keeps a change out whatever way it comes in: the merge
-script, a manual push, or the squash button used for Dependabot.
+script, a manual push, or the squash of a Renovate pull request.
 
 A pull request is merged with `scripts/ff-merge.sh`: it rebases the branch on `main`, checks
 that the CI passed and the PR is approved, so it stops before the server would refuse, then
 pushes the head of the branch straight onto `main`. The server accepts only a fast-forward, so
-the commits keep their signatures and the history stays linear. Dependabot pull requests are
-squashed instead. Locally, each of us pulls with `pull.rebase = true`.
+the commits keep their signatures and the history stays linear. Renovate pull requests are
+squashed instead, by Renovate itself (see [CI/CD](#cicd)). Locally, each of us pulls with
+`pull.rebase = true`.
 
 Until [#15](https://github.com/Bending-Forks/gotion/pull/15) the report lived on a separate
 `gh-pages` branch, published by the legacy Pages build, while the repository tooling lived on
@@ -55,6 +56,18 @@ The CI runs on every pull request and on every push to `main`:
 On a push to `main`, and only if `success` passed, `deploy` publishes the report to GitHub
 Pages. The deployment goes to the `github-pages` environment, which accepts only `main`, so a
 pull request cannot publish anything.
+
+Dependencies are kept up to date by Renovate, configured in `renovate.json`. It finds the
+GitHub Actions of the workflow and the npm packages, and opens one pull request per update,
+titled in Conventional Commits: `ci(deps): …` for the workflow, `chore(deps): …` for the
+rest. An npm release is proposed only once it is three days old, so a version retracted soon
+after publishing never reaches us, and once a week a pull request refreshes
+`package-lock.json`, transitive dependencies included. A Renovate pull request goes through the
+same CI and needs the same approval as any other; once it is approved and `success` is green,
+Renovate squashes it onto `main` on its next run, and the push deploys the report. We left
+GitHub auto-merge disabled: it would put an auto-merge button on every pull request, and with
+squash as the only merge method allowed by the settings, that button would merge a human pull
+request past the merge script.
 
 <!-- TODO SLO: the development time scenarios become gates in the pipeline: QA-08 (a
 fresh-install job on a clean runner: one documented command, reachable within 600 s, no
