@@ -1,0 +1,212 @@
+<mxfile host="drawio">
+  <diagram id="cc" name="Components and Connectors">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1500" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Client -->
+        <mxCell id="client" value="Web client&#xa;React + BlockNote, in the browser" style="rounded=1;html=0;fillColor=#e9d8fd;strokeColor=#6b46c1;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="30" width="240" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Services boundary -->
+        <mxCell id="services" value="Gotion services: each one exposes /health and /metrics" style="rounded=1;arcSize=3;dashed=1;fillColor=none;strokeColor=#718096;verticalAlign=top;align=left;spacingLeft=10;spacingTop=2;html=0;fontSize=12;fontColor=#4a5568;" vertex="1" parent="1">
+          <mxGeometry x="30" y="140" width="1180" height="250" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gateway" value="API Gateway&#xa;routing, authentication" style="rounded=1;html=0;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="170" width="240" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="account" value="Account&#xa;Go" style="rounded=1;html=0;fillColor=#bee3f8;strokeColor=#2b6cb0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="300" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="membership" value="Membership&#xa;Go" style="rounded=1;html=0;fillColor=#bee3f8;strokeColor=#2b6cb0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="300" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="editing" value="Editing&#xa;Node.js / TypeScript" style="rounded=1;html=0;fillColor=#c6f6d5;strokeColor=#2f855a;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="300" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="discussion" value="Discussion&#xa;Go" style="rounded=1;html=0;fillColor=#bee3f8;strokeColor=#2b6cb0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="780" y="300" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="notification" value="Notification&#xa;Go" style="rounded=1;html=0;fillColor=#bee3f8;strokeColor=#2b6cb0;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="300" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Database per service -->
+        <mxCell id="db-account" value="Account DB" style="shape=cylinder3;html=0;boundedLbl=1;size=10;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="65" y="440" width="110" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="db-membership" value="Membership DB" style="shape=cylinder3;html=0;boundedLbl=1;size=10;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="305" y="440" width="110" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="db-editing" value="Event log&#xa;+ snapshots" style="shape=cylinder3;html=0;boundedLbl=1;size=10;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="545" y="440" width="110" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="db-discussion" value="Discussion DB" style="shape=cylinder3;html=0;boundedLbl=1;size=10;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="785" y="440" width="110" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="db-notification" value="Notification DB" style="shape=cylinder3;html=0;boundedLbl=1;size=10;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1025" y="440" width="110" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Broker -->
+        <mxCell id="kafka" value="Apache Kafka: the events of each upstream context, in its published language (Account, Membership, Editing, Discussion)" style="rounded=1;html=0;fillColor=#fefcbf;strokeColor=#b7791f;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="30" y="580" width="1180" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Monitoring -->
+        <mxCell id="grafana" value="Grafana&#xa;SLO dashboards, alerts" style="rounded=1;html=0;fillColor=#feebc8;strokeColor=#c05621;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="100" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="prometheus" value="Prometheus&#xa;metrics store" style="rounded=1;html=0;fillColor=#feebc8;strokeColor=#c05621;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="240" width="170" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Client to gateway -->
+        <mxCell id="e-client-rest" value="REST" style="endArrow=block;endFill=1;html=0;strokeColor=#2d3748;labelBackgroundColor=#ffffff;fontSize=11;exitX=0.35;exitY=1;entryX=0.35;entryY=0;" edge="1" parent="1" source="client" target="gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-client-ws" value="WebSocket" style="startArrow=block;startFill=1;endArrow=block;endFill=1;strokeWidth=2.5;html=0;strokeColor=#2f855a;labelBackgroundColor=#ffffff;fontSize=11;exitX=0.65;exitY=1;entryX=0.65;entryY=0;" edge="1" parent="1" source="client" target="gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Gateway to services -->
+        <mxCell id="e-gw-account" value="REST" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;html=0;strokeColor=#2d3748;labelBackgroundColor=#ffffff;fontSize=11;exitX=0;exitY=0.33;entryX=0.5;entryY=0;" edge="1" parent="1" source="gateway" target="account">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-gw-membership" value="REST" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;html=0;strokeColor=#2d3748;labelBackgroundColor=#ffffff;fontSize=11;exitX=0;exitY=0.67;entryX=0.5;entryY=0;" edge="1" parent="1" source="gateway" target="membership">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-gw-editing" value="WebSocket: operations, acks, presence" style="startArrow=block;startFill=1;endArrow=block;endFill=1;strokeWidth=2.5;html=0;strokeColor=#2f855a;labelBackgroundColor=#ffffff;fontSize=11;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="gateway" target="editing">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-gw-discussion" value="REST" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;html=0;strokeColor=#2d3748;labelBackgroundColor=#ffffff;fontSize=11;exitX=1;exitY=0.67;entryX=0.5;entryY=0;" edge="1" parent="1" source="gateway" target="discussion">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-gw-notification" value="REST" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;html=0;strokeColor=#2d3748;labelBackgroundColor=#ffffff;fontSize=11;exitX=1;exitY=0.33;entryX=0.5;entryY=0;" edge="1" parent="1" source="gateway" target="notification">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- The one synchronous call between services: the user registered with an email address -->
+        <mxCell id="e-membership-account" value="REST&#xa;user by email" style="endArrow=block;endFill=1;html=0;strokeColor=#2d3748;labelBackgroundColor=#ffffff;fontSize=11;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="membership" target="account">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Each service and its own database -->
+        <mxCell id="e-db-account" style="endArrow=none;html=0;strokeColor=#4a5568;exitX=0.375;exitY=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="account" target="db-account">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-db-membership" style="endArrow=none;html=0;strokeColor=#4a5568;exitX=0.375;exitY=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="membership" target="db-membership">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-db-editing" style="endArrow=none;html=0;strokeColor=#4a5568;exitX=0.375;exitY=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="editing" target="db-editing">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-db-discussion" style="endArrow=none;html=0;strokeColor=#4a5568;exitX=0.375;exitY=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="discussion" target="db-discussion">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-db-notification" style="endArrow=none;html=0;strokeColor=#4a5568;exitX=0.375;exitY=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="notification" target="db-notification">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Events through Kafka: entryX = (service centre + 60 - 30) / 1180 -->
+        <mxCell id="e-kafka-account" value="pub / sub" style="dashed=1;startArrow=open;endArrow=open;html=0;strokeColor=#b7791f;labelBackgroundColor=#ffffff;fontSize=11;exitX=0.875;exitY=1;entryX=0.1441;entryY=0;" edge="1" parent="1" source="account" target="kafka">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-kafka-membership" value="pub / sub" style="dashed=1;startArrow=open;endArrow=open;html=0;strokeColor=#b7791f;labelBackgroundColor=#ffffff;fontSize=11;exitX=0.875;exitY=1;entryX=0.3475;entryY=0;" edge="1" parent="1" source="membership" target="kafka">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-kafka-editing" value="pub / sub" style="dashed=1;startArrow=open;endArrow=open;html=0;strokeColor=#b7791f;labelBackgroundColor=#ffffff;fontSize=11;exitX=0.875;exitY=1;entryX=0.5508;entryY=0;" edge="1" parent="1" source="editing" target="kafka">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-kafka-discussion" value="pub / sub" style="dashed=1;startArrow=open;endArrow=open;html=0;strokeColor=#b7791f;labelBackgroundColor=#ffffff;fontSize=11;exitX=0.875;exitY=1;entryX=0.7542;entryY=0;" edge="1" parent="1" source="discussion" target="kafka">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-kafka-notification" value="sub" style="dashed=1;endArrow=open;html=0;strokeColor=#b7791f;labelBackgroundColor=#ffffff;fontSize=11;exitX=0.9576;exitY=0;entryX=0.875;entryY=1;" edge="1" parent="1" source="kafka" target="notification">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Monitoring connectors -->
+        <mxCell id="e-scrape" value="scrape&#xa;/metrics" style="dashed=1;dashPattern=1 3;strokeWidth=1.5;endArrow=open;html=0;strokeColor=#c05621;labelBackgroundColor=#ffffff;fontSize=11;exitX=0;exitY=0.5;entryX=1;entryY=0.52;" edge="1" parent="1" source="prometheus" target="services">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-promql" value="PromQL" style="endArrow=block;endFill=1;html=0;strokeColor=#2d3748;labelBackgroundColor=#ffffff;fontSize=11;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="grafana" target="prometheus">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="Legend" style="rounded=1;arcSize=6;fillColor=#ffffff;strokeColor=#a0aec0;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;html=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="30" y="670" width="1440" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l-rest" style="endArrow=block;endFill=1;html=0;strokeColor=#2d3748;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="50" y="710" as="sourcePoint" />
+            <mxPoint x="110" y="710" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l-rest-t" value="REST request/response, towards the callee" style="text;html=0;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="118" y="700" width="250" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="l-ws" style="startArrow=block;startFill=1;endArrow=block;endFill=1;strokeWidth=2.5;html=0;strokeColor=#2f855a;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="390" y="710" as="sourcePoint" />
+            <mxPoint x="450" y="710" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l-ws-t" value="WebSocket, both ways" style="text;html=0;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="458" y="700" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="l-kafka" style="dashed=1;endArrow=open;html=0;strokeColor=#b7791f;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="630" y="710" as="sourcePoint" />
+            <mxPoint x="690" y="710" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l-kafka-t" value="Event through Kafka, in the direction it flows (pub: publish, sub: subscribe)" style="text;html=0;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="698" y="700" width="400" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="l-scrape" style="dashed=1;dashPattern=1 3;strokeWidth=1.5;endArrow=open;html=0;strokeColor=#c05621;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1120" y="710" as="sourcePoint" />
+            <mxPoint x="1180" y="710" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l-scrape-t" value="Metrics pull, by Prometheus" style="text;html=0;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1188" y="700" width="200" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l-db" style="endArrow=none;html=0;strokeColor=#4a5568;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="50" y="750" as="sourcePoint" />
+            <mxPoint x="110" y="750" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="l-db-t" value="Access to its own database only" style="text;html=0;align=left;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="118" y="740" width="250" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="l-go" value="Go service" style="rounded=1;html=0;fillColor=#bee3f8;strokeColor=#2b6cb0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="390" y="738" width="110" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="l-node" value="Node.js / TS service" style="rounded=1;html=0;fillColor=#c6f6d5;strokeColor=#2f855a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="520" y="738" width="140" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="l-client" value="Client" style="rounded=1;html=0;fillColor=#e9d8fd;strokeColor=#6b46c1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="680" y="738" width="90" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="l-infra" value="Infrastructure" style="rounded=1;html=0;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="790" y="738" width="110" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="l-broker" value="Broker" style="rounded=1;html=0;fillColor=#fefcbf;strokeColor=#b7791f;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="920" y="738" width="90" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="l-monitoring" value="Monitoring" style="rounded=1;html=0;fillColor=#feebc8;strokeColor=#c05621;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="738" width="100" height="24" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
