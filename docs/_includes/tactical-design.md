@@ -315,7 +315,7 @@ classDiagram
   BlockContent <|-- CodeContent
   BlockContent <|-- PageBlockContent
   RealTimeEditingSession --> Presence
-  RealTimeEditingSession ..> Edit : merges
+  RealTimeEditingSession ..> Edit : relays
   Page <|-- RootPage
   Page <|-- SubPage
   SubPage ..> Page : parent, by id
@@ -343,49 +343,67 @@ A document of a workspace, with its metadata and its place in the page tree (US-
   so the loop raised while reviewing the board cannot happen.
 - The parent of a sub-page is the page whose tree holds its page block, in the same workspace. The parent creates it, through `createSubPage` on Page, so the sub-page always gets the workspace of its parent, and the `PageId` that its page block already holds. The parent itself does not change, so one command still changes one aggregate.
 - Deleting a page is final (US-04): its content and its sub-pages are deleted with it, by
-  policies.
-- The metadata is set on the page itself or by updating its page block; both end up on Page. The
-  page block shows the title, icon and cover through the read model, without keeping a copy.
-- Setting the metadata on the page itself needs a role that may change the content. The roles live in Membership, so Page asks the `AccessLookupService`, which only says whether a user of the workspace can read the content or also change it. It reads a local copy of the roles, fed by the events of Membership, and asks Membership only when the copy has no row ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)). When the metadata comes from an updated page block, Page checks nothing: the edit was checked when it was submitted, and refusing it now would drop an acknowledged edit (QA-05).
+  policies. A page knows its parent but not its sub-pages, which only the page blocks of its tree
+  name, so the deletion goes through the tree: the tree of the page is deleted, and each sub-page
+  whose page block it held is deleted in turn, down to the last level.
+- The metadata is set only on the page itself. The page block shows the title, icon and cover
+  through the read model, without keeping a copy, so nothing in the block has to follow it.
+- Setting the metadata on the page itself needs a role that may change the content. The roles live in Membership, so Page asks the `AccessLookupService`, which only says whether a user of the workspace can read the content or also change it. It reads a local copy of the roles, fed by the events of Membership, and asks Membership only when the copy has no row ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)).
 - The title is plain text. Icon and cover are optional. The icon is the name of an icon from the Lucide set, which the client draws, so the page stores no image. The cover is a link to an image, because no story asks for uploading files.
 
 | Command | Issued by | Event |
 |---|---|---|
 | Create page | Policies *whenever a workspace is created, create its root page* and *whenever a page block is inserted, create the sub-page* | Page Created |
-| Set title, icon, cover | Editor; policy *whenever a page block is updated, update its metadata* | Page Metadata Changed |
+| Set title, icon, cover | Editor | Page Metadata Changed |
 | Move page | Policy *whenever a page block is moved, move it in the tree as well* | Page Moved |
-| Delete page | Policies *whenever a page block is deleted, delete the page as well*, *whenever a page is deleted, delete its content and sub-pages* and *whenever a workspace is deleted, delete its root page* | Page Deleted |
+| Delete page | Policies *whenever a page block is deleted, delete the page as well*, on Block Deleted and on Block Tree Deleted, and *whenever a workspace is deleted, delete its root page* | Page Deleted |
 
 #### Page Block Tree
 
-The content of one page (US-06, US-07). It is identified by the `PageId` of its page and starts empty together with it. It needs no factory: no command creates it, and the first Insert block finds it empty and stores it.
+The content of one page (US-06, US-07). It is identified by the `PageId` of its page and starts empty together with it. It needs no factory: no command creates it, and the first operation finds it empty and stores it.
 
-- The blocks form an ordered tree: every block has exactly one parent, the page or another block,
-  and a position among its siblings. A block cannot be nested under itself or one of its
-  descendants.
-- The type of a block is the subtype of its `BlockContent`, and each subtype holds only the fields its type needs. Text is Markdown (BR-03), so a heading also has its level, from 1 to 6 as in Markdown. A to-do has its checkbox, and a page block holds only its sub-page, so no other block can refer to one. A code block keeps its code as plain text, not Markdown, and may name its language in one word, the one written after the opening fence of a Markdown code block (`python`).
-- Update block can turn a block into another type by replacing its content. The block keeps its `BlockId`, its place in the tree and the comment threads anchored to it. Page blocks are the exception: no block becomes a page block and a page block becomes nothing else, because a sub-page is created and deleted only by inserting and deleting its page block.
-- Deleting a block deletes the blocks nested in it. Block Deleted lists the page blocks removed
-  with them, so that every sub-page underneath is deleted, not only the top one.
-- A new block type is a new subtype of `BlockContent` and its rendering, both inside Editing, with no change to any other aggregate or context (QA-09). The content is saved as the name of its type plus its fields, so a new type needs no change to the persistence schema.
-  <!-- TODO ADR-01: with our own CRDT, every replica applies an
-  operation as soon as it gets it, and the commands below become operations of that CRDT.
-  Settle, and then rewrite this aggregate: (1) Editing checks each operation before relaying
-  it and refuses one that breaks a rule above, and its author reverts it: say which rules are
-  checked there; (2) a move of the tree CRDT must keep the tree acyclic when two moves are
-  concurrent (A under B while B goes under A), after Kleppmann et al., "A highly-available
-  move operation for replicated trees"; (3) the text of the client editor is styled text, not
-  Markdown: restrict the styles to those Markdown expresses, so that the Markdown of BR-03
-  loses nothing (see "Editing client" in the Implementation chapter). -->
+The tree is replicated ([ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)). Every client that has the page open holds a replica and applies its own edits to it at once, and Editing holds the replica that decides what the others get. An edit is an operation of our CRDT, the same package in the client and in Editing ([ADR-04](#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go)): insert, update, move or delete a block, or edit the text of a block. Editing takes the operations of a page one at a time. For each one it checks the rules below on its replica, appends the operation to the session log ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)) and applies it to its replica before it takes the next. The check therefore always runs on a replica that holds every operation accepted so far: only the snapshots of the tree lag behind the log, not the replica in memory.
 
+The rules fall into two groups, by how they can be broken.
+
+**Kept by the CRDT.** Two concurrent operations, each valid on the replica of its author, can break these rules only together. Editing cannot refuse either of them, because each one passes the check on its own, so the CRDT keeps the rules on every replica by construction:
+
+- The blocks form an ordered tree: every block has exactly one parent, the page or another
+  block, and a position among its siblings. Two blocks inserted at the same position at once
+  end up in the same order on every replica.
+- A block cannot be nested under itself or one of its descendants. When two concurrent moves
+  would make a cycle (A under B while B goes under A), every replica orders the moves by their
+  timestamps and the one that would close the cycle has no effect, after Kleppmann et al.,
+  "A highly-available move operation for replicated trees".
+- Deleting a block deletes the blocks nested in it, including a block moved under it at the
+  same time. An operation on a deleted block has no effect.
+
+**Checked by Editing.** One operation can break these rules on its own. Editing refuses it before any other replica sees it, together with the later operations of the same author that build on it, and the author reverts them:
+
+- The type of a block is the subtype of its `BlockContent`, and each subtype holds only the fields its type needs. Text is Markdown (BR-03), so a heading also has its level, from 1 to 6 as in Markdown. A to-do has its checkbox, and a page block holds only its sub-page, so no other block can refer to one. A code block keeps its code as plain text, not Markdown, and may name its language in one word, the one written after the opening fence of a Markdown code block (`python`). Editing refuses a field that the type does not have and a value out of its range, such as a heading of level 7.
+- The editor of the client works on styled text, not Markdown, so Editing refuses a style that Markdown cannot express, and the Markdown of BR-03 loses nothing (see [Editing client](implementation.html#editing-client)).
+- Update block can turn a block into another type by replacing its content. The block keeps its `BlockId`, its place in the tree and the comment threads anchored to it. Page blocks are the exception: no block becomes a page block and a page block becomes nothing else, because a sub-page is created and deleted only by inserting and deleting its page block. For the same reason, Editing refuses a page block inserted with the `PageId` of a page that already exists. A page block holds nothing but its sub-page, which never changes, so Editing also refuses any update of a page block.
+
+**Events come from the effect of an operation, not from the operation.** Editing derives them from what the operation changed on its replica, so a move that has no effect emits no Block Moved.
+
+- Block Deleted is emitted for every deleted block, because Discussion deletes the threads
+  anchored to it. It lists the page blocks removed with it, so that every sub-page underneath
+  is deleted, not only the top one.
+- Block Tree Deleted lists the page blocks the tree held, for the same reason: it is how the
+  sub-pages of a deleted page are found and deleted.
+- Block Inserted and Block Moved are emitted only for page blocks, which the
+  policies on Page follow. The edits of the other blocks stay in the session log.
+
+A new block type is a new subtype of `BlockContent` and its rendering, both inside Editing, with no change to any other aggregate or context (QA-09). The content is saved as the name of its type plus its fields, so a new type needs no change to the persistence schema, as long as its edits fit the generic operations of the CRDT (ADR-01).
 
 | Command | Issued by | Event |
 |---|---|---|
-| Insert block | Policy *when edits are merged, apply them to the page block tree* | Block Inserted |
-| Update block | Same policy | Block Updated |
-| Move or nest block | Same policy | Block Moved |
-| Delete block | Same policy | Block Deleted |
-| Delete block tree | Policy *whenever a page is deleted, delete its content and sub-pages* | Block Tree Deleted |
+| Insert block | Collaborator, as an operation through *Submit edit* | Block Inserted, for a page block |
+| Update block | Same | None: the operation stays in the session log |
+| Move or nest block | Same | Block Moved, for a page block that moved |
+| Delete block | Same | Block Deleted |
+| Edit text | Same | None: the operation stays in the session log |
+| Delete block tree | Policy *whenever a page is deleted, delete its block tree* | Block Tree Deleted |
 
 #### Real-time Editing Session
 
@@ -395,15 +413,17 @@ session opens it, so editing alone and editing together follow the same path.
 
 - Opening goes through `openSession` on Page, so a session exists only for a page that exists, and it starts with the collaborator who joined in its presence. It keeps the workspace of its page, which never changes, for the checks on later joins and edits. The page itself does not change, so one command still changes one aggregate.
 - Only a collaborator who has joined can submit edits, and only with a role that may change the content. A Viewer can join to follow the edits and appear in the presence, but cannot submit. The session, and Page when it opens one, ask the `AccessLookupService` whether whoever joins can read the content and whoever submits an edit can also change it.
-- Concurrent edits are merged into one result that every collaborator converges to, and no
-  acknowledged edit is dropped (QA-05). Where edits are ordered and merged is PP-01, settled by
-  [ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations): every
-  replica merges on its own with a CRDT of ours, so the `change` carried by an `Edit` is an
-  operation of that CRDT, which the session checks, stores and relays to the other
-  collaborators.
-  When an edit counts as acknowledged is settled by
-  [ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log): once it is
-  appended to a durable log of the session, before it is applied to the page block tree.
+- The session does not merge. Every replica merges concurrent edits on its own with a CRDT of
+  ours, which settles PP-01
+  ([ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)),
+  so the `change` carried by an `Edit` is an operation of that CRDT. Submit edit checks that the
+  author has joined the open session with a role that may change the content, then hands the
+  operation to the [Page Block Tree](#page-block-tree), which checks it against its own rules
+  and applies it. The session itself does not change, so one command still changes one
+  aggregate. An accepted operation is appended to the session log and acknowledged, and only
+  then relayed to the other collaborators
+  ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)). Every
+  collaborator converges to the same content, and no acknowledged edit is dropped (QA-05).
 - A closed session accepts no join and no edit. It is closed when its page is deleted, and the
   collaborators learn it from Session Closed itself: the *notify its participants* of the policy
   is that event, not an in-app notification, which US-10 keeps for invitations and mentions.
@@ -412,7 +432,7 @@ session opens it, so editing alone and editing together follow the same path.
 |---|---|---|
 | Join session | Collaborator | Session Joined |
 | Leave session | Collaborator; policy *when a member is removed or leaves, or the workspace membership is deleted, make them leave the sessions of the workspace* | Session Left |
-| Submit edit | Editor | Edits Merged |
+| Submit edit | Editor | The events of the Page Block Tree |
 | Close session | Policy *when a page is deleted, close its editing session and notify its participants* | Session Closed |
 
 ### Discussion
@@ -552,10 +572,9 @@ root page may not exist, and the read models must allow for it.
 | Removing a member leaves them in at least one workspace and replaces their main one if needed | Remove member checks that another workspace membership remains; *when Member Removed concerns the user's current main workspace, automatically set a remaining workspace as main* | US-02, US-03 |
 | A workspace has an Admin from its creation | *Whenever a workspace is created, accept the creator as Admin* | US-03 |
 | A workspace has exactly one root page | *Whenever a workspace is created, create its root page*, plus the identity of the root page, derived from its workspace | US-04 |
-| Every page block has its sub-page, and every sub-page its page block | *Whenever a page block is inserted, moved, deleted, updated…* | US-04 |
-| Merged edits reach the content of the page | *When edits are merged, apply them to the page block tree* | US-08 |
+| Every page block has its sub-page, and every sub-page its page block | *Whenever a page block is inserted, moved or deleted…* | US-04 |
 | Deleting a workspace deletes everything in it | *Whenever a workspace is deleted, delete its root page*, then the cascade below; *whenever a workspace is deleted, delete its membership* | US-02, PP-05 |
-| Deleting a page deletes its content, sub-pages, session and threads | *Whenever a page is deleted, delete its content and sub-pages*; *when a page is deleted, close its editing session*; *whenever a page is deleted, delete its comment threads* | US-04, US-09, PP-05 |
+| Deleting a page deletes its content, sub-pages, session and threads | *Whenever a page is deleted, delete its block tree*, then *whenever a page block is deleted, delete the page as well* for each page block the tree held; *when a page is deleted, close its editing session*; *whenever a page is deleted, delete its comment threads* | US-04, US-09, PP-05 |
 | Deleting a block deletes the threads anchored to it | *Whenever a block is deleted, delete its comment threads* | US-09, PP-05 |
 | A member who is no longer one stops following the edits | *When a member is removed or leaves, or the workspace membership is deleted, make them leave the sessions of the workspace* | US-03, QA-06 |
 | Invited and mentioned users are told | *When MemberInvited then send the invitation*; *when another user is mentioned* | US-10 |
@@ -592,5 +611,9 @@ The model refines the board, and these changes are to be carried back to it:
   *Thread Deleted*, settle PP-05.
 - The Editor no longer issues *Move page* and *Delete page*: the Editor moves or deletes the page
   block, and the policies do the rest.
+- *Edits Merged* and the policy *when edits are merged, apply them to the page block tree*
+  leave the model: every replica merges on its own, and Submit edit hands each operation to the
+  Page Block Tree, which checks and applies it
+  ([ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)).
 - Moving a sub-page under a different parent page is not modelled: a page block moves only within
   the tree of its own page.

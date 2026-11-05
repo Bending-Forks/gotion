@@ -39,11 +39,11 @@ This glossary records the ubiquitous language of Gotion. Following DDD, the lang
 | Block content | What a block holds, in the shape its type needs: Markdown text for most types, plus a level for a heading and a checkbox for a to-do, the code for a code block, only the sub-page for a page block. Replacing it turns the block into another type, and the block stays the same block. | *Page Block Tree*, the content of the whole page. |
 | Page block | The block that stands for a sub-page. Inserting, moving, deleting or updating it creates, moves, deletes or updates the metadata of that sub-page. A page block never turns into another type, and no other block turns into one. | *Page*, which the page block points to. |
 | Page Block Tree | The ordered, nestable tree of the blocks of one page: the page content. There is one per page, and it is deleted as a whole when its page is deleted. | *Page tree*, which is made of pages. |
-| Real-time Editing Session | The shared editing of one page by the collaborators who have it open (US-08). Their edits are merged and then applied to the Page Block Tree. The session is closed when its page is deleted. | *Workspace*: a session belongs to a single page. |
+| Real-time Editing Session | The shared editing of one page by the collaborators who have it open (US-08). Each replica merges their edits on its own, and Editing checks each one and applies it to the Page Block Tree. The session is closed when its page is deleted. | *Workspace*: a session belongs to a single page. |
 | Collaborator | A user who has joined the editing session of a page, or who takes part in a discussion. | *Member*, which is about belonging to the workspace. |
 | Presence | The collaborators currently in the editing session of a page (US-08). | — |
-| Edit | A change to the content of a page submitted by a collaborator during a session. | *Block*: an edit is applied to blocks. |
-| Merge | The combination of concurrent edits into one consistent result, applied to the Page Block Tree. | — |
+| Edit | A change to the content of a page submitted by a collaborator during a session: an operation of the CRDT that every replica runs. | *Block*: an edit is applied to blocks. |
+| Merge | The combination of concurrent edits into one consistent result, done by every replica on its own with the CRDT. | — |
 
 #### Notification
 

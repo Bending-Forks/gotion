@@ -129,8 +129,8 @@ risk:
 makes Editing the one relay of the operations of a page, so Editing decides when an edit counts
 as acknowledged. Three scenarios depend on that moment: QA-01 times the server acknowledgement
 and asks for the character to be durably persisted, QA-04 asks that every acknowledged edit
-survives a crash of Editing, and QA-05 that none is silently discarded. The session merges an
-operation, and the policy *when edits are merged, apply them to the page block tree* stores it.
+survives a crash of Editing, and QA-05 that none is silently discarded. The session takes an
+operation and hands it to the Page Block Tree, which checks it and applies it.
 The alternatives were:
 
 - acknowledge after the merge, and apply the operation to the tree asynchronously;
