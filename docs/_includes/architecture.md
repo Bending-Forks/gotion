@@ -84,12 +84,9 @@ which Grafana reads through Prometheus.
 <!-- TODO: settle in the views what is still open while drawing them:
 - how Editing serves the page open (QA-03), the snapshot for a late joiner, the root page and
   the list of sub-pages: over the WebSocket or with a REST interface of its own;
-- the state the check of Editing runs on: the tree lags behind the log (ADR-02), so it needs
-  a replica that already holds every accepted operation;
 - whether the ack instant of QA-01 and QA-02 is when Editing sends it or when the author gets it;
 - whether presence skips the session log;
-- which Editing events go to Kafka besides Page Deleted and Block Deleted; Block Updated is in
-  the tactical design but missing from ADR-01;
+- which Editing events go to Kafka besides Page Deleted and Block Deleted;
 - where the read models live (page block metadata, workspace directory);
 - the properties of the pipes (capacity, when full, when empty);
 - with several instances of the gateway and of Editing, how the WebSocket of a page reaches
