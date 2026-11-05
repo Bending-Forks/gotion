@@ -12,10 +12,10 @@ Prometheus pulls the metrics of every service. Account, Membership, Discussion a
 | Element | Type | Responsibility | Properties |
 |---|---|---|---|
 | Web client | Client | Edits the pages with BlockNote, through the editor adapter and a CRDT replica of each open page | Talks only to the API gateway: REST for the requests, one WebSocket for each open page |
-| API Gateway | Infrastructure | The one entry point from outside: authenticates each request and routes it to its service | Forwards the WebSocket of a page to Editing; technology still open |
+| API Gateway | Infrastructure | The one entry point from outside: authenticates each request and routes it to its service | Forwards the WebSocket of a page to the instance of Editing that owns the page; technology still open |
 | Account | Service | Users and workspaces (`User`, `Workspace`) | Answers one synchronous query, the user registered with an email address; asks Membership for the role before renaming or deleting a workspace; publishes Workspace Created and Workspace Deleted |
 | Membership | Service | Members, roles and invitations (`Workspace Membership`) | Asks Account for the user of an email address before an invitation; answers two synchronous queries, the role of a user and which users are members ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)); publishes the changes of membership and roles, and Member Invited |
-| Editing | Service | Pages and their content (`Page`, `Page Block Tree`, `Real-time Editing Session`); the one relay of the operations of a page | Event-sourced ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)); keeps a local copy of the roles and asks Membership only when it has no row ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)); publishes Page Deleted and Block Deleted |
+| Editing | Service | Pages and their content (`Page`, `Page Block Tree`, `Real-time Editing Session`); the one relay of the operations of a page | One instance owns each page; event-sourced ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)); keeps a local copy of the roles and asks Membership only when it has no row ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)); publishes Page Deleted and Block Deleted |
 | Discussion | Service | Comment threads on pages and blocks (`Comment Thread`) | Asks Membership which users of a command are members; publishes Comment Posted |
 | Notification | Service | The in-app notifications of invitations and mentions (`Notification`) | Only subscribes, publishes nothing |
 | Service databases | Repository | One for each service, with the data of its context only | Read and written only by the service that owns it (Database-per-Service) |
@@ -47,6 +47,24 @@ session channel is how Editing, the one relay of a page
 ([ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)),
 pushes each operation and the presence to the other collaborators, after the durable append
 and the ack, within the 300 ms (p95) of QA-02 (US-08).
+
+**One instance of Editing for each page.** The CRDT needs every operation of a page to go
+through the same relay (ADR-01), so a page belongs to one instance of Editing, chosen by a
+fixed rule instead of an assignment kept somewhere: the instances form a Kubernetes
+StatefulSet, and page `P` belongs to the instance `hash(P) mod N`. The gateway reads `P` from
+the path of the WebSocket and forwards it to that instance by its stable DNS name
+(`editing-k.editing`), so no table of assignments and no service discovery are needed. When an
+instance crashes, Kubernetes replaces it with a new one under the same identity, which replays
+the session log of its pages from the last snapshot (ADR-02) while the clients reconnect: the
+pages stay with that identity, and nothing is rebalanced (QA-04). Two instances must never
+relay the same page at once, or the order of its operations splits. A StatefulSet starts the
+replacement only after the old instance has terminated, and, whatever the orchestrator does,
+each append to the session log carries the sequence number it expects for its page, so an
+instance that falls behind gets its append refused and acknowledges nothing. The prototype
+runs N = 1, which is enough for the five editors of a page in QA-02: while that instance
+restarts every page is read-only, for up to the 60 s of QA-04, not only the pages of one
+instance. With Compose (QA-08) the same rule is one container that restarts on failure.
+Changing N moves pages between instances, so it is done with Editing stopped.
 
 ![Event-based view of Gotion]({{ '/assets/components-and-connectors/event-based.svg' | relative_url }})
 
@@ -88,10 +106,7 @@ which Grafana reads through Prometheus.
 - whether presence skips the session log;
 - which Editing events go to Kafka besides Page Deleted and Block Deleted;
 - where the read models live (page block metadata, workspace directory);
-- the properties of the pipes (capacity, when full, when empty);
-- with several instances of the gateway and of Editing, how the WebSocket of a page reaches
-  the one instance that relays it, and how the page moves to another instance when that one
-  fails (ADR-01, QA-04). -->
+- the properties of the pipes (capacity, when full, when empty). -->
 
 ### Hexagonal Architecture
 

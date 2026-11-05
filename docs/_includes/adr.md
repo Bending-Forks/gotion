@@ -166,7 +166,9 @@ On the bad side:
   operations before them.
 - The tree lags behind the log for a moment, so anything that reads the tree, such as the page
   open of QA-03, may miss the last operations.
-- The store of the log is still to choose; it must make an append durable before it returns.
+- The store of the log is still to choose; it must make an append durable before it returns,
+  and refuse an append whose sequence number is not the next one of its page, so that two
+  instances of Editing can never both extend the log of the same page.
 - The operations in the log outlive the version of the protocol that wrote them: a change to the
   operations needs a version on each one and a way to replay the older ones.
 
