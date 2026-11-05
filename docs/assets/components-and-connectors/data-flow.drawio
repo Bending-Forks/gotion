@@ -70,7 +70,7 @@
         <mxCell id="r-editor-ic" value="" style="shape=component;jettyWidth=6;jettyHeight=3;fillColor=#ffffff;strokeColor=#c05621;html=0;" vertex="1" parent="1">
           <mxGeometry x="1780" y="131" width="14" height="12" as="geometry" />
         </mxCell>
-        <mxCell id="e-check" value=":Check&#10;Page Block Tree rules,&#10;role: open (PP-04)" style="rounded=0;fillColor=#bee3f8;strokeColor=#2b6cb0;fontSize=11;verticalAlign=middle;html=0;" vertex="1" parent="1">
+        <mxCell id="e-check" value=":Check&#10;Page Block Tree rules,&#10;role: local copy (ADR-03)" style="rounded=0;fillColor=#bee3f8;strokeColor=#2b6cb0;fontSize=11;verticalAlign=middle;html=0;" vertex="1" parent="1">
           <mxGeometry x="730" y="560" width="150" height="84" as="geometry" />
         </mxCell>
         <mxCell id="e-check-ic" value="" style="shape=component;jettyWidth=6;jettyHeight=3;fillColor=#ffffff;strokeColor=#2b6cb0;html=0;" vertex="1" parent="1">
