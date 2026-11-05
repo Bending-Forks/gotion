@@ -285,3 +285,38 @@ On the bad side:
   the path of an edit shows up as a slower ack.
 - A fitness function checks that only the adapter of `AccessLookupService` in Editing consumes
   the events of Membership, and that Discussion consumes none of them.
+
+### ADR-04: Editing runs on Node.js with the CRDT of the client, the other services on Go
+
+**Status:** Proposed.
+
+**Context.** The backend services are written in Go, the client in TypeScript with React. [ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations) runs our CRDT on both sides, in the client and in Editing, the real-time service of US-08, and leaves open whether Editing shares the runtime of the client or has a second implementation of the module that passes the same tests. With two implementations, QA-05 would rest on two pieces of code that must agree on every operation, and any difference between them would make the client and Editing diverge on the same page.
+
+**Decision.** We will assign the runtimes as follows:
+
+- Account, Membership, Discussion and Notification are written in Go.
+- Editing is written in TypeScript and runs on Node.js. It holds the WebSocket of every open page and relays its operations (ADR-01).
+- The CRDT is one TypeScript package, with no dependency on the browser, on Node.js or on any editor. The client and Editing both import it. The protocol of the operations and the block schema are shared the same way.
+- The client is written in TypeScript with React.
+- Every service is built into its own container image, so the deployment handles a Go service and a Node.js one the same way.
+
+This settles the runtimes left open by ADR-01.
+
+**Consequences.** On the good side:
+
+- The CRDT is written once. The convergence test of QA-05 runs on the package both sides import, so it covers Editing as well as the client.
+- The client and Editing are upgraded together (ADR-01). With the protocol and the block schema as shared types, a change on one side that the other does not follow fails the type check.
+- A Go service compiles to one static binary, so its image is small and carries no runtime.
+
+On the bad side:
+
+- Each language has its own build, tests, linter and image, so the CI has jobs for both, and the team works in two languages.
+- The events cross languages: Editing publishes and consumes them in TypeScript, the other services in Go. Each published language needs a schema from which both sides generate their types, and its format is still to choose. Without it, a field renamed on one side breaks the other only at run time.
+- The skeleton of a service exists twice, in Go and in TypeScript: the hexagonal structure, `/health` and `/metrics`, the Kafka consumer that ignores a repeated event, the migrations of QA-08.
+
+**Compliance.**
+
+- A fitness function checks that the client and Editing import the CRDT only from the shared package.
+- The CI builds, tests and packages each service in its own runtime, and `success` collects the jobs of both.
+- A contract test of each event checks that a consumer in one language reads what a producer in the other writes, against the shared schema.
+- The SLI of QA-01 is also measured while Editing takes a snapshot, so a task that blocks the thread shows up as a slower ack.

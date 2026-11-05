@@ -5,7 +5,7 @@
 The view below is the whole system as it is planned for now: it guides the development and will
 change with the design. Each bounded context is a service with its own database, the client
 reaches them through the API gateway, the events between contexts go through Kafka, and
-Prometheus pulls the metrics of every service.
+Prometheus pulls the metrics of every service. Account, Membership, Discussion and Notification run on Go, Editing on Node.js, where it imports the same CRDT package as the client ([ADR-04](#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go)).
 
 ![Components and connectors of Gotion]({{ '/assets/components-and-connectors/gotion.svg' | relative_url }})
 
@@ -92,9 +92,6 @@ which Grafana reads through Prometheus.
   the tactical design but missing from ADR-01;
 - where the read models live (page block metadata, workspace directory);
 - the properties of the pipes (capacity, when full, when empty);
-- the runtime of each service, Editing above all: the CRDT runs on both sides (ADR-01), so
-  Editing either shares the runtime of the client or has a second implementation of the module
-  that passes the same tests; the overview shows Go and Node.js/TypeScript only as planned;
 - with several instances of the gateway and of Editing, how the WebSocket of a page reaches
   the one instance that relays it, and how the page moves to another instance when that one
   fails (ADR-01, QA-04). -->
