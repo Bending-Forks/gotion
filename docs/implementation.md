@@ -57,6 +57,8 @@ QA-07 (after 5 failed logins the 6th attempt gets 429). -->
 
 ## Multiplatform
 
+Gotion runs on two runtimes ([ADR-04](design.html#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go)). Account, Membership, Discussion and Notification are written in Go. Editing is written in TypeScript on Node.js, and the web client in TypeScript with React. Editing and the client import the same CRDT package.
+
 ## Experiments
 
 ## Monitoring
