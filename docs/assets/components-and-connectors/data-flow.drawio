@@ -100,11 +100,8 @@
         <mxCell id="e-publish-ic" value="" style="shape=component;jettyWidth=6;jettyHeight=3;fillColor=#ffffff;strokeColor=#2b6cb0;html=0;" vertex="1" parent="1">
           <mxGeometry x="1780" y="566" width="14" height="12" as="geometry" />
         </mxCell>
-        <mxCell id="s-log" value=":Session log&#10;Event Sourcing" style="shape=cylinder3;boundedLbl=1;size=10;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=11;html=0;" vertex="1" parent="1">
-          <mxGeometry x="970" y="705" width="130" height="85" as="geometry" />
-        </mxCell>
-        <mxCell id="s-tree" value=":Page Block Tree&#10;+ snapshots" style="shape=cylinder3;boundedLbl=1;size=10;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=11;html=0;" vertex="1" parent="1">
-          <mxGeometry x="1430" y="705" width="130" height="85" as="geometry" />
+        <mxCell id="s-store" value=":Editing store&#10;session log (Event Sourcing) + snapshots of the Page Block Tree" style="shape=cylinder3;boundedLbl=1;size=10;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=11;html=0;" vertex="1" parent="1">
+          <mxGeometry x="970" y="705" width="590" height="85" as="geometry" />
         </mxCell>
         <mxCell id="k" value=":Apache Kafka" style="rounded=0;fillColor=#feebc8;strokeColor=#c05621;fontSize=11;html=0;" vertex="1" parent="1">
           <mxGeometry x="1650" y="860" width="150" height="50" as="geometry" />
@@ -242,7 +239,7 @@
         <mxCell id="e-append-log75" value="log" style="rounded=0;fillColor=#ffffff;strokeColor=#2d3748;fontSize=9;fontColor=#4a5568;labelPosition=left;align=right;verticalLabelPosition=bottom;verticalAlign=top;html=0;" vertex="1" parent="1">
           <mxGeometry x="1030" y="639" width="10" height="10" as="geometry" />
         </mxCell>
-        <mxCell id="e12" value="append" style="endArrow=none;strokeColor=#4a5568;fontSize=10;labelBackgroundColor=#ffffff;html=0;" edge="1" parent="1" source="e-append-log75" target="s-log">
+        <mxCell id="e12" value="append" style="endArrow=none;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.11;entryY=0;entryDx=0;entryDy=0;strokeColor=#4a5568;fontSize=10;labelBackgroundColor=#ffffff;html=0;" edge="1" parent="1" source="e-append-log75" target="s-store">
           <mxGeometry x="0" y="0" relative="1" as="geometry" />
         </mxCell>
         <mxCell id="e-relay-others75" value="others" style="rounded=0;fillColor=#ffffff;strokeColor=#2d3748;fontSize=9;fontColor=#4a5568;labelPosition=right;align=left;verticalLabelPosition=top;verticalAlign=bottom;html=0;" vertex="1" parent="1">
@@ -268,7 +265,7 @@
         <mxCell id="e-apply-store75" value="store" style="rounded=0;fillColor=#ffffff;strokeColor=#2d3748;fontSize=9;fontColor=#4a5568;labelPosition=left;align=right;verticalLabelPosition=bottom;verticalAlign=top;html=0;" vertex="1" parent="1">
           <mxGeometry x="1490" y="639" width="10" height="10" as="geometry" />
         </mxCell>
-        <mxCell id="e15" value="" style="endArrow=none;strokeColor=#4a5568;fontSize=10;labelBackgroundColor=#ffffff;html=0;" edge="1" parent="1" source="e-apply-store75" target="s-tree">
+        <mxCell id="e15" value="snapshot" style="endArrow=none;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.89;entryY=0;entryDx=0;entryDy=0;strokeColor=#4a5568;fontSize=10;labelBackgroundColor=#ffffff;html=0;" edge="1" parent="1" source="e-apply-store75" target="s-store">
           <mxGeometry x="0" y="0" relative="1" as="geometry" />
         </mxCell>
         <mxCell id="e-apply-events42" value="events" style="rounded=0;fillColor=#ffffff;strokeColor=#2d3748;fontSize=9;fontColor=#4a5568;labelPosition=right;align=left;verticalLabelPosition=bottom;verticalAlign=top;html=0;" vertex="1" parent="1">
@@ -287,9 +284,6 @@
         </mxCell>
         <mxCell id="e17" value="events" style="endArrow=block;endFill=1;strokeColor=#b7791f;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;html=0;" edge="1" parent="1" source="e-publish-out75" target="k">
           <mxGeometry x="0.2" y="0" relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="t-local" value="QA-01: keystroke to local&#10;render ≤ 50 ms (p95)" style="rounded=1;arcSize=20;fillColor=#fff5f5;strokeColor=#c53030;fontColor=#9b2c2c;fontSize=10;dashed=1;html=0;" vertex="1" parent="1">
-          <mxGeometry x="500" y="245" width="170" height="40" as="geometry" />
         </mxCell>
         <mxCell id="t-ack" value="At the ack: the QA-01 SLI stops,&#10;submit to ack ≤ 500 ms (p95);&#10;the QA-02 timer starts" style="rounded=1;arcSize=20;fillColor=#fff5f5;strokeColor=#c53030;fontColor=#9b2c2c;fontSize=10;dashed=1;html=0;" vertex="1" parent="1">
           <mxGeometry x="1045" y="440" width="185" height="56" as="geometry" />

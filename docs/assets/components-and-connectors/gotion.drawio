@@ -42,7 +42,7 @@
         <mxCell id="db-membership" value="Membership DB" style="shape=cylinder3;html=0;boundedLbl=1;size=10;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="305" y="440" width="110" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="db-editing" value="Event log&#xa;+ snapshots" style="shape=cylinder3;html=0;boundedLbl=1;size=10;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=12;" vertex="1" parent="1">
+        <mxCell id="db-editing" value="Editing DB&#xa;log + snapshots" style="shape=cylinder3;html=0;boundedLbl=1;size=10;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="545" y="440" width="110" height="80" as="geometry" />
         </mxCell>
         <mxCell id="db-discussion" value="Discussion DB" style="shape=cylinder3;html=0;boundedLbl=1;size=10;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=12;" vertex="1" parent="1">

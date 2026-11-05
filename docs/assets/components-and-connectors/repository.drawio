@@ -157,11 +157,11 @@
         <mxCell id="v93" value="Page" style="html=0;rounded=1;arcSize=12;fillColor=#ffffff;strokeColor=#4a5568;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="555" y="452" width="180" height="28" as="geometry" />
         </mxCell>
-        <mxCell id="v94" value="Page Block Tree" style="html=0;rounded=1;arcSize=12;fillColor=#ffffff;strokeColor=#4a5568;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="555" y="488" width="180" height="28" as="geometry" />
+        <mxCell id="v94" value="Session log&#10;operations, Event Sourcing" style="html=0;rounded=1;arcSize=12;fillColor=#ffffff;strokeColor=#4a5568;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="555" y="488" width="180" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="v95" value="Real-time Editing Session" style="html=0;rounded=1;arcSize=12;fillColor=#ffffff;strokeColor=#4a5568;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="555" y="524" width="180" height="28" as="geometry" />
+        <mxCell id="v95" value="Page Block Tree&#10;snapshots" style="html=0;rounded=1;arcSize=12;fillColor=#ffffff;strokeColor=#4a5568;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="555" y="536" width="180" height="40" as="geometry" />
         </mxCell>
         <mxCell id="v97" value=":Grafana" style="html=0;rounded=0;fillColor=#feebc8;strokeColor=#c05621;verticalAlign=top;spacingTop=8;fontSize=12;fontColor=#1a202c;" vertex="1" parent="1">
           <mxGeometry x="1310.0" y="10" width="210" height="64" as="geometry" />
