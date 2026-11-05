@@ -88,7 +88,7 @@ The identity that signs in (US-01), and the owner of the user's preferences.
 - The password is kept only as a `PasswordHash`; signing in compares against it and changes no
   state.
 - The main workspace is one the user is a member of. Membership holds that fact, so the check is
-  made against it (see [Roles](#roles)). If another Admin removes the user from that workspace,
+  made against it, with a query to Membership (see [Roles](#roles) and [ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)). If another Admin removes the user from that workspace,
   a policy automatically sets one of their remaining workspaces as main (US-02). It changes
   the preference only if the removed workspace is still the user's main one.
 
@@ -346,7 +346,7 @@ A document of a workspace, with its metadata and its place in the page tree (US-
   policies.
 - The metadata is set on the page itself or by updating its page block; both end up on Page. The
   page block shows the title, icon and cover through the read model, without keeping a copy.
-- Setting the metadata on the page itself needs a role that may change the content. The roles live in Membership, so Page asks the `AccessLookupService`, which only says whether a user of the workspace can read the content or also change it. How the service learns the roles is PP-04. When the metadata comes from an updated page block, Page checks nothing: the edit was checked when it was submitted, and refusing it now would drop an acknowledged edit (QA-05).
+- Setting the metadata on the page itself needs a role that may change the content. The roles live in Membership, so Page asks the `AccessLookupService`, which only says whether a user of the workspace can read the content or also change it. It reads a local copy of the roles, fed by the events of Membership, and asks Membership only when the copy has no row ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)). When the metadata comes from an updated page block, Page checks nothing: the edit was checked when it was submitted, and refusing it now would drop an acknowledged edit (QA-05).
 - The title is plain text. Icon and cover are optional. The icon is the name of an icon from the Lucide set, which the client draws, so the page stores no image. The cover is a link to an image, because no story asks for uploading files.
 
 | Command | Issued by | Event |
@@ -411,7 +411,7 @@ session opens it, so editing alone and editing together follow the same path.
 | Command | Issued by | Event |
 |---|---|---|
 | Join session | Collaborator | Session Joined |
-| Leave session | Collaborator | Session Left |
+| Leave session | Collaborator; policy *when a member is removed or leaves, or the workspace membership is deleted, make them leave the sessions of the workspace* | Session Left |
 | Submit edit | Editor | Edits Merged |
 | Close session | Policy *when a page is deleted, close its editing session and notify its participants* | Session Closed |
 
@@ -461,7 +461,7 @@ classDiagram
   }
   class MembershipLookupService {
     <<Domain Service>>
-    isMember(user, workspace) Boolean
+    areMembers(users, workspace) Boolean
   }
   CommentThread --> Anchor
   Anchor <|-- PageAnchor
@@ -481,7 +481,7 @@ A conversation attached to a page or to one of its blocks (US-09).
 - The anchor is fixed when the thread opens and never changes. A page anchor holds a thread on the whole page, a block anchor a thread on one block. Both name the page, because a `BlockId` alone does not tell Discussion which page the block is on, and the threads of a page must be found when it is shown or deleted.
 - A thread is never empty: the `CommentThreadFactory` opens it together with its first comment.
 - A resolved thread accepts no new comments.
-- A mention names a member of the workspace. The members live in Membership, so the thread and its factory ask the `MembershipLookupService` whether the author of a comment, every user it mentions and whoever resolves the thread are members. How the service learns the members is PP-04.
+- A mention names a member of the workspace. The members live in Membership, so the thread and its factory ask the `MembershipLookupService` whether the author of a comment, every user it mentions and whoever resolves the thread are members, all in one query to Membership ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)).
 - Any member of the workspace posts and resolves, whatever their role: a comment does not
   change the content of the page, so a Viewer can take part in the discussion too.
 
@@ -557,13 +557,14 @@ root page may not exist, and the read models must allow for it.
 | Deleting a workspace deletes everything in it | *Whenever a workspace is deleted, delete its root page*, then the cascade below; *whenever a workspace is deleted, delete its membership* | US-02, PP-05 |
 | Deleting a page deletes its content, sub-pages, session and threads | *Whenever a page is deleted, delete its content and sub-pages*; *when a page is deleted, close its editing session*; *whenever a page is deleted, delete its comment threads* | US-04, US-09, PP-05 |
 | Deleting a block deletes the threads anchored to it | *Whenever a block is deleted, delete its comment threads* | US-09, PP-05 |
+| A member who is no longer one stops following the edits | *When a member is removed or leaves, or the workspace membership is deleted, make them leave the sessions of the workspace* | US-03, QA-06 |
 | Invited and mentioned users are told | *When MemberInvited then send the invitation*; *when another user is mentioned* | US-10 |
 
 ### Roles
 
 The roles live in Membership, but most of the commands that need them belong to other contexts.
 The table states which role each command requires; the relations that carry them are in the
-[Context Map](#context-map), and how the roles reach the other contexts is PP-04.
+[Context Map](#context-map), and how the roles reach the other contexts is settled by [ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership).
 
 | Command | Context | Admin | Editor | Viewer |
 |---|---|---|---|---|

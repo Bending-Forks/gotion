@@ -46,26 +46,19 @@ language: [`gotion.cml`]({{ '/assets/context-map/gotion.cml' | relative_url }}) 
 | Editing | Discussion | OHS, PL → CF | Page Deleted, Block Deleted (*delete its comment threads*) |
 | Discussion | Notification | OHS, PL → ACL | Comment Posted (*notify the mentioned user*) |
 
-Membership shares the roles through the events that change them: Member Joined, Member Role Changed, Member Removed, Member Left and Workspace Membership Deleted. Discussion listens to all of them except Member Role Changed, because it only needs to know who is a member.
+Membership shares the roles through the events that change them: Member Joined, Member Role Changed, Member Removed, Member Left and Workspace Membership Deleted. Editing listens to all of them, Account only to Member Removed, for the policy that replaces a removed main workspace. Account and Discussion read the roles and the members through queries instead (see ADR-03).
 
 The same two people build all five contexts, so from a team point of view every relation would be a partnership. The map shows customer-supplier relations anyway, because each context becomes its own microservice, deployed and versioned separately.
 
-- **Upstream, open-host service with a published language (OHS, PL).** Every upstream publishes its events in a format kept separate from its internal model, so it can change the model without breaking the contexts downstream. The events carry identities (`UserId`, `WorkspaceId`, `PageId`, `BlockId`) as plain values. There is no shared kernel and no library shared between services. Account's open-host service also answers one query, synchronously, in the same published language: which user is registered with an email address, which Membership asks before adding an invitation.
-- **Downstream conformist (CF): it uses the events as they are.** Membership and Editing only need the workspace identity from Workspace Created and Workspace Deleted, and Membership takes the `UserId` returned by the user lookup as it is. Discussion only needs the identities in Page Deleted and Block Deleted, and who is a member. Account uses the roles with the names Membership gives them.
+- **Upstream, open-host service with a published language (OHS, PL).** Every upstream publishes its events in a format kept separate from its internal model, so it can change the model without breaking the contexts downstream. The events carry identities (`UserId`, `WorkspaceId`, `PageId`, `BlockId`) as plain values. There is no shared kernel and no library shared between services. Account's open-host service also answers one query, synchronously, in the same published language: which user is registered with an email address, which Membership asks before adding an invitation. Membership's answers two: the role of a user in a workspace, which Account and Editing ask, and which of a set of users are members of a workspace, which Discussion asks.
+- **Downstream conformist (CF): it uses the events as they are.** Membership and Editing only need the workspace identity from Workspace Created and Workspace Deleted, and Membership takes the `UserId` returned by the user lookup as it is. Discussion only needs the identities in Page Deleted and Block Deleted, and who is a member, which it asks Membership. Account uses the roles with the names Membership gives them.
 - **Downstream anticorruption layer (ACL): it translates the events into its own terms.** Notification turns Member Invited and Comment Posted into its own `Subject` (an invitation, a mention), so it never needs to know the models of Membership and Discussion. Editing turns the roles into the one thing it cares about: can this user read the content, or also change it? Editing holds a core subdomain, which is where an anticorruption layer pays off most, and with it a new role only changes the translation, not the Editing model.
 
-Account and Membership depend on each other: Account tells Membership when a workspace is created or deleted and which user an email address belongs to, and Membership sends the roles back. This is the tightest coupling on the map. If the two contexts keep changing together, this is the first place to look.
+Account and Membership depend on each other: Account tells Membership when a workspace is created or deleted and which user an email address belongs to, and Membership sends the roles back; each one also queries the other while it runs a command (ADR-03). This is the tightest coupling on the map. If the two contexts keep changing together, this is the first place to look.
 
-The table says *what* Account, Editing and Discussion get from Membership, but not *how* the roles and the membership reach them. That is still open (PP-04), with two options:
-
-- Each context keeps a local copy of the roles, updated by the events. A command needs no extra call (QA-01, QA-02), but a removed member can still act until the event arrives (QA-06).
-- Each context asks Membership on every command. The answer is always up to date, but every edit waits on a call to another service.
-
-The choice will be recorded in an Architecture Decision Record.
-
-<!-- TODO ADR PP-04: weigh the second option with a number, not only in words. Asking
-Membership on every command puts one call to another service on the path of every edit, and
-that call has to fit in the budget QA-01 already gives: 500 ms (p95) from the edit to the
-server acknowledgement. The check runs before the ack, so it does not touch the 300 ms of
-QA-02, which starts from the ack. Measure the round trip to Membership on the reference
-deployment and record in the ADR how much of the QA-01 budget it takes. -->
+The table says *what* Account, Editing and Discussion get from Membership; *how* the roles and
+the membership reach them was PP-04, settled by
+[ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership):
+Editing keeps a local copy of the roles, fed by the events, and asks Membership only when the copy
+has no row; Account and Discussion ask Membership on each command that needs it. Notification is
+not part of PP-04: it reacts to Member Invited and never checks a role or a membership.

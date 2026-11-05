@@ -84,7 +84,10 @@ response measures that depend on them, the Benchmark in DevOps and the SLOs in M
 | Artifact | Authorization layer |
 | Environment | Normal operation |
 | Response | The request is denied |
-| Response measure | 100 % of such requests denied; for a non-member, responses for "forbidden" and "non-existent" are indistinguishable, leaking no title or metadata |
+| Response measure | 100 % of such requests denied; for a non-member, responses for "forbidden" and "non-existent" are indistinguishable, leaking no title or metadata; a member who is removed or made a Viewer is denied within 5 s (p99) of the change in Membership |
+
+<!-- TODO ADR-03: the 5 s bound is a placeholder. Measure the lag of the events of Membership on the
+reference deployment and set the bound from it. -->
 
 **QA-07 — Brute-force login** *(constrains US-01)*
 

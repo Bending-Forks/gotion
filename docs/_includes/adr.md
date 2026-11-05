@@ -176,3 +176,112 @@ On the bad side:
   is in the page after the restart.
 - The SLI of QA-01 is measured from the submit to the ack, so an ack sent before the append
   shows up as a broken test, not as a better number.
+
+### ADR-03: Editing keeps a local copy of the roles, Account and Discussion ask Membership
+
+**Status:** Proposed.
+
+**Context.** Membership is the one writer of the roles and of who is a member, but three other
+contexts check them on their own commands, as the [Roles](#roles) table shows: Account lets only
+an Admin rename or delete a workspace and keeps the main workspace among the user's own, Editing
+lets a Viewer read but not change the content, and Discussion lets only members post, resolve
+and be mentioned. The [Context Map](#context-map) says *what* each of them gets from Membership;
+this record settles *how* it reaches them, which is
+[PP-04](analysis.html#open-pain-points). Notification is not part of it: it reacts to Member
+Invited and never checks a role or a membership.
+
+The three contexts differ in what is at stake. Editing checks the role on every edit, on the path
+that QA-01 bounds at 500 ms (p95) from the edit to the ack, and inside a session that stays open
+for as long as the page is edited. Account checks it on renaming and deleting a workspace, rare
+commands that cannot be undone. Discussion checks it on a comment, where a few milliseconds more
+change nothing. QA-06 asks that every request of a non-member or a Viewer is denied. The
+alternatives were:
+
+- **a local copy of the roles**, kept by each context from the events of Membership (Member
+  Joined, Member Role Changed, Member Removed, Member Left, Workspace Membership Deleted): a CQRS
+  view of Membership's data inside the context that reads it, also called Event-Carried State
+  Transfer;
+- **a synchronous query to Membership** on every command that needs the role;
+- **the roles in a JWT** issued at sign-in, which each service verifies on its own;
+- **the local copy, with a query to Membership when the copy has no row** for the user and the
+  workspace.
+
+The local copy costs nothing on the path of an edit and keeps Editing working while Membership is
+down, but a removed member keeps acting until the event arrives, and a member who has just joined
+is refused until it arrives. The query is always up to date, but it puts a call to another
+service before every ack, and when Membership is down nothing can be checked, so nothing is
+allowed. A JWT is checked at no cost, but it cannot be revoked before it expires, it would carry
+a role for every workspace of the user, and whoever issues it at sign-in would have to know the
+roles of Membership, adding a dependency to Account and Membership, already the tightest pair of
+the map.
+
+**Decision.** Each context reads the roles in the way that fits its commands:
+
+- **Editing keeps a local copy, and asks Membership only when the copy has no row.** Its
+  `AccessLookupService` is an adapter over a table `(UserId, WorkspaceId) → read | change`, fed
+  by the events of Membership: the anticorruption layer turns a role into what Editing cares
+  about while it updates the table. When the table has no row, the adapter asks Membership once
+  for that command. It does not write the answer into the table, so an answer that comes back
+  after a later Member Removed cannot overwrite it: the event fills the table soon after anyway.
+  If Membership does not answer, the command is denied. A short cache of the negative answers
+  keeps a non-member who probes pages (the stimulus of QA-06) from turning every attempt into a
+  call to Membership.
+- **Editing removes a removed member from the open sessions.** On Member Removed, Member Left and
+  Workspace Membership Deleted a policy makes the user leave the sessions of the workspace, so
+  they stop receiving the operations of its pages. A change to Viewer needs no policy: the next
+  edit is checked against the table and refused.
+- **Account asks Membership** whether the user is an Admin before renaming or deleting a
+  workspace, and whether the user is a member before setting a main workspace. If Membership
+  does not answer, the command is refused. Account keeps listening to Member Removed only for
+  the policy that replaces a removed main workspace.
+- **Discussion asks Membership** whether the author, every user mentioned and whoever resolves
+  are members, in one query per command for all of them. If Membership does not answer, the
+  command is refused. Discussion no longer listens to the events of Membership.
+- **Membership's open-host service answers two queries**, in the same published language as
+  its events: the role of a user in a workspace, and which of a set of users are members of a
+  workspace. For a workspace that does not exist it answers as for one the user is not a member
+  of, so the query leaks nothing (QA-06).
+- The sign-in token carries only the identity of the user, never a role.
+
+This settles PP-04.
+
+**Consequences.** On the good side:
+
+- The check on an edit is a local read, so QA-01 keeps its whole budget for the append of
+  [ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log), and Editing
+  keeps accepting edits while Membership is down.
+- A member who has just joined is not refused by Editing, and a new instance of Editing answers
+  while its table is still being rebuilt from the events.
+- Renaming and deleting a workspace see the roles as they are now: a demoted Admin cannot delete
+  it a moment later.
+- Discussion has no copy to keep, no consumer and nothing to rebuild.
+- The domain of Editing, Account and Discussion does not change: `AccessLookupService` and
+  `MembershipLookupService` are ports, and the choice is in their adapters.
+
+On the bad side:
+
+- **Editing is eventually consistent with Membership.** Between Member Removed and the moment
+  Editing applies it, a removed member can still edit and still receives the operations of the
+  session; between Member Role Changed and its event, a member demoted to Viewer can still edit.
+  The window is the lag of the events, bounded by the response measure added to QA-06.
+- **Account and Discussion depend on Membership at run time.** When it is down, no workspace can
+  be renamed or deleted and no comment posted. Account and Membership already depend on each
+  other through events; now each one also calls the other (Membership asks Account for the user
+  registered with an email address), so each one's availability depends on the other's.
+- Editing has two adapters behind one port, the table and the query, both to be tested.
+- While a new instance of Editing rebuilds its table, every check falls back to Membership, so a
+  restart under load moves that load onto Membership for a moment.
+- Membership's queries are part of its published language: changing them is a change of its
+  contract, versioned like its events.
+
+**Compliance.**
+
+- A contract test of each adapter checks that a denied, an unreachable and a slow Membership all
+  end in a refused command.
+- The security test of QA-06 removes a member while they are editing, demotes another to Viewer,
+  and checks that Editing refuses their edits and drops the removed one from the session within
+  the bound of QA-06.
+- The SLI of QA-01 is measured with the table of the roles in place, so a call to Membership on
+  the path of an edit shows up as a slower ack.
+- A fitness function checks that only the adapter of `AccessLookupService` in Editing consumes
+  the events of Membership, and that Discussion consumes none of them.
