@@ -46,25 +46,8 @@ because it asks Membership instead ([ADR-03](#adr-03-editing-keeps-a-local-copy-
 session channel is how Editing, the one relay of a page
 ([ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)),
 pushes each operation and the presence to the other collaborators, after the durable append
-and the ack, within the 300 ms (p95) of QA-02 (US-08).
-
-**One instance of Editing for each page.** The CRDT needs every operation of a page to go
-through the same relay (ADR-01), so a page belongs to one instance of Editing, chosen by a
-fixed rule instead of an assignment kept somewhere: the instances form a Kubernetes
-StatefulSet, and page `P` belongs to the instance `hash(P) mod N`. The gateway reads `P` from
-the path of the WebSocket and forwards it to that instance by its stable DNS name
-(`editing-k.editing`), so no table of assignments and no service discovery are needed. When an
-instance crashes, Kubernetes replaces it with a new one under the same identity, which replays
-the session log of its pages from the last snapshot (ADR-02) while the clients reconnect: the
-pages stay with that identity, and nothing is rebalanced (QA-04). Two instances must never
-relay the same page at once, or the order of its operations splits. A StatefulSet starts the
-replacement only after the old instance has terminated, and, whatever the orchestrator does,
-each append to the session log carries the sequence number it expects for its page, so an
-instance that falls behind gets its append refused and acknowledges nothing. The prototype
-runs N = 1, which is enough for the five editors of a page in QA-02: while that instance
-restarts every page is read-only, for up to the 60 s of QA-04, not only the pages of one
-instance. With Compose (QA-08) the same rule is one container that restarts on failure.
-Changing N moves pages between instances, so it is done with Editing stopped.
+and the ack, within the 300 ms (p95) of QA-02 (US-08). Each page belongs to one instance of Editing, which
+the gateway forwards its WebSocket to ([State and scaling](#state-and-scaling)).
 
 ![Event-based view of Gotion]({{ '/assets/components-and-connectors/event-based.svg' | relative_url }})
 

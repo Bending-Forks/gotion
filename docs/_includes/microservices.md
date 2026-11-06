@@ -177,3 +177,33 @@ running its commands, and the policies downstream run later: a deleted page keep
 threads for a while, and a removed member keeps editing until Editing applies Member Removed,
 within the bound of QA-06. No event may be lost between the change of state that raises it and
 Kafka; how a service ensures it belongs to [Patterns](#patterns).
+
+### State and scaling
+
+Account, Membership, Discussion and Notification keep no state in memory between two requests:
+their state is in their databases. Each one runs as a Kubernetes Deployment, whose replicas
+are interchangeable behind a Service, and the consumers of a service share its Kafka
+partitions as one consumer group. Since every event is keyed by its aggregate, the events of
+one aggregate still reach one replica in order. The prototype runs one replica of each; more
+replicas need no change to the services. Each database is one instance: the reference
+deployment is a single node, so replicating or partitioning the stores is out of scope.
+
+Editing is different: it holds the session of every open page, with its collaborators and the
+replica of its tree, and it is the one relay of the operations of a page.
+
+The CRDT needs every operation of a page to go through the same relay (ADR-01), so a page
+belongs to one instance of Editing, chosen by a fixed rule instead of an assignment kept somewhere: the instances form a Kubernetes
+StatefulSet, and page `P` belongs to the instance `hash(P) mod N`. The gateway reads `P` from
+the path of the WebSocket and forwards it to that instance by its stable DNS name
+(`editing-k.editing`), so no table of assignments and no service discovery are needed. When an
+instance crashes, Kubernetes replaces it with a new one under the same identity, which replays
+the session log of its pages from the last snapshot (ADR-02) while the clients reconnect: the
+pages stay with that identity, and nothing is rebalanced (QA-04). Two instances must never
+relay the same page at once, or the order of its operations splits. A StatefulSet starts the
+replacement only after the old instance has terminated, and, whatever the orchestrator does,
+each append to the session log carries the sequence number it expects for its page, so an
+instance that falls behind gets its append refused and acknowledges nothing. The prototype
+runs N = 1, which is enough for the five editors of a page in QA-02: while that instance
+restarts every page is read-only, for up to the 60 s of QA-04, not only the pages of one
+instance. With Compose (QA-08) the same rule is one container that restarts on failure.
+Changing N moves pages between instances, so it is done with Editing stopped.
