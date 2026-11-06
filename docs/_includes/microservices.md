@@ -176,8 +176,9 @@ the domain never waits on the network:
 The events have no such dependency. While Kafka or a consumer is down, the producer keeps
 running its commands, and the policies downstream run later: a deleted page keeps its comment
 threads for a while, and a removed member keeps editing until Editing applies Member Removed,
-within the bound of QA-06. No event may be lost between the change of state that raises it and
-Kafka; how a service ensures it belongs to [Patterns](#patterns).
+within the bound of QA-06. An event can still be lost if its service stops between the change
+of state that raises it and Kafka: [Event delivery](#event-delivery) says when, and why Gotion
+accepts it.
 
 ### State and scaling
 

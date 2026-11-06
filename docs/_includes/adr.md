@@ -322,3 +322,68 @@ On the bad side:
 - The CI builds, tests and packages each service in its own runtime, and `success` collects the jobs of both.
 - A contract test of each event checks that a consumer in one language reads what a producer in the other writes, against the shared schema.
 - The SLI of QA-01 is also measured while Editing takes a snapshot, so a task that blocks the thread shows up as a slower ack.
+
+### ADR-05: Services publish their events after the commit
+
+**Status:** Proposed.
+
+**Context.** Every service keeps its state in its own database and publishes its events on
+Kafka ([Decomposition](#decomposition), [Contracts](#contracts)). The two writes are in
+separate systems, and a service can stop between them. A policy downstream depends on each
+event: a lost Member Removed leaves a removed member able to edit, against QA-06, and a lost
+Workspace Deleted leaves the membership and the pages of the workspace in place. The
+alternatives were:
+
+- publish before the commit;
+- publish after the commit;
+- a transaction across the database and Kafka;
+- a Transactional Outbox: the event written into a table of the same database, in the same
+  transaction as the state, and published by a process that polls the table;
+- the same outbox, published by reading the transaction log of the database (change data
+  capture), with a connector such as Debezium on Kafka Connect.
+
+Publishing before the commit sends an event for a change that a failed commit then drops, so
+the other contexts react to something that did not happen. A transaction across the two is not
+available: Kafka has transactions of its own, but they cannot include the commit of an external
+database. Publishing after the commit never sends such an event, but loses one if the service
+stops after the commit and before Kafka acknowledges it. The outbox closes that gap: the event is
+stored with the state, and published again until it gets through. It costs, in every service
+that publishes, a table and its migration, a publisher, the deletion of the events already
+sent, and a lock so that only one replica publishes at a time and the events of an aggregate
+keep their order. Change data capture adds no polling, but also Kafka Connect and a connector
+next to the services.
+
+**Decision.** We will publish every event after the change of state that raises it is stored,
+and accept that an event can be lost when its service stops in between:
+
+- Account, Membership and Discussion publish after the commit of the transaction;
+- Editing publishes after the operation is in the session log
+  ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)) and
+  applied to the Page Block Tree;
+- the Kafka producer retries until Kafka acknowledges each event, keeping the events in memory
+  while Kafka is down.
+
+**Consequences.** On the good side:
+
+- No event is published for a change that was not stored.
+- Nothing is added to the services or to the deployment, and the replicas of a service stay
+  interchangeable, as [State and scaling](#state-and-scaling) assumes.
+- An outbox can be added later inside the service that needs it: its events, their contracts
+  and the idempotent consumers stay the same.
+
+On the bad side:
+
+- An event is lost if its service stops after the commit and before Kafka acknowledges it, and
+  nothing raises it again. The window is a few milliseconds in a crash, but lasts as long as
+  Kafka is down, since the events wait in memory.
+- A lost event is a policy that never runs, and nothing reports it. A lost Member Removed
+  breaks QA-06 for that member; a lost Block Deleted or Page Deleted leaves its comment threads
+  in Discussion. The chaos test of QA-04 kills Editing on purpose, so it can leave such threads,
+  although no edit is lost.
+- The cascades across contexts stop at a lost event ([Event delivery](#event-delivery)).
+
+**Compliance.**
+
+- A test of each service makes the commit fail and checks that no event is published.
+- A test stops Kafka, runs a command, starts Kafka again and checks that the event arrives
+  while the service keeps running.
