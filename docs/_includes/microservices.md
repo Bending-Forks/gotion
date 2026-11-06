@@ -1,8 +1,9 @@
 ## Microservices
 
 Each bounded context of the [strategic design](#bounded-contexts) runs as one microservice. This
-section says why the system is split that way, and what each service offers and needs. The
-patterns the services rely on are in [Patterns](#patterns).
+section says why the system is split that way, what each service offers and needs, how the
+services depend on each other at run time, how they keep their state and scale, and which
+contracts hold them together. The patterns the services rely on are in [Patterns](#patterns).
 
 ### Decomposition
 
@@ -207,3 +208,44 @@ runs N = 1, which is enough for the five editors of a page in QA-02: while that 
 restarts every page is read-only, for up to the 60 s of QA-04, not only the pages of one
 instance. With Compose (QA-08) the same rule is one container that restarts on failure.
 Changing N moves pages between instances, so it is done with Editing stopped.
+
+### Contracts
+
+The services are deployed and versioned separately, so what one of them shows to the others is
+a contract: the client API, the queries it answers and the events it publishes. Inside a
+service the model can change freely, and only a change of the contract concerns another
+service.
+
+- **Each contract has a specification kept with its service.** The REST APIs, the client API
+  and the queries alike, are described in OpenAPI; the events and their channels in AsyncAPI.
+  The schema of each message is the source from which Go and TypeScript generate their types,
+  since an event of Editing is published in TypeScript and consumed in Go, and the reverse
+  (ADR-04).
+- **Every event has the same envelope:** its own identifier, its type and the version of its
+  schema, the identity of its aggregate, which is also its Kafka key, and when it happened.
+  The body carries the identities and values the consumers need, never an object of the
+  producer's model.
+- **A compatible change keeps the version.** Adding an optional field is compatible: a consumer
+  ignores a field it does not know. Removing or renaming a field, changing its type or its
+  meaning is not: the producer publishes the new version next to the old one until every
+  consumer has moved, then stops the old one. The queries follow the same rule, with the
+  version in their path.
+- **Every consumer is idempotent.** Kafka delivers an event at least once, so a consumer may
+  read it twice, for instance after a restart. A consumer commits its offset only once the
+  change the event causes is stored, and keeps the identifiers of the events it has applied,
+  so a repeated one changes nothing. Many policies are idempotent anyway: deleting the threads
+  of a page that has none changes nothing.
+- **A contract test guards each contract.** The consumer states what it reads, and the test runs
+  in the pipeline of the producer, so a change that breaks a consumer fails before it is
+  merged. For the events, it checks that a consumer in one language reads what a producer in
+  the other writes (ADR-04).
+
+The protocol between the client and Editing is not one of these contracts: both import it
+from the same package as the CRDT, and they are upgraded together (ADR-01, ADR-04). The
+operations in the session log are the exception, because they outlive the version that wrote
+them: each one carries the version of the protocol, so that the older ones can still be
+replayed (ADR-02).
+
+<!-- TODO ADR: choose the format of the schemas of the events and the queries (JSON Schema,
+Avro or Protocol Buffers), which ADR-04 leaves open, and whether a schema registry checks the
+compatibility of a new version before it is published. -->
