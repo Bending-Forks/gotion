@@ -133,3 +133,47 @@ which needs the workspaces of Account and the memberships of Membership.
 | Publishes | Nothing |
 | Consumes | Member Invited and Comment Posted, through an anticorruption layer that turns them into its own `Subject`, an invitation or a mention |
 | Owns | The notifications, as current state |
+
+### Dependencies at run time
+
+A synchronous call couples the caller to the callee in time: the caller's command can only
+complete while the callee is up, so the availability of the command is at most the product of
+the availabilities of the two services. An event couples them only eventually: the producer
+does not wait, and a consumer that is down reads the event from Kafka when it is back. Gotion
+keeps the synchronous calls between services to the four that check data owned by another
+context before a command:
+
+| Caller | Callee | Query | Before | If the callee fails |
+|---|---|---|---|---|
+| Account | Membership | Role of a user | Rename, Delete workspace; Set main workspace | The command is refused |
+| Membership | Account | `UserId` of an email address | Invite member | The command is refused |
+| Editing | Membership | Role of a user, only without a row in the local copy | Join session, Submit edit, Set title, icon, cover | The command is denied |
+| Discussion | Membership | Which users are members | Post comment, Resolve thread | The command is refused |
+
+Membership is the one service asked by three others, and no service calls Editing,
+Discussion or Notification. A crash of Membership therefore stops renaming and deleting
+workspaces, inviting and commenting, but not the editing of the pages whose roles Editing
+already holds. Account and Membership call each other, so each one's availability depends on
+the other's, as ADR-03 records.
+
+Every call is made by the adapter of a port, before the command reaches the aggregate (see
+[Building blocks](#building-blocks)), so the policy for a failure lives in that adapter, and
+the domain never waits on the network:
+
+- **Fail closed.** A call that fails, times out or finds the circuit open ends in a refused
+  command, never in an allowed one, as QA-06 requires.
+- **Timeout.** Each call has a timeout well within the budget of the command that waits for it,
+  so a slow callee never holds the caller's requests until they pile up. The values are set
+  once the services are measured on the reference deployment.
+- **One retry.** The queries only read, so the adapter retries a failed one once, within the
+  same timeout.
+- **Circuit breaker.** After repeated failures the adapter stops calling the callee for a
+  while and refuses at once, then lets one call through to check whether the callee is back.
+  A callee that is down then costs its callers a quick refusal instead of a timeout on every
+  command.
+
+The events have no such dependency. While Kafka or a consumer is down, the producer keeps
+running its commands, and the policies downstream run later: a deleted page keeps its comment
+threads for a while, and a removed member keeps editing until Editing applies Member Removed,
+within the bound of QA-06. No event may be lost between the change of state that raises it and
+Kafka; how a service ensures it belongs to [Patterns](#patterns).
