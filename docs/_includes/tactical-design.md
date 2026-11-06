@@ -15,6 +15,14 @@ Three rules shape every aggregate:
    kept by a policy that reacts to an event, so it holds eventually rather than at once. Those
    rules are collected in [Rules across aggregates](#rules-across-aggregates).
 
+An aggregate and its factory keep only what lies inside the aggregate. A check on data outside
+it, such as an email address no other user has or a role held by Membership, is a precondition
+of the command, not an invariant: the application service that handles the command asks a
+domain service first, and calls the factory or the root only if the check passes. The domain
+services that ask another context are ports, so their call over the network never runs inside
+a method of an aggregate. The diagrams therefore draw no aggregate or factory using a domain
+service.
+
 For each aggregate, the commands are listed with who issues them: an actor, named by the role
 the command requires, or a policy. A role is held by Membership, so the commands of the other
 contexts check it from outside, as summarised in [Roles](#roles).
@@ -60,8 +68,9 @@ classDiagram
     <<Factory>>
     create(email, password) User
   }
-  class AuthService {
+  class EmailAvailability {
     <<Domain Service>>
+    isAvailable(email) Boolean
   }
   class UserRegistered {
     <<Domain Event>>
@@ -74,8 +83,7 @@ classDiagram
   UserRepository ..> User : stores
   WorkspaceRepository ..> Workspace : stores
   UserFactory ..> User : creates
-  UserFactory ..> AuthService : uses
-  AuthService ..> UserRepository : uses
+  EmailAvailability ..> UserRepository : uses
   UserRegistered ..> User : createFirstWorkspace
   User ..> Workspace : creates
 ```
@@ -84,7 +92,7 @@ classDiagram
 
 The identity that signs in (US-01), and the owner of the user's preferences.
 
-- The email address is unique among users. The rule spans every User, so before a new user is created the User factory asks the `AuthService` to check the address against the `UserRepository`.
+- The email address is unique among users. The rule spans every User, so Register asks `EmailAvailability` to check the address against the `UserRepository` before the User factory creates the user. Checking and then creating is not atomic, so the store of the users also keeps the address unique, and of two concurrent registrations with the same address the second fails.
 - The password is kept only as a `PasswordHash`; signing in compares against it and changes no
   state.
 - The main workspace is one the user is a member of. Membership holds that fact, so the check is
@@ -166,7 +174,6 @@ classDiagram
   Invitation --> Role
   WorkspaceMembershipRepository ..> WorkspaceMembership : stores
   WorkspaceMembershipFactory ..> WorkspaceMembership : creates
-  WorkspaceMembership ..> UserLookupService : uses
 ```
 
 #### Workspace Membership
@@ -185,7 +192,7 @@ identified by the `WorkspaceId` of its workspace.
 - Remove member is refused if the user belongs to no other workspace (US-03). This check spans
   Workspace Membership aggregates: concurrent removals must not leave the user without a workspace.
 - An invitation is addressed to a registered user, who receives it as an in-app notification (US-10), and who is neither a member nor already invited. It carries the role the invitee will have, chosen by the Admin.
-- The Admin invites by email. The `UserLookupService` asks Account whether the address belongs to a registered user and gets their `UserId`; only then does the membership add the invitation. The other checks are local to the membership.
+- The Admin invites by email. Before the command reaches the membership, the `UserLookupService` asks Account whether the address belongs to a registered user and gets their `UserId`; only then does the membership add the invitation. The other checks are local to the membership.
 - Only the invitee accepts or declines an invitation, and either answer ends it. An invitation does not expire: it stays pending until the invitee answers. It never changes in between, and a user has at most one pending invitation per workspace, so it is a value object told apart by its invitee.
 
 | Command | Issued by | Event |
@@ -327,8 +334,6 @@ classDiagram
   RealTimeEditingSessionRepository ..> RealTimeEditingSession : stores
   Page ..> SubPage : creates
   Page ..> RealTimeEditingSession : creates
-  Page ..> AccessLookupService : uses
-  RealTimeEditingSession ..> AccessLookupService : uses
 ```
 
 #### Page
@@ -348,7 +353,7 @@ A document of a workspace, with its metadata and its place in the page tree (US-
   whose page block it held is deleted in turn, down to the last level.
 - The metadata is set only on the page itself. The page block shows the title, icon and cover
   through the read model, without keeping a copy, so nothing in the block has to follow it.
-- Setting the metadata on the page itself needs a role that may change the content. The roles live in Membership, so Page asks the `AccessLookupService`, which only says whether a user of the workspace can read the content or also change it. It reads a local copy of the roles, fed by the events of Membership, and asks Membership only when the copy has no row ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)).
+- Setting the metadata on the page itself needs a role that may change the content. The roles live in Membership, so the `AccessLookupService` is asked before the command reaches Page. It only says whether a user of the workspace can read the content or also change it. It reads a local copy of the roles, fed by the events of Membership, and asks Membership only when the copy has no row ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)).
 - The title is plain text. Icon and cover are optional. The icon is the name of an icon from the Lucide set, which the client draws, so the page stores no image. The cover is a link to an image, because no story asks for uploading files.
 
 | Command | Issued by | Event |
@@ -412,12 +417,12 @@ while reviewing the board, the session exists even with a single collaborator: t
 session opens it, so editing alone and editing together follow the same path.
 
 - Opening goes through `openSession` on Page, so a session exists only for a page that exists, and it starts with the collaborator who joined in its presence. It keeps the workspace of its page, which never changes, for the checks on later joins and edits. The page itself does not change, so one command still changes one aggregate.
-- Only a collaborator who has joined can submit edits, and only with a role that may change the content. A Viewer can join to follow the edits and appear in the presence, but cannot submit. The session, and Page when it opens one, ask the `AccessLookupService` whether whoever joins can read the content and whoever submits an edit can also change it.
+- Only a collaborator who has joined can submit edits, and only with a role that may change the content. A Viewer can join to follow the edits and appear in the presence, but cannot submit. Before Join session and Submit edit reach the session, or Page when it opens one, the `AccessLookupService` is asked whether whoever joins can read the content and whoever submits an edit can also change it.
 - The session does not merge. Every replica merges concurrent edits on its own with a CRDT of
   ours, which settles PP-01
   ([ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)),
   so the `change` carried by an `Edit` is an operation of that CRDT. Submit edit checks that the
-  author has joined the open session with a role that may change the content, then hands the
+  author has joined the open session, once the role has been checked, then hands the
   operation to the [Page Block Tree](#page-block-tree), which checks it against its own rules
   and applies it. The session itself does not change, so one command still changes one
   aggregate. An accepted operation is appended to the session log and acknowledged, and only
@@ -490,8 +495,6 @@ classDiagram
   Comment --> Mention
   CommentThreadRepository ..> CommentThread : stores
   CommentThreadFactory ..> CommentThread : creates
-  CommentThreadFactory ..> MembershipLookupService : uses
-  CommentThread ..> MembershipLookupService : uses
 ```
 
 #### Comment Thread
@@ -501,7 +504,7 @@ A conversation attached to a page or to one of its blocks (US-09).
 - The anchor is fixed when the thread opens and never changes. A page anchor holds a thread on the whole page, a block anchor a thread on one block. Both name the page, because a `BlockId` alone does not tell Discussion which page the block is on, and the threads of a page must be found when it is shown or deleted.
 - A thread is never empty: the `CommentThreadFactory` opens it together with its first comment.
 - A resolved thread accepts no new comments.
-- A mention names a member of the workspace. The members live in Membership, so the thread and its factory ask the `MembershipLookupService` whether the author of a comment, every user it mentions and whoever resolves the thread are members, all in one query to Membership ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)).
+- A mention names a member of the workspace. The members live in Membership, so before the thread or its factory is called, the `MembershipLookupService` is asked whether the author of a comment, every user it mentions and whoever resolves the thread are members, all in one query to Membership ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)).
 - Any member of the workspace posts and resolves, whatever their role: a comment does not
   change the content of the page, so a Viewer can take part in the discussion too.
 
