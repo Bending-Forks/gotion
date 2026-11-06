@@ -47,11 +47,24 @@ in the same pull request. `gh-pages` is kept as the tag `archive/gh-pages`.
 
 The CI runs on every pull request and on every push to `main`:
 
-- `test` runs the Node tests on Linux, Windows and macOS, with Node 22 and 24;
+- `test`, on pull requests only, runs the Node tests on Linux with Node 24: they cover a
+  script that runs in the reader's browser, so other systems or Node versions would tell us
+  nothing more;
 - `site` builds the report with Jekyll, failing on invalid front matter;
 - `commits`, on pull requests only, checks the title of every commit against Conventional
   Commits, so skipping the local hook does not help;
 - `success` collects the result of the jobs above.
+
+A push to `main` does not repeat `test` and `commits`: the ruleset lets in only a branch that
+is up to date with `main` and green, so what reaches `main` has the same content the pull
+request already checked. A new push to a pull request cancels the runs still going on its
+older commits; runs on `main` are never cancelled.
+
+<!-- TODO first service: add a `changes` job that lists the files changed by the pull request
+(`git diff --name-only` between base and head), and run each job only for its own part: `site`
+for `docs/`, and for every service a test matrix over the operating systems and the versions
+of its runtime (Go, Node.js, see ADR-04), only when its folder changes. Do not filter with
+`paths:` on the trigger: `success` must always report, or the ruleset blocks the pull request. -->
 
 On a push to `main`, and only if `success` passed, `deploy` publishes the report to GitHub
 Pages. The deployment goes to the `github-pages` environment, which accepts only `main`, so a
