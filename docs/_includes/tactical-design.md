@@ -2,7 +2,7 @@
 
 ### Building blocks
 
-Each bounded context has its own model, drawn as a UML class diagram with the DDD stereotypes `Aggregate Root`, `Entity`, `Value Object`, `Repository`, `Factory`, `Domain Service` and `Domain Event`. A box groups the classes of one aggregate. Every aggregate root has a repository that stores and loads it whole, and a factory only where creating it has a rule to keep.
+Each bounded context has its own model, drawn as a UML class diagram with the DDD stereotypes `Aggregate Root`, `Entity`, `Value Object`, `Repository`, `Factory`, `Domain Service` and `Domain Event`. A box groups the classes of one aggregate. Every aggregate root has a repository that stores and loads it whole, and a factory only where creating it has a rule to keep. Of the domain events, the diagrams draw only User Registered: it is what makes Account create the first workspace of a new user on its own, with no command from the user, and make it their main one (US-01). The other events are listed in the command table of the aggregate that emits them.
 
 Three rules shape every aggregate:
 
