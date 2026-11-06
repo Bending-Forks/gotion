@@ -129,8 +129,8 @@ risk:
 makes Editing the one relay of the operations of a page, so Editing decides when an edit counts
 as acknowledged. Three scenarios depend on that moment: QA-01 times the server acknowledgement
 and asks for the character to be durably persisted, QA-04 asks that every acknowledged edit
-survives a crash of Editing, and QA-05 that none is silently discarded. The session merges an
-operation, and the policy *when edits are merged, apply them to the page block tree* stores it.
+survives a crash of Editing, and QA-05 that none is silently discarded. The session takes an
+operation and hands it to the Page Block Tree, which checks it and applies it.
 The alternatives were:
 
 - acknowledge after the merge, and apply the operation to the tree asynchronously;
@@ -166,7 +166,9 @@ On the bad side:
   operations before them.
 - The tree lags behind the log for a moment, so anything that reads the tree, such as the page
   open of QA-03, may miss the last operations.
-- The store of the log is still to choose; it must make an append durable before it returns.
+- The store of the log is still to choose; it must make an append durable before it returns,
+  and refuse an append whose sequence number is not the next one of its page, so that two
+  instances of Editing can never both extend the log of the same page.
 - The operations in the log outlive the version of the protocol that wrote them: a change to the
   operations needs a version on each one and a way to replay the older ones.
 
