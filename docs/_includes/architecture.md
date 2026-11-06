@@ -104,7 +104,6 @@ which Grafana reads through Prometheus.
   the list of sub-pages: over the WebSocket or with a REST interface of its own;
 - whether the ack instant of QA-01 and QA-02 is when Editing sends it or when the author gets it;
 - whether presence skips the session log;
-- which Editing events go to Kafka besides Page Deleted and Block Deleted;
 - where the read models live (page block metadata, workspace directory);
 - the properties of the pipes (capacity, when full, when empty). -->
 

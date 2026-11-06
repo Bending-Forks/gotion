@@ -58,3 +58,78 @@ service now keeps on its own:
   about invitations, which come from Membership, so inside Discussion it would make Discussion
   consume the events of Membership again, which ADR-03 removed. On its own, Notification only
   subscribes, and no service depends on it at run time.
+
+### Services
+
+What each service offers and needs. The *client API* goes through the API gateway; the queries
+answered to other services, the events and the channels they travel on are its published
+language ([context map](#context-map)). Every event is published on Kafka keyed by the
+identity of its aggregate. A service publishes only the events that another context
+subscribes to: the policies that react to events of the same service, such as the deletion
+cascade inside Editing, run inside it and are not part of its published language.
+
+#### Account
+
+| Aspect | Description |
+|---|---|
+| Responsibility | Users and workspaces (`User`, `Workspace`), US-01, US-02 |
+| Client API | Register, Sign in, Create, Rename and Delete workspace, Set main workspace. Sign in issues the token the gateway checks, which carries only the identity of the user (ADR-03) and is rate limited per account (QA-07) |
+| Answers | The `UserId` registered with an email address, to Membership |
+| Asks | Membership: the role of the user in the workspace, which must be Admin before Rename and Delete workspace, and any role before Set main workspace |
+| Publishes | Workspace Created, Workspace Deleted |
+| Consumes | Member Removed, as a conformist, to replace a removed main workspace |
+| Owns | The users and the workspaces, as current state; the store keeps the email address unique |
+
+#### Membership
+
+| Aspect | Description |
+|---|---|
+| Responsibility | Members, roles and invitations (`Workspace Membership`), US-03 |
+| Client API | Invite member, Accept and Decline invitation, Change member role, Remove member, Leave workspace; the members and invitations of a workspace |
+| Answers | The role of a user in a workspace, to Account and Editing; which of a set of users are members of a workspace, to Discussion. A workspace that does not exist is answered as one the user is not a member of (QA-06) |
+| Asks | Account: the `UserId` of an email address, before Invite member |
+| Publishes | Member Joined, Member Role Changed, Member Removed, Member Left, Workspace Membership Deleted, Member Invited |
+| Consumes | Workspace Created and Workspace Deleted, as a conformist, to create and delete the membership of a workspace |
+| Owns | One Workspace Membership per workspace, as current state |
+
+#### Editing
+
+| Aspect | Description |
+|---|---|
+| Responsibility | Pages and their content (`Page`, `Page Block Tree`, `Real-time Editing Session`), US-04 to US-08; the one relay of the operations of a page (ADR-01) |
+| Client API | One WebSocket per open page: Join and Leave session, Submit edit, then the ack or the refusal of each operation, the operations of the others, the presence and Session Closed. Over REST: Set title, icon, cover |
+| Answers | Nothing: no service asks Editing, since every `PageId` holds the `WorkspaceId` of its page |
+| Asks | Membership: the role of a user, only when the local copy of the roles has no row (ADR-03) |
+| Publishes | Page Deleted, Block Deleted, for Discussion |
+| Consumes | Workspace Created and Workspace Deleted, as a conformist, to create and delete the root page; Member Joined, Member Role Changed, Member Removed, Member Left and Workspace Membership Deleted, through an anticorruption layer that turns a role into *read* or *change* |
+| Owns | Event-sourced (ADR-02): the session log of every page, snapshots of the Page Block Trees, the pages and the local copy of the roles |
+
+Two things are still open, among the points under
+[Components and Connectors](#components-and-connectors): how Editing serves the opening of a
+page, the snapshot for a collaborator who joins late and the list of sub-pages; and which
+service holds the read models, such as the workspace directory a user switches workspace with,
+which needs the workspaces of Account and the memberships of Membership.
+
+#### Discussion
+
+| Aspect | Description |
+|---|---|
+| Responsibility | Comment threads on pages and blocks (`Comment Thread`), US-09 |
+| Client API | Post comment, which opens a new thread with its first comment or adds one to an open thread, Resolve thread; the threads of a page |
+| Answers | Nothing |
+| Asks | Membership: whether the author, the users mentioned and whoever resolves are members, in one query per command |
+| Publishes | Comment Posted, for Notification |
+| Consumes | Page Deleted and Block Deleted, as a conformist, to delete the threads anchored to them |
+| Owns | The comment threads, as current state |
+
+#### Notification
+
+| Aspect | Description |
+|---|---|
+| Responsibility | The in-app notifications of invitations and mentions (`Notification`), US-10 |
+| Client API | The notifications of the user, Mark as read |
+| Answers | Nothing |
+| Asks | Nothing |
+| Publishes | Nothing |
+| Consumes | Member Invited and Comment Posted, through an anticorruption layer that turns them into its own `Subject`, an invitation or a mention |
+| Owns | The notifications, as current state |
