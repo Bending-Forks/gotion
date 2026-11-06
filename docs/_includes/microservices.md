@@ -118,7 +118,7 @@ Every call is made by the adapter of a port, before the command reaches the aggr
 - **One retry.** The queries only read, so the adapter retries a failed one once, within the same timeout.
 - **Circuit breaker.** After repeated failures the adapter stops calling the callee for a while and refuses at once, then lets one call through to check whether the callee is back. A callee that is down then costs its callers a quick refusal instead of a timeout on every command.
 
-The events have no such dependency. While Kafka or a consumer is down, the producer keeps running its commands, and the policies downstream run later: a deleted page keeps its comment threads for a while, and a removed member keeps editing until Editing applies Member Removed, within the bound of QA-06. No event may be lost between the change of state that raises it and Kafka; how a service ensures it belongs to [Patterns](#patterns).
+The events have no such dependency. While Kafka or a consumer is down, the producer keeps running its commands, and the policies downstream run later: a deleted page keeps its comment threads for a while, and a removed member keeps editing until Editing applies Member Removed, within the bound of QA-06. An event can still be lost if its service stops between the change of state that raises it and Kafka: [Event delivery](#event-delivery) says when, and why Gotion accepts it.
 
 ### State and scaling
 
