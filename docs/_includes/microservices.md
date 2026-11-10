@@ -43,9 +43,9 @@ What each service offers and needs. The *client API* goes through the API gatewa
 | Responsibility | Users and workspaces (`User`, `Workspace`), US-01, US-02 |
 | Client API | Register, Sign in, Create, Rename and Delete workspace, Set main workspace. Sign in issues the token the gateway checks, which carries only the identity of the user (ADR-03) and is rate limited per account (QA-07) |
 | Answers | The `UserId` registered with an email address, to Membership; the names of a batch of workspaces and the main workspace of a user, to the gateway for the [Workspace directory](#api-composition) |
-| Asks | Membership: the role of the user in the workspace, which must be Admin before Rename and Delete workspace, and any role before Set main workspace |
+| Asks | Membership: the role of the user in the workspace, which must be Admin before Rename and Delete workspace, and any role before opening a workspace, which sets it as main (Set main workspace) |
 | Publishes | Workspace Created, Workspace Deleted |
-| Consumes | Member Removed, as a conformist, to replace a removed main workspace |
+| Consumes | Member Removed, Member Left and Workspace Membership Deleted, as a conformist, to replace an inaccessible main workspace with the next accessible one in directory order, or clear it if none remain |
 | Owns | The users and the workspaces, as current state; the store keeps the email address unique |
 
 #### Membership

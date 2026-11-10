@@ -38,7 +38,7 @@ classDiagram
       id: UserId
       email: Email
       password: PasswordHash
-      mainWorkspace: WorkspaceId
+      mainWorkspace: WorkspaceId [0..1]
       createWorkspace(name) Workspace
     }
     class Email {
@@ -90,29 +90,41 @@ classDiagram
 
 #### User
 
-The identity that signs in (US-01), and the owner of the user's preferences.
+The identity that signs in (US-01), and the owner of the user's main workspace (US-02).
 
 - The email address is unique among users. The rule spans every User, so Register asks `EmailAvailability` to check the address against the `UserRepository` before the User factory creates the user. Checking and then creating is not atomic, so the store of the users also keeps the address unique, and of two concurrent registrations with the same address the second fails.
 - The password is kept only as a `PasswordHash`; signing in compares against it and changes no
   state.
-- The main workspace is one the user is a member of. Membership holds that fact, so the check is
-  made against it, with a query to Membership (see [Roles](#roles) and [ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)). If another Admin removes the user from that workspace,
-  a policy automatically sets one of their remaining workspaces as main (US-02). It changes
-  the preference only if the removed workspace is still the user's main one.
+- Opening or switching workspace checks that it exists and that the user is a member, then
+  sets it as the user's main workspace (see [Roles](#roles) and [ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)).
+- At login, Gotion reopens the main workspace if still accessible. Otherwise it selects the
+  next accessible workspace in directory order, wrapping to the beginning after the last
+  entry, and makes it main. With no main set yet, it opens the first accessible workspace.
+  With no workspaces, main is unset and login shows an empty directory, from which the user
+  can create a workspace or accept an invitation.
+- On Member Removed, Member Left or Workspace Membership Deleted, a policy applies the same
+  successor rule, or clears main if no workspaces remain. It changes main only if it still
+  refers to the lost workspace and access is still unavailable, preserving a later switch.
+  The *Workspace directory* read model uses the same stable order as the displayed list and
+  resolves the successor using the lost entry's position before removal. A failed membership
+  query refuses access without changing main; it does not mean the user has no workspaces.
 
 | Command | Issued by | Event |
 |---|---|---|
 | Register | Visitor | User Registered |
 | Sign in | User | User Signed In |
-| Set main workspace | User; policies *whenever a user's first workspace is created, make it their main workspace* and *when a member is removed from their main workspace, set a remaining workspace as main* | Main Workspace Changed |
+| Set main workspace | User, on opening or switching workspace; policy *when main becomes inaccessible, select the next accessible workspace in directory order or clear main if none remain* | Main Workspace Changed |
 
-The main workspace is a preference of one user, while a workspace is shared by all its members. Keeping it on Workspace, as the board did, would need a flag per member, and changing the main workspace would update two workspaces in one transaction. The active workspace is not in the model at all: switching workspace is a navigation choice of the client, with no rule to protect and no policy reacting to it, served by the *Workspace directory*, which the API gateway composes from Membership and Account ([API Composition](#api-composition)).
+The main workspace belongs to User, since login must remember it across sessions.
+Opening or switching workspace updates that one aggregate. The active workspace remains a
+navigation choice of each client; available workspaces come from the *Workspace directory*,
+which the API gateway composes from Membership and Account ([API Composition](#api-composition)).
 
 #### Workspace
 
 A separate space of pages (US-02). The name is a `WorkspaceName`, never blank.
 
-- A workspace is created by a user, through `createWorkspace` on User, so it always has a registered creator, whom Workspace Created carries. The user itself does not change, so one command still changes one aggregate: making it the main workspace stays a separate command.
+- A workspace is created by a user, through `createWorkspace` on User, so it always has a registered creator, whom Workspace Created carries. The user itself does not change, so one command still changes one aggregate: recording a visit stays a separate command.
 - Only an Admin of the workspace renames or deletes it.
 - A deleted workspace accepts no further command. Its root page and its Workspace Membership are
   removed by policies, not in the same transaction.
@@ -185,8 +197,8 @@ identified by the `WorkspaceId` of its workspace.
 - A user is a member at most once, with exactly one role.
 - Only an Admin invites, changes roles and removes members. This check is local, since the roles
   live here.
-- Remove member is refused if the user belongs to no other workspace (US-03). This check spans
-  Workspace Membership aggregates: concurrent removals must not leave the user without a workspace.
+- Remove member and Leave workspace may leave the user with no workspaces (US-03); only the
+  last-Admin invariant prevents either operation.
 - An invitation is addressed to a registered user, who receives it as an in-app notification (US-10), and who is neither a member nor already invited. It carries the role the invitee will have, chosen by the Admin.
 - The Admin invites by email. Before the command reaches the membership, the `UserLookupService` asks Account whether the address belongs to a registered user and gets their `UserId`; only then does the membership add the invitation. The other checks are local to the membership.
 - Only the invitee accepts or declines an invitation, and either answer ends it. An invitation does not expire: it stays pending until the invitee answers. It never changes in between, and a user has at most one pending invitation per workspace, so it is a value object told apart by its invitee.
@@ -568,8 +580,8 @@ root page may not exist, and the read models must allow for it.
 
 | Rule | Kept by | Traces to |
 |---|---|---|
-| A new user has a workspace, and it is their main one | *Whenever a user registers, create their first workspace*; *whenever a user's first workspace is created, make it their main workspace* | US-01, US-02 |
-| Removing a member leaves them in at least one workspace and replaces their main one if needed | Remove member checks that another workspace membership remains; *when Member Removed concerns the user's current main workspace, automatically set a remaining workspace as main* | US-02, US-03 |
+| A new user has a first workspace | *Whenever a user registers, create their first workspace* | US-01, US-02 |
+| Losing the main workspace selects the next accessible one; users may have no workspaces | *On Member Removed, Member Left or Workspace Membership Deleted, if main still refers to the lost workspace and access is still unavailable, choose the next accessible workspace in directory order, wrapping if needed, or clear main if none remain* | US-02, US-03 |
 | A workspace has an Admin from its creation | *Whenever a workspace is created, accept the creator as Admin* | US-03 |
 | A workspace has exactly one root page | *Whenever a workspace is created, create its root page*, plus the identity of the root page, derived from its workspace | US-04 |
 | Every page block has its sub-page, and every sub-page its page block | *Whenever a page block is inserted, moved or deleted…* | US-04 |
@@ -593,16 +605,17 @@ The table states which role each command requires; the relations that carry them
 | Set title, icon, cover; Submit edit | Editing | ✓ | ✓ | |
 | Join session | Editing | ✓ | ✓ | ✓ |
 
-Three more checks read Membership without a role: the main workspace of a user is one the user
-is a member of, only a member posts a comment or resolves a thread, and a mention names a member
+Three more checks read Membership without a role: opening a workspace requires membership,
+only a member posts a comment or resolves a thread, and a mention names a member
 of the workspace.
 
 ### Changes from the board
 
 The model refines the board, and these changes are to be carried back to it:
 
-- *Set main workspace* moves from Workspace to User, and *Switch workspace* with *Workspace
-  Switched* leave the model, as explained under [User](#user).
+- *Set main workspace* moves to User and runs on every successful workspace opening or switch.
+  *Switch workspace* with *Workspace Switched* is covered by *Set main workspace* → *Main
+  Workspace Changed*.
 - *Rename workspace* → *Workspace Renamed* is added, as US-02 requires.
 - *Decline invitation* → *Invitation Declined* settles PP-02, and *Leave workspace* → *Member
   Left* settles PP-03. The sticky *not possible to leave the workspace if you are last Admin*

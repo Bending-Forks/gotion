@@ -185,7 +185,7 @@ On the bad side:
 
 **Context.** Membership is the one writer of the roles and of who is a member, but three other
 contexts check them on their own commands, as the [Roles](#roles) table shows: Account lets only
-an Admin rename or delete a workspace and keeps the main workspace among the user's own, Editing
+an Admin rename or delete a workspace and opens only workspaces the user belongs to, Editing
 lets a Viewer read but not change the content, and Discussion lets only members post, resolve
 and be mentioned. The [Context Map](#context-map) says *what* each of them gets from Membership;
 this record settles *how* it reaches them, which is
@@ -233,9 +233,11 @@ the map.
   they stop receiving the operations of its pages. A change to Viewer needs no policy: the next
   edit is checked against the table and refused.
 - **Account asks Membership** whether the user is an Admin before renaming or deleting a
-  workspace, and whether the user is a member before setting a main workspace. If Membership
-  does not answer, the command is refused. Account keeps listening to Member Removed only for
-  the policy that replaces a removed main workspace.
+  workspace, and whether the user is a member before opening a workspace, including when
+  reopening the main one at login. If Membership does not answer, access is refused and the
+  saved main workspace stays unchanged. Account listens to Member Removed, Member Left and
+  Workspace Membership Deleted to replace an inaccessible main workspace with the next
+  accessible one in directory order, wrapping if needed, or clear it if none remain.
 - **Discussion asks Membership** whether the author, every user mentioned and whoever resolves
   are members, in one query per command for all of them. If Membership does not answer, the
   command is refused. Discussion no longer listens to the events of Membership.

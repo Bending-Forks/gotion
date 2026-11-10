@@ -39,14 +39,14 @@ language: [`gotion.cml`]({{ '/assets/context-map/gotion.cml' | relative_url }}) 
 |---|---|---|---|
 | Account | Membership | OHS, PL → CF | Workspace Created (*accept the creator as Admin*), Workspace Deleted (*delete its membership*); on request, the `UserId` registered with an email address (*invite member*) |
 | Account | Editing | OHS, PL → CF | Workspace Created (*create its root page*), Workspace Deleted (*delete its root page*) |
-| Membership | Account | OHS, PL → CF | The roles: only an Admin renames or deletes a workspace, and the main workspace is one the user is a member of |
+| Membership | Account | OHS, PL → CF | The roles: only an Admin renames or deletes a workspace; opening a workspace requires membership. Member Removed, Member Left and Workspace Membership Deleted trigger replacement of a lost main workspace, or clear it if none remain |
 | Membership | Editing | OHS, PL → ACL | The roles, read as whether a user may read or change the content |
 | Membership | Discussion | OHS, PL → CF | Who is a member: only members post, resolve and are mentioned, whatever their role |
 | Membership | Notification | OHS, PL → ACL | Member Invited (*send the invitation*) |
 | Editing | Discussion | OHS, PL → CF | Page Deleted, Block Deleted (*delete its comment threads*) |
 | Discussion | Notification | OHS, PL → ACL | Comment Posted (*notify the mentioned user*) |
 
-Membership shares the roles through the events that change them: Member Joined, Member Role Changed, Member Removed, Member Left and Workspace Membership Deleted. Editing listens to all of them, Account only to Member Removed, for the policy that replaces a removed main workspace. Account and Discussion read the roles and the members through queries instead (see ADR-03).
+Membership shares the roles through the events that change them: Member Joined, Member Role Changed, Member Removed, Member Left and Workspace Membership Deleted. Editing listens to all of them. Account listens to Member Removed, Member Left and Workspace Membership Deleted to replace an inaccessible main workspace with the next accessible one in directory order, or clear it if none remain. Account and Discussion read the roles and the members through queries instead (see ADR-03).
 
 The same two people build all five contexts, so from a team point of view every relation would be a partnership. The map shows customer-supplier relations anyway, because each context becomes its own microservice, deployed and versioned separately.
 
