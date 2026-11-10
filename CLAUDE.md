@@ -19,6 +19,8 @@ The report lives in `docs/`; the root holds `README.md`, `tests/` (Node tests of
 
 Requirements now live only in `docs/_includes/functional-requirements.md` and `docs/_includes/quality-attributes.md` (plain Markdown, included from `docs/analysis.md`) — there is no separate DDD/Gherkin spec anymore, and no `ddd/` or `features/` directory. Don't recreate that structure; extend the two includes instead. When a chapter's content is written, fill its existing stub headings rather than restructuring — the chapter order and headings were already agreed with the co-author.
 
+Markdown prose is not hard-wrapped: each paragraph, list item or table row is one line in the source, however long. Break lines only where Markdown needs it (a new paragraph, list item, heading, table row or code block), never at a fixed column; the renderer wraps the text. Older parts of the report are still wrapped at about 100 columns: when you change a paragraph there, join it into one line in the same change.
+
 ## Git workflow
 
 - Signed commits only, titles in Conventional Commits. The `.husky/commit-msg` hook checks the title; `npm install` installs it through husky. CI checks every commit of a PR again, so `--no-verify` doesn't skip it.
