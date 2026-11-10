@@ -239,8 +239,8 @@ the map.
 - **Discussion asks Membership** whether the author, every user mentioned and whoever resolves
   are members, in one query per command for all of them. If Membership does not answer, the
   command is refused. Discussion no longer listens to the events of Membership.
-- **Membership's open-host service answers two queries**, in the same published language as
-  its events: the role of a user in a workspace, and which of a set of users are members of a
+- **For these command checks, Membership's open-host service answers two queries**, in the same
+  published language as its events: the role of a user in a workspace, and which of a set of users are members of a
   workspace. For a workspace that does not exist it answers as for one the user is not a member
   of, so the query leaks nothing (QA-06).
 - The sign-in token carries only the identity of the user, never a role.

@@ -120,6 +120,24 @@ Every call is made by the adapter of a port, before the command reaches the aggr
 
 Account, Membership and Discussion do not wait for Kafka to run a command: they store outgoing events with the state in their own Transactional Outbox, and a Polling Publisher sends them when Kafka is available (ADR-05). A consumer that is down catches up later. A removed member keeps editing until Editing applies Member Removed; QA-06 bounds that delay in normal operation, including the wait in the outbox, not during an outage. Editing still publishes directly and can lose an outgoing event if it stops before Kafka acknowledges it; its readiness also requires Kafka. [Event delivery](#event-delivery) describes that remaining limit.
 
+### API Composition
+
+The API gateway builds the *Workspace directory* on demand, so the client gets the workspaces
+of the signed-in user in one request (US-02). The gateway takes the `UserId` from the verified
+sign-in token, never from a user identifier supplied by the client (QA-06), then:
+
+1. asks Membership for the `WorkspaceId` and role of each workspace the user belongs to;
+2. asks Account for the names of those workspaces in one batch, and for the user's main
+   workspace preference;
+3. joins the answers by `WorkspaceId` and returns the directory, marking the main workspace
+   only if it is among the user's memberships.
+
+The gateway keeps no copy of this view and reads each service through its API. A workspace
+already deleted in Account is omitted while its membership is being removed by policy. If
+either service fails to answer, the directory request fails rather than returning an
+incomplete list. Account owns the workspace data and the preference, and Membership owns
+the memberships and roles.
+
 ### State and scaling
 
 Account, Membership, Discussion and Notification keep their durable state in their databases; the first three also keep their pending outgoing events there. Each one runs as a Kubernetes Deployment, whose replicas are interchangeable behind a Service, and the consumers of a service share its Kafka partitions as one consumer group. Since every event is keyed by its aggregate, the events of one aggregate still reach one replica in order. Each publishing Go service runs its polling task in the same process; a database lock permits only one active publisher across its replicas, preserving the order of each aggregate's events (ADR-05). Notification publishes nothing and needs no outbox or publisher. The prototype runs one replica of each. Each database is one instance: the reference deployment is a single node, so replicating or partitioning the stores is out of scope.

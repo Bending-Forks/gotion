@@ -12,9 +12,9 @@ Prometheus pulls the metrics of every service. Account, Membership, Discussion a
 | Element | Type | Responsibility | Properties |
 |---|---|---|---|
 | Web client | Client | Edits the pages with BlockNote, through the editor adapter and a CRDT replica of each open page | Talks only to the API gateway: REST for the requests, one WebSocket for each open page |
-| API Gateway | Infrastructure | The one entry point from outside: authenticates each request and routes it to its service | Forwards the WebSocket of a page to the instance of Editing that owns the page; technology still open |
-| Account | Service | Users and workspaces (`User`, `Workspace`) | Answers one synchronous query, the user registered with an email address; asks Membership for the role before renaming or deleting a workspace; publishes Workspace Created and Workspace Deleted |
-| Membership | Service | Members, roles and invitations (`Workspace Membership`) | Asks Account for the user of an email address before an invitation; answers two synchronous queries, the role of a user and which users are members ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)); publishes the changes of membership and roles, and Member Invited |
+| API Gateway | Infrastructure | The one entry point from outside: authenticates each request, routes it to its service and composes the Workspace directory from Membership and Account ([API Composition](#api-composition)) | Forwards the WebSocket of a page to the instance of Editing that owns the page; technology still open |
+| Account | Service | Users and workspaces (`User`, `Workspace`) | Answers the user registered with an email address to Membership, and workspace names in a batch and the user's main workspace preference to the gateway; asks Membership for the role before renaming or deleting a workspace; publishes Workspace Created and Workspace Deleted |
+| Membership | Service | Members, roles and invitations (`Workspace Membership`) | Asks Account for the user of an email address before an invitation; answers the role of a user and which users are members ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)), and the workspace identities and roles of a user to the gateway; publishes the changes of membership and roles, and Member Invited |
 | Editing | Service | Pages and their content (`Page`, `Page Block Tree`, `Real-time Editing Session`); the one relay of the operations of a page | One instance owns each page; event-sourced ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)); keeps a local copy of the roles and asks Membership only when it has no row ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)); publishes Page Deleted and Block Deleted |
 | Discussion | Service | Comment threads on pages and blocks (`Comment Thread`) | Asks Membership which users of a command are members; publishes Comment Posted |
 | Notification | Service | The in-app notifications of invitations and mentions (`Notification`) | Only subscribes, publishes nothing |
@@ -76,7 +76,7 @@ which Grafana reads through Prometheus.
   the list of sub-pages: over the WebSocket or with a REST interface of its own;
 - whether the ack instant of QA-01 and QA-02 is when Editing sends it or when the author gets it;
 - whether presence skips the session log;
-- where the read models live (page block metadata, workspace directory);
+- where the read model for page block metadata lives;
 - the properties of the pipes (capacity, when full, when empty). -->
 
 ### Hexagonal Architecture
