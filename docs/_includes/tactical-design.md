@@ -97,6 +97,7 @@ The identity that signs in (US-01), and the owner of the user's main workspace (
   state.
 - Opening a workspace checks that it exists and that the user is a member, then sets it as the user's main workspace (see [Roles](#roles) and [ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)). If Membership does not answer, the opening is refused and main stays as it was. This check only decides what Account saves as main; the pages of the workspace are guarded by Editing.
 - At login the client opens the main workspace. When main is unset, or the user no longer belongs to it, the client opens the first workspace of the *Workspace directory* instead, and that one becomes main. A user with no workspaces sees an empty directory, from which they can create a workspace or accept an invitation.
+- If the user loses the workspace they are working in, Editing makes them leave its sessions and the client opens the first workspace of the *Workspace directory*, as at login, and that one becomes main.
 - On Member Removed, Member Left or Workspace Membership Deleted, a policy clears main if it is the workspace the user lost. If the user has opened another workspace since, main already points there and stays.
 
 | Command | Issued by | Event |

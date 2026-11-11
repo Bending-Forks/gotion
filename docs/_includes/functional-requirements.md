@@ -91,6 +91,14 @@ Feature: US-02 Manage workspaces
     And Alice remains its Admin
     And Gotion clears Bob's main workspace
 
+  Scenario: Move to the first workspace when the open one is lost
+    Given Alice and Bob are Admins of "Research"
+    And Bob is working in "Research"
+    And his workspace directory lists "Archive" and "Teaching" in that order
+    When Alice removes Bob from "Research"
+    Then Gotion opens "Archive" for Bob
+    And "Archive" becomes his main workspace
+
   Scenario: Open the first workspace of the directory when no main one is set
     Given Bob has no main workspace
     And his workspace directory lists "Archive" and "Teaching" in that order
