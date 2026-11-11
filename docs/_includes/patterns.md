@@ -9,6 +9,8 @@ The microservice patterns Gotion applies, gathered in one place. Most of them ar
 | Data management | Aggregate | Every bounded context | One command changes one aggregate in one transaction, so each invariant is checked in one place and no transaction spans two services | [Tactical Design](#tactical-design) |
 | Data management | Domain Event | Every upstream context | A context reacts to a change in another without the producer knowing who listens | [Event-based view](#components-and-connectors), [Contracts](#contracts) |
 | Data management | Event Sourcing | Editing | An edit is acknowledged after one durable append, within QA-01, and survives a crash (QA-04) | [ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log) |
+| Transactional messaging | Transactional Outbox | Account, Membership, Discussion | A committed change and its outgoing events survive a service restart together, including role revocations (QA-06) | [ADR-05](#adr-05-go-publishers-use-a-transactional-outbox-with-polling) |
+| Transactional messaging | Polling Publisher | Account, Membership, Discussion | Pending events reach Kafka after an outage without adding a CDC connector | [Event delivery](#event-delivery), [ADR-05](#adr-05-go-publishers-use-a-transactional-outbox-with-polling) |
 | Querying | CQRS | Editing, local copy of the roles | Editing checks the role of every edit without a call to Membership on the path of the ack (QA-01), and keeps working while Membership is down | [ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership) |
 | Communication | Messaging | Every upstream context, through Kafka | The domain events reach their consumers without the producer waiting for them | [Event-based view](#components-and-connectors), [Event delivery](#event-delivery) |
 | Communication | Remote Procedure Invocation | The four queries between services | A command checks data owned by another context before it runs | [Dependencies at run time](#dependencies-at-run-time) |
@@ -29,7 +31,7 @@ The quality attribute scenarios of Analysis set the targets; observability shows
 **Health Check API.** Each service answers two checks, which Kubernetes polls:
 
 - **Liveness**, `/health/live`, answers as long as the process can serve a request. It checks no dependency, since restarting a service does not bring its database back. A failed check makes Kubernetes restart the instance.
-- **Readiness**, `/health/ready`, answers once the database and Kafka are reachable and, for Editing, the session logs of its pages are replayed (ADR-02). Until then the instance gets no traffic. The time from a crash to readiness is the recovery time of QA-04.
+- **Readiness**, `/health/ready`, requires a reachable database. Account, Membership and Discussion must be able to commit the state and outbox together, but do not require Kafka: their commands can enqueue events during an outage (ADR-05). Editing and Notification still require Kafka; Editing also waits for the session logs of its pages to be replayed (ADR-02). Until ready, the instance gets no traffic. The time from a crash to readiness is the recovery time of QA-04.
 
 Readiness leaves out the services a service queries: a Membership that is down is handled by the circuit breaker ([Dependencies at run time](#dependencies-at-run-time)), and must not make Editing unready, which ADR-03 avoids.
 
@@ -41,10 +43,12 @@ Readiness leaves out the services a service queries: a Membership that is down i
 | QA-02 | Time from the ack of an operation to its render in another client | The client |
 | QA-03 | Time from opening a page to the page accepting input | The client |
 | QA-04 | Restarts; time to replay the session logs; time from a crash to readiness | Every service; Editing |
-| QA-06 | Lag from an event of Membership to its application in the local copy of the roles | Editing |
+| QA-06 | Lag from the change in Membership to its application in the local copy of the roles, including the wait in the outbox | Membership; Editing |
 | QA-07 | Failed and throttled sign-ins | Account |
 
 The client sends its measures to Editing through the gateway, off the WebSocket of the session, so they never delay the operations they measure. The dashboards and alerts are in [Monitoring](implementation.html#monitoring).
+
+Account, Membership and Discussion also expose the number of pending outbox events and the age of the oldest one, so a stopped publisher or a Kafka outage is visible even when no event reaches a consumer.
 
 Log aggregation, distributed tracing, exception tracking and audit logging are left out of the prototype, since no scenario depends on them; each service writes structured logs to its standard output.
 
@@ -52,6 +56,8 @@ Log aggregation, distributed tracing, exception tracking and audit logging are l
 
 A command changes the store of its service and then publishes an event on Kafka, with no transaction across the two.
 
-**Publication after the commit** ([ADR-05](#adr-05-services-publish-their-events-after-the-commit)). A service publishes an event only once its change is stored, so no event announces a change that was not made. The producer retries until Kafka acknowledges the event, so a Kafka outage only delays it. The event is lost only if the service stops before that acknowledgement: then its policy never runs, and a lost Member Removed, for instance, lets the removed member keep editing, against QA-06. The prototype accepts this; a [Transactional Outbox](#adr-05-services-publish-their-events-after-the-commit) would close the gap without changing the consumers or the contracts.
+**Transactional Outbox and Polling Publisher** ([ADR-05](#adr-05-go-publishers-use-a-transactional-outbox-with-polling)). Account, Membership and Discussion store each outgoing event in their own database, in the same transaction as the change that raises it. A background publisher polls pending rows, sends them to Kafka in order within each aggregate and marks them as sent only after acknowledgement. A restart resumes the pending work; a failure after publication can cause a duplicate, which the idempotent consumer ignores. The publisher coordination, cleanup and tests are specified in ADR-05. Notification publishes no events and needs no outbox.
 
-**Cascades without a saga.** Workspace Created makes Membership create the membership and Editing the root page; Workspace Deleted makes both delete them, and the Page Deleted that Editing then publishes makes Discussion delete the threads. Each step is a local transaction started by the event of the step before, with no coordinator. No step can be refused by a rule of its context, so none has to undo the steps before it, and the cascade needs neither an orchestrator nor compensations. Kafka's at-least-once delivery and the idempotent consumers make every step happen eventually. A policy that could be refused would turn its cascade into a saga.
+Editing keeps direct publication after the operation is stored in its session log and applied to the tree. Its producer retries from memory, so Page Deleted or Block Deleted can still be lost if Editing stops before Kafka acknowledges them, leaving orphan threads in Discussion. This accepted limit does not affect the durability of acknowledged edits in ADR-02. The outboxes protect the other services' events, including Member Removed, but do not guarantee delivery within QA-06's bound during an outage.
+
+**Cascades without a saga.** Workspace Created makes Membership create the membership and Editing the root page; Workspace Deleted makes both delete them, and the Page Deleted that Editing then publishes makes Discussion delete the threads. Each step is a local transaction started by the event of the step before, with no coordinator. No step can be refused by a rule of its context, so none has to undo the steps before it, and the cascade needs neither an orchestrator nor compensations. Kafka's at-least-once delivery and the idempotent consumers make a published event's step happen eventually once the services recover. An event lost before publication by Editing can still stop the cascade. A policy that could be refused would turn its cascade into a saga.

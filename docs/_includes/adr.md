@@ -323,11 +323,11 @@ On the bad side:
 - A contract test of each event checks that a consumer in one language reads what a producer in the other writes, against the shared schema.
 - The SLI of QA-01 is also measured while Editing takes a snapshot, so a task that blocks the thread shows up as a slower ack.
 
-### ADR-05: Services publish their events after the commit
+### ADR-05: Go publishers use a Transactional Outbox with polling
 
-**Status:** Proposed.
+**Status:** Accepted.
 
-**Context.** Every service keeps its state in its own database and publishes its events on Kafka ([Decomposition](#decomposition), [Contracts](#contracts)). The two writes are in separate systems, and a service can stop between them. A policy downstream depends on each event: a lost Member Removed leaves a removed member able to edit, against QA-06, and a lost Workspace Deleted leaves the membership and the pages of the workspace in place. The alternatives were:
+**Context.** Account, Membership and Discussion are the Go services that both change their own state and publish events on Kafka ([Decomposition](#decomposition), [Contracts](#contracts)). The two writes are in separate systems, and a service can stop between them. A lost Member Removed leaves a removed member able to edit, against QA-06; a lost Workspace Deleted leaves the membership and the pages of the workspace in place; a lost Comment Posted never notifies the mentioned users (US-10). The alternatives were:
 
 - publish before the commit;
 - publish after the commit;
@@ -335,27 +335,33 @@ On the bad side:
 - a Transactional Outbox: the event written into a table of the same database, in the same transaction as the state, and published by a process that polls the table;
 - the same outbox, published by reading the transaction log of the database (change data capture), with a connector such as Debezium on Kafka Connect.
 
-Publishing before the commit sends an event for a change that a failed commit then drops, so the other contexts react to something that did not happen. A transaction across the two is not available: Kafka has transactions of its own, but they cannot include the commit of an external database. Publishing after the commit never sends such an event, but loses one if the service stops after the commit and before Kafka acknowledges it. The outbox closes that gap: the event is stored with the state, and published again until it gets through. It costs, in every service that publishes, a table and its migration, a publisher, the deletion of the events already sent, and a lock so that only one replica publishes at a time and the events of an aggregate keep their order. Change data capture adds no polling, but also Kafka Connect and a connector next to the services.
+Publishing before the commit can announce a change that is rolled back. Publishing directly after the commit avoids that, but can lose the event if the service stops before Kafka acknowledges it. Kafka transactions alone do not make the database commit and the publication atomic. The outbox closes that gap by storing the event with the state. Polling uses the service's database and Kafka client; change data capture would also add Kafka Connect and a connector to the deployment.
 
-**Decision.** We will publish every event after the change of state that raises it is stored, and accept that an event can be lost when its service stops in between:
+**Decision.** Account, Membership and Discussion will each use a Transactional Outbox with a Polling Publisher:
 
-- Account, Membership and Discussion publish after the commit of the transaction;
-- Editing publishes after the operation is in the session log ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)) and applied to the Page Block Tree;
-- the Kafka producer retries until Kafka acknowledges each event, keeping the events in memory while Kafka is down.
+- The transaction that changes the aggregate also inserts its outgoing events, with their stable identifiers and payloads, into an outbox in the same database. This applies to client commands and to policies triggered by incoming events. For a consumed event, the record that it was applied is part of that transaction too; its Kafka offset is committed only afterwards.
+- A background task in the service polls committed, pending rows, publishes them on Kafka and marks each one as sent only after Kafka acknowledges it. Pending rows survive restarts and Kafka outages; sent rows are cleaned up afterwards. The task is an infrastructure adapter, not another service.
+- Changes to the same aggregate are serialized in their database transactions, including the insertion into the outbox. The publisher preserves that order and does not pass an unacknowledged event with a later one of the same aggregate. A database lock allows only one publisher per service to be active across its replicas; another replica takes over when the lock is released after a failure.
+- An event can be published again if the publisher stops after Kafka acknowledges it but before the row is marked as sent. It keeps the same identifier, and the idempotent consumers of [Contracts](#contracts) ignore the duplicate.
+- Notification has no outbox because it publishes no events. Editing is excluded: it still publishes directly after the operation is in its session log ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)) and applied to the Page Block Tree, retrying from memory until Kafka acknowledges it.
 
 **Consequences.** On the good side:
 
-- No event is published for a change that was not stored.
-- Nothing is added to the services or to the deployment, and the replicas of a service stay interchangeable, as [State and scaling](#state-and-scaling) assumes.
-- An outbox can be added later inside the service that needs it: its events, their contracts and the idempotent consumers stay the same.
+- A committed change in Account, Membership or Discussion cannot lose its outgoing event merely because the service restarts. A rolled-back change publishes nothing.
+- Commands in those services do not wait for Kafka: an outage leaves events in the database until publication resumes.
+- No new deployment component is needed, and the event contracts and idempotent consumers stay the same.
 
 On the bad side:
 
-- An event is lost if its service stops after the commit and before Kafka acknowledges it, and nothing raises it again. The window is a few milliseconds in a crash, but lasts as long as Kafka is down, since the events wait in memory.
-- A lost event is a policy that never runs, and nothing reports it. A lost Member Removed breaks QA-06 for that member; a lost Block Deleted or Page Deleted leaves its comment threads in Discussion. The chaos test of QA-04 kills Editing on purpose, so it can leave such threads, although no edit is lost.
-- The cascades across contexts stop at a lost event ([Event delivery](#event-delivery)).
+- Each of the three services needs a table and migration, the publisher, its lock and cleanup. A long Kafka outage grows the pending rows; their count and oldest age must be monitored.
+- Polling adds latency. Its interval and the backlog must fit the 5 s (p99) revocation bound of QA-06 in normal operation; durable publication alone cannot guarantee that bound during an outage.
+- Editing can still lose Page Deleted or Block Deleted if it stops before Kafka acknowledges them. The session log protects acknowledged edits, not the delivery of those events: Discussion can retain orphan threads, including after the chaos test of QA-04. Cascades through Editing retain that limit.
 
 **Compliance.**
 
-- A test of each service makes the commit fail and checks that no event is published.
-- A test stops Kafka, runs a command, starts Kafka again and checks that the event arrives while the service keeps running.
+- For each of the three services, a failed transaction leaves neither the state change nor an outbox row, and publishes no event.
+- A test stops Kafka, commits a command, restarts the service and then Kafka, and checks that the pending event arrives.
+- A test stops the publisher after Kafka acknowledges an event but before it is marked as sent; after restart, the duplicate changes nothing in the consumer.
+- Concurrent commands and competing publishers are tested for publication in transaction order within each aggregate and takeover after the active publisher stops.
+- A repeated incoming event changes the state and enqueues its outgoing events only once, including when the consumer restarts before committing its offset.
+- The security test of QA-06 measures from the change in Membership to its application in Editing, including the wait in the outbox.
