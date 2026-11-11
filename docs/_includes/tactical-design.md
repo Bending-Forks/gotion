@@ -106,12 +106,7 @@ The identity that signs in (US-01), and the owner of the user's preferences.
 | Sign in | User | User Signed In |
 | Set main workspace | User; policies *whenever a user's first workspace is created, make it their main workspace* and *when a member is removed from their main workspace, set a remaining workspace as main* | Main Workspace Changed |
 
-The main workspace is a preference of one user, while a workspace is shared by all its members.
-Keeping it on Workspace, as the board did, would need a flag per member, and changing the main
-workspace would update two workspaces in one transaction. The active workspace is not in the
-model at all: switching workspace is a navigation choice of the client, with no rule to protect
-and no policy reacting to it, served by the *Workspace directory*, which the API gateway
-composes from Membership and Account ([API Composition](#api-composition)).
+The main workspace is a preference of one user, while a workspace is shared by all its members. Keeping it on Workspace, as the board did, would need a flag per member, and changing the main workspace would update two workspaces in one transaction. The active workspace is not in the model at all: switching workspace is a navigation choice of the client, with no rule to protect and no policy reacting to it, served by the *Workspace directory*, which the API gateway composes from Membership and Account ([API Composition](#api-composition)).
 
 #### Workspace
 
