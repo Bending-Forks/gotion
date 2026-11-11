@@ -1,4 +1,5 @@
 {
+  "name": "gotion",
   "private": true,
   "scripts": {
     "prepare": "husky"
