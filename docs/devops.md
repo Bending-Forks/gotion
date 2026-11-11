@@ -13,6 +13,8 @@ code and this report. There is no develop branch and no release branch. Every ch
 on a short-lived branch, named after the Conventional Commits type of the change (`feat/…`,
 `fix/…`, `docs/…`, `ci/…`), opened for a single pull request and deleted once it is merged.
 
+Each branch can get its own working copy as a git worktree next to the repository. `scripts/new-worktree.sh <type>/<task>` creates `../gotion-<task>` on that branch, taking the existing one, local or on the remote, or else starting a new one from `origin/main`, and installs the npm dependencies, so the commit hooks work there too; it prints which of these cases it found. `scripts/remove-worktree.sh <type>/<task>` removes the worktree and deletes the branch locally and on the remote, asking first if the branch holds commits that are not in `main`. We found worktrees useful for running several Claude Code sessions in parallel, one per task: each session works in its own folder on its own branch, so none of them changes the files another one is editing.
+
 The ruleset of `main` lets a change in only from an approved pull request with its review
 threads resolved; every commit must be signed, the history must be linear, and force pushes
 and deletion are blocked. Merge commits are disabled in the repository settings.
