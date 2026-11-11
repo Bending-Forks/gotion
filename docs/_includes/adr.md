@@ -183,14 +183,7 @@ On the bad side:
 
 **Status:** Proposed.
 
-**Context.** Membership is the one writer of the roles and of who is a member, but three other
-contexts check them on their own commands, as the [Roles](#roles) table shows: Account lets only
-an Admin rename or delete a workspace and opens only workspaces the user belongs to, Editing
-lets a Viewer read but not change the content, and Discussion lets only members post, resolve
-and be mentioned. The [Context Map](#context-map) says *what* each of them gets from Membership;
-this record settles *how* it reaches them, which is
-[PP-04](analysis.html#open-pain-points). Notification is not part of it: it reacts to Member
-Invited and never checks a role or a membership.
+**Context.** Membership is the one writer of the roles and of who is a member, but three other contexts check them on their own commands, as the [Roles](#roles) table shows: Account lets only an Admin rename or delete a workspace and opens only workspaces the user belongs to, Editing lets a Viewer read but not change the content, and Discussion lets only members post, resolve and be mentioned. The [Context Map](#context-map) says *what* each of them gets from Membership; this record settles *how* it reaches them, which is [PP-04](analysis.html#open-pain-points). Notification is not part of it: it reacts to Member Invited and never checks a role or a membership.
 
 The three contexts differ in what is at stake. Editing checks the role on every edit, on the path that QA-01 bounds at 500 ms (p95) from the edit to the ack, and inside a session that stays open for as long as the page is edited. Account checks it on renaming and deleting a workspace, rare commands that cannot be undone, and on opening one, where it only decides whether to save it as the main workspace. Discussion checks it on a comment, where a few milliseconds more change nothing. QA-06 asks that every request of a non-member or a Viewer is denied. The alternatives were:
 

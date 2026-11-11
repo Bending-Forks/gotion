@@ -184,8 +184,7 @@ identified by the `WorkspaceId` of its workspace.
 - A user is a member at most once, with exactly one role.
 - Only an Admin invites, changes roles and removes members. This check is local, since the roles
   live here.
-- Remove member and Leave workspace may leave the user with no workspaces (US-03); only the
-  last-Admin invariant prevents either operation.
+- Remove member and Leave workspace may leave the user with no workspaces (US-03); only the last-Admin invariant prevents either operation.
 - An invitation is addressed to a registered user, who receives it as an in-app notification (US-10), and who is neither a member nor already invited. It carries the role the invitee will have, chosen by the Admin.
 - The Admin invites by email. Before the command reaches the membership, the `UserLookupService` asks Account whether the address belongs to a registered user and gets their `UserId`; only then does the membership add the invitation. The other checks are local to the membership.
 - Only the invitee accepts or declines an invitation, and either answer ends it. An invitation does not expire: it stays pending until the invitee answers. It never changes in between, and a user has at most one pending invitation per workspace, so it is a value object told apart by its invitee.
@@ -592,9 +591,7 @@ The table states which role each command requires; the relations that carry them
 | Set title, icon, cover; Submit edit | Editing | ✓ | ✓ | |
 | Join session | Editing | ✓ | ✓ | ✓ |
 
-Three more checks read Membership without a role: opening a workspace requires membership,
-only a member posts a comment or resolves a thread, and a mention names a member
-of the workspace.
+Three more checks read Membership without a role: opening a workspace requires membership, only a member posts a comment or resolves a thread, and a mention names a member of the workspace.
 
 ### Changes from the board
 
