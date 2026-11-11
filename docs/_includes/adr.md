@@ -262,10 +262,7 @@ This settles PP-04.
 
 On the bad side:
 
-- **Editing is eventually consistent with Membership.** Between Member Removed and the moment
-  Editing applies it, a removed member can still edit and still receives the operations of the
-  session; between Member Role Changed and its event, a member demoted to Viewer can still edit.
-  The window is the lag of the events, bounded by the response measure added to QA-06.
+- **Editing is eventually consistent with Membership.** Between Member Removed and the moment Editing applies it, a removed member can still edit and still receives the operations of the session; between Member Role Changed and its event, a member demoted to Viewer can still edit. The window is the lag of the events, including their wait in the outbox of Membership ([ADR-05](#adr-05-go-publishers-use-a-transactional-outbox-with-polling)), bounded by the response measure added to QA-06.
 - **Account and Discussion depend on Membership at run time.** When it is down, no workspace can
   be renamed or deleted and no comment posted. Account and Membership already depend on each
   other through events; now each one also calls the other (Membership asks Account for the user

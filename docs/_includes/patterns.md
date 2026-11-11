@@ -54,7 +54,7 @@ Log aggregation, distributed tracing, exception tracking and audit logging are l
 
 ### Event delivery
 
-A command changes the store of its service and then publishes an event on Kafka, with no transaction across the two.
+A command changes the store of its service and publishes an event on Kafka. No transaction spans a database and Kafka, so each service keeps the two writes together in one of two ways.
 
 **Transactional Outbox and Polling Publisher** ([ADR-05](#adr-05-go-publishers-use-a-transactional-outbox-with-polling)). Account, Membership and Discussion store each outgoing event in their own database, in the same transaction as the change that raises it. A background publisher polls pending rows, sends them to Kafka in order within each aggregate and marks them as sent only after acknowledgement. A restart resumes the pending work; a failure after publication can cause a duplicate, which the idempotent consumer ignores. The publisher coordination, cleanup and tests are specified in ADR-05. Notification publishes no events and needs no outbox.
 
