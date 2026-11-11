@@ -42,7 +42,7 @@ What each service offers and needs. The *client API* goes through the API gatewa
 |---|---|
 | Responsibility | Users and workspaces (`User`, `Workspace`), US-01, US-02 |
 | Client API | Register, Sign in, Create, Rename and Delete workspace, Set main workspace. Sign in issues the token the gateway checks, which carries only the identity of the user (ADR-03) and is rate limited per account (QA-07) |
-| Answers | The `UserId` registered with an email address, to Membership |
+| Answers | The `UserId` registered with an email address, to Membership; the names of a batch of workspaces and the main workspace of a user, to the gateway for the [Workspace directory](#api-composition) |
 | Asks | Membership: the role of the user in the workspace, which must be Admin before Rename and Delete workspace, and any role before Set main workspace |
 | Publishes | Workspace Created, Workspace Deleted |
 | Consumes | Member Removed, as a conformist, to replace a removed main workspace |
@@ -54,7 +54,7 @@ What each service offers and needs. The *client API* goes through the API gatewa
 |---|---|
 | Responsibility | Members, roles and invitations (`Workspace Membership`), US-03 |
 | Client API | Invite member, Accept and Decline invitation, Change member role, Remove member, Leave workspace; the members and invitations of a workspace |
-| Answers | The role of a user in a workspace, to Account and Editing; which of a set of users are members of a workspace, to Discussion. A workspace that does not exist is answered as one the user is not a member of (QA-06) |
+| Answers | The role of a user in a workspace, to Account and Editing; which of a set of users are members of a workspace, to Discussion; the workspaces of a user with the role in each, to the gateway for the [Workspace directory](#api-composition). A workspace that does not exist is answered as one the user is not a member of (QA-06) |
 | Asks | Account: the `UserId` of an email address, before Invite member |
 | Publishes | Member Joined, Member Role Changed, Member Removed, Member Left, Workspace Membership Deleted, Member Invited |
 | Consumes | Workspace Created and Workspace Deleted, as a conformist, to create and delete the membership of a workspace |
@@ -72,7 +72,7 @@ What each service offers and needs. The *client API* goes through the API gatewa
 | Consumes | Workspace Created and Workspace Deleted, as a conformist, to create and delete the root page; Member Joined, Member Role Changed, Member Removed, Member Left and Workspace Membership Deleted, through an anticorruption layer that turns a role into *read* or *change* |
 | Owns | Event-sourced (ADR-02): the session log of every page, snapshots of the Page Block Trees, the pages and the local copy of the roles |
 
-Two things are still open, among the points under [Components and Connectors](#components-and-connectors): how Editing serves the opening of a page, the snapshot for a collaborator who joins late and the list of sub-pages; and which service holds the read models, such as the workspace directory a user switches workspace with, which needs the workspaces of Account and the memberships of Membership.
+Two things are still open, among the points under [Components and Connectors](#components-and-connectors): how Editing serves the opening of a page, the snapshot for a collaborator who joins late and the list of sub-pages; and where the read model for page block metadata lives. The workspace directory a user switches workspace with, which needs the workspaces of Account and the memberships of Membership, is composed by the gateway ([API Composition](#api-composition)).
 
 #### Discussion
 
@@ -108,8 +108,9 @@ A synchronous call couples the caller to the callee in time: the caller's comman
 | Membership | Account | `UserId` of an email address | Invite member | The command is refused |
 | Editing | Membership | Role of a user, only without a row in the local copy | Join session, Submit edit, Set title, icon, cover | The command is denied |
 | Discussion | Membership | Which users are members | Post comment, Resolve thread | The command is refused |
+| API Gateway | Membership, then Account | The workspaces of a user with their roles; the names of those workspaces and the main workspace | Workspace directory | The request fails |
 
-Membership is the one service asked by three others, and no service calls Editing, Discussion or Notification. A crash of Membership therefore stops renaming and deleting workspaces, inviting and commenting, but not the editing of the pages whose roles Editing already holds. Account and Membership call each other, so each one's availability depends on the other's, as ADR-03 records.
+Membership is the one service asked by three others and by the gateway, and no service calls Editing, Discussion or Notification. A crash of Membership therefore stops renaming and deleting workspaces, inviting, commenting and listing the workspaces of a user, but not the editing of the pages whose roles Editing already holds. Account and Membership call each other, so each one's availability depends on the other's, as ADR-03 records.
 
 Every call is made by the adapter of a port, before the command reaches the aggregate (see [Building blocks](#building-blocks)), so the policy for a failure lives in that adapter, and the domain never waits on the network:
 
@@ -128,7 +129,7 @@ The API gateway builds the *Workspace directory* on demand, so the client gets t
 2. asks Account for the names of those workspaces in one batch, and for the user's main workspace preference;
 3. joins the answers by `WorkspaceId` and returns the directory, marking the main workspace only if it is among the user's memberships.
 
-The gateway keeps no copy of this view and reads each service through its API. A workspace already deleted in Account is omitted while its membership is being removed by policy. If either service fails to answer, the directory request fails rather than returning an incomplete list. Account owns the workspace data and the preference, and Membership owns the memberships and roles.
+The gateway keeps no copy of this view and reads each service through its API. It holds no business rule either: joining by `WorkspaceId` and leaving out a main workspace the user no longer belongs to only shape the answer, since Account itself replaces a removed main workspace when Member Removed arrives, and every rule on workspaces and roles stays in Account and Membership. A workspace already deleted in Account is omitted while its membership is being removed by policy. If either service fails to answer, the directory request fails rather than returning an incomplete list. Account owns the workspace data and the preference, and Membership owns the memberships and roles.
 
 ### State and scaling
 
