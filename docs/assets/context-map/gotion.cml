@@ -15,7 +15,7 @@ ContextMap Gotion {
 	/* Workspace Created, Workspace Deleted */
 	Account [U,OHS,PL] -> [D,CF] Editing
 
-	/* the roles, asked on request; Member Removed, Member Left, Workspace Membership Deleted, to replace or clear the main workspace */
+	/* the roles, asked on request; Member Removed, Member Left, Workspace Membership Deleted, to clear a lost main workspace */
 	Membership [U,OHS,PL] -> [D,CF] Account
 
 	/* the roles: Member Joined, Member Role Changed, Member Removed, Member Left, Workspace Membership Deleted; asked on request when the local copy has no row */

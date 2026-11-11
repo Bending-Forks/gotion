@@ -10,8 +10,8 @@ This glossary records the ubiquitous language of Gotion. Following DDD, the lang
 |---|---|---|
 | User | A person registered in Gotion with an email address and a password (US-01). The identity that signs in. | *Member*, which is a user seen inside one workspace. |
 | Workspace | A separate space that contains pages, used to keep different projects or teams apart (US-02). A user's first workspace is created when the user registers. | *Workspace Membership*, which holds who belongs to the workspace. |
-| Main workspace | The user's arrival workspace at login, updated on every successful workspace opening or switch. If it becomes inaccessible, the next accessible workspace in directory order becomes main, wrapping to the beginning if needed. Before the first visit, login opens the first accessible workspace. With no workspaces, main is unset and login shows an empty directory (US-02, US-03). | *Active workspace*, which belongs to the current client session. |
-| Active workspace | The workspace the user is currently working in; switching workspace changes it and records the main workspace. | *Main workspace*, which is saved across sessions. |
+| Main workspace | The workspace Gotion opens at login: the last one the user opened. It is cleared when the user loses access to it, and while it is unset, login opens the first workspace of the directory. A user with no workspaces has none and sees an empty directory (US-02, US-03). | *Active workspace*, which belongs to the current client session. |
+| Active workspace | The workspace the user is currently working in. Opening another one changes it and saves that one as the main workspace. | *Main workspace*, which is saved across sessions. |
 
 #### Membership
 

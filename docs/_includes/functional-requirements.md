@@ -50,7 +50,7 @@ Feature: US-01 Sign up and sign in
 
 #### Workspace organisation
 
-- **US-02 — Manage workspaces**: As a user, I want to create, rename, delete, and switch between multiple workspaces, and return to the last one I visited at login, so that I can keep different projects or teams separate and resume my work. Each successfully opened workspace becomes the user's main workspace and is reopened at the next login. If it is no longer accessible, Gotion selects the next accessible workspace in directory order, wrapping to the beginning after the last entry, and makes it main. If no main workspace has been set yet, Gotion opens the first accessible one. A user may belong to no workspace; in that case the main workspace is unset and login shows an empty directory, from which they can create a workspace or accept an invitation.
+- **US-02 — Manage workspaces**: As a user, I want to create, rename, delete, and switch between multiple workspaces, and return to the last one I visited at login, so that I can keep different projects or teams separate and resume my work. Each workspace the user opens becomes their main workspace, and Gotion reopens it at the next login. When the user loses access to it, Gotion clears the main workspace, and with none set, login opens the first workspace of the directory. A user may belong to no workspace: login then shows an empty directory, from which they can create a workspace or accept an invitation.
 
 ```gherkin
 Feature: US-02 Manage workspaces
@@ -82,40 +82,21 @@ Feature: US-02 Manage workspaces
     When she signs in again
     Then Gotion opens "Teaching"
 
-  Scenario: Select the next workspace after losing the main one
+  Scenario: Clear the main workspace after losing it
     Given Alice and Bob are Admins of "Research"
     And Bob's main workspace is "Research"
-    And Bob's workspace directory lists "Archive", "Research" and "Teaching" in that order
+    And Bob also belongs to "Archive" and "Teaching"
     When Alice removes Bob from "Research"
     Then Bob no longer belongs to "Research"
     And Alice remains its Admin
-    And "Teaching" becomes Bob's main workspace
-    When Bob signs in again
-    Then Gotion opens "Teaching"
+    And Gotion clears Bob's main workspace
 
-  Scenario: Wrap to the first workspace when the main one was last in the list
-    Given Alice and Bob are Admins of "Research"
-    And Bob's workspace directory lists "Teaching" and "Research" in that order
-    And Bob's main workspace is "Research"
-    When Alice removes Bob from "Research"
-    Then "Teaching" becomes Bob's main workspace
-    When Bob signs in again
-    Then Gotion opens "Teaching"
-
-  Scenario: Skip an unavailable workspace when selecting the next one
-    Given Bob's main workspace is "Research"
-    And his workspace directory lists "Research", "Archive" and "Teaching" in that order
-    And he no longer has access to "Research" or "Archive"
+  Scenario: Open the first workspace of the directory when no main one is set
+    Given Bob has no main workspace
+    And his workspace directory lists "Archive" and "Teaching" in that order
     When Bob signs in
-    Then Gotion opens "Teaching"
-    And "Teaching" becomes his main workspace
-
-  Scenario: Open the first workspace before the first visit
-    Given Alice belongs to "Research"
-    And she has not opened any workspace yet
-    When she signs in
-    Then Gotion opens "Research"
-    And "Research" becomes her main workspace
+    Then Gotion opens "Archive"
+    And "Archive" becomes his main workspace
 
   Scenario: Remove a member from their only workspace
     Given Alice and Bob are Admins of "Research"

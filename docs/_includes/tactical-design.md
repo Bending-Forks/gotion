@@ -2,7 +2,7 @@
 
 ### Building blocks
 
-Each bounded context has its own model, drawn as a UML class diagram with the DDD stereotypes `Aggregate Root`, `Entity`, `Value Object`, `Repository`, `Factory`, `Domain Service` and `Domain Event`. A box groups the classes of one aggregate. Every aggregate root has a repository that stores and loads it whole, and a factory only where creating it has a rule to keep. Of the domain events, the diagrams draw only User Registered: it is what makes Account create the first workspace of a new user on its own, with no command from the user, and make it their main one (US-01). The other events are listed in the command table of the aggregate that emits them.
+Each bounded context has its own model, drawn as a UML class diagram with the DDD stereotypes `Aggregate Root`, `Entity`, `Value Object`, `Repository`, `Factory`, `Domain Service` and `Domain Event`. A box groups the classes of one aggregate. Every aggregate root has a repository that stores and loads it whole, and a factory only where creating it has a rule to keep. Of the domain events, the diagrams draw only User Registered: it is what makes Account create the first workspace of a new user on its own, with no command from the user (US-01). The other events are listed in the command table of the aggregate that emits them.
 
 Three rules shape every aggregate:
 
@@ -95,30 +95,17 @@ The identity that signs in (US-01), and the owner of the user's main workspace (
 - The email address is unique among users. The rule spans every User, so Register asks `EmailAvailability` to check the address against the `UserRepository` before the User factory creates the user. Checking and then creating is not atomic, so the store of the users also keeps the address unique, and of two concurrent registrations with the same address the second fails.
 - The password is kept only as a `PasswordHash`; signing in compares against it and changes no
   state.
-- Opening or switching workspace checks that it exists and that the user is a member, then
-  sets it as the user's main workspace (see [Roles](#roles) and [ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)).
-- At login, Gotion reopens the main workspace if still accessible. Otherwise it selects the
-  next accessible workspace in directory order, wrapping to the beginning after the last
-  entry, and makes it main. With no main set yet, it opens the first accessible workspace.
-  With no workspaces, main is unset and login shows an empty directory, from which the user
-  can create a workspace or accept an invitation.
-- On Member Removed, Member Left or Workspace Membership Deleted, a policy applies the same
-  successor rule, or clears main if no workspaces remain. It changes main only if it still
-  refers to the lost workspace and access is still unavailable, preserving a later switch.
-  The *Workspace directory* read model uses the same stable order as the displayed list and
-  resolves the successor using the lost entry's position before removal. A failed membership
-  query refuses access without changing main; it does not mean the user has no workspaces.
+- Opening a workspace checks that it exists and that the user is a member, then sets it as the user's main workspace (see [Roles](#roles) and [ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)). If Membership does not answer, the opening is refused and main stays as it was. This check only decides what Account saves as main; the pages of the workspace are guarded by Editing.
+- At login the client opens the main workspace. When main is unset, or the user no longer belongs to it, the client opens the first workspace of the *Workspace directory* instead, and that one becomes main. A user with no workspaces sees an empty directory, from which they can create a workspace or accept an invitation.
+- On Member Removed, Member Left or Workspace Membership Deleted, a policy clears main if it is the workspace the user lost. If the user has opened another workspace since, main already points there and stays.
 
 | Command | Issued by | Event |
 |---|---|---|
 | Register | Visitor | User Registered |
 | Sign in | User | User Signed In |
-| Set main workspace | User, on opening or switching workspace; policy *when main becomes inaccessible, select the next accessible workspace in directory order or clear main if none remain* | Main Workspace Changed |
+| Set main workspace | User, on opening a workspace; policy *when the user loses their main workspace, clear it* | Main Workspace Changed |
 
-The main workspace belongs to User, since login must remember it across sessions.
-Opening or switching workspace updates that one aggregate. The active workspace remains a
-navigation choice of each client; available workspaces come from the *Workspace directory*,
-which the API gateway composes from Membership and Account ([API Composition](#api-composition)).
+The main workspace belongs to User, since login must remember it across sessions. Opening a workspace updates that one aggregate. The active workspace stays a navigation choice of each client, which takes the workspaces it can open from the *Workspace directory*, composed by the API gateway from Membership and Account ([API Composition](#api-composition)).
 
 #### Workspace
 
@@ -581,7 +568,7 @@ root page may not exist, and the read models must allow for it.
 | Rule | Kept by | Traces to |
 |---|---|---|
 | A new user has a first workspace | *Whenever a user registers, create their first workspace* | US-01, US-02 |
-| Losing the main workspace selects the next accessible one; users may have no workspaces | *On Member Removed, Member Left or Workspace Membership Deleted, if main still refers to the lost workspace and access is still unavailable, choose the next accessible workspace in directory order, wrapping if needed, or clear main if none remain* | US-02, US-03 |
+| Losing the main workspace clears it; users may have no workspaces | *On Member Removed, Member Left or Workspace Membership Deleted, clear main if it is the lost workspace* | US-02, US-03 |
 | A workspace has an Admin from its creation | *Whenever a workspace is created, accept the creator as Admin* | US-03 |
 | A workspace has exactly one root page | *Whenever a workspace is created, create its root page*, plus the identity of the root page, derived from its workspace | US-04 |
 | Every page block has its sub-page, and every sub-page its page block | *Whenever a page block is inserted, moved or deleted…* | US-04 |
@@ -613,9 +600,7 @@ of the workspace.
 
 The model refines the board, and these changes are to be carried back to it:
 
-- *Set main workspace* moves to User and runs on every successful workspace opening or switch.
-  *Switch workspace* with *Workspace Switched* is covered by *Set main workspace* → *Main
-  Workspace Changed*.
+- *Set main workspace* moves to User and runs every time the user opens a workspace. *Switch workspace* with *Workspace Switched* is covered by *Set main workspace* → *Main Workspace Changed*.
 - *Rename workspace* → *Workspace Renamed* is added, as US-02 requires.
 - *Decline invitation* → *Invitation Declined* settles PP-02, and *Leave workspace* → *Member
   Left* settles PP-03. The sticky *not possible to leave the workspace if you are last Admin*

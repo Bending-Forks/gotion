@@ -37,7 +37,7 @@ follow the [Ubiquitous language](#ubiquitous-language); an Admin can also do eve
 
 1. The user provides their email address and password.
 2. Gotion checks the credentials and signs the user in.
-3. Gotion opens the user's main workspace, the last one they opened. If it is no longer accessible, Gotion selects and saves the next accessible workspace in directory order, wrapping to the beginning after the last entry. If no main workspace has been set yet, it opens the first accessible one.
+3. Gotion opens the user's main workspace, the last one they opened. If they have none, because they never opened one or have lost access to it, Gotion opens the first workspace of their directory.
 
 **Alternative flows:**
 
@@ -67,17 +67,17 @@ follow the [Ubiquitous language](#ubiquitous-language); an Admin can also do eve
 1. The user creates a workspace and gives it a name.
 2. Gotion adds the workspace to their directory, makes them its first Admin, and creates its root page.
 3. The user opens the workspace and starts working in it.
-4. Gotion sets it as their main workspace, to reopen at the next login. Each subsequent workspace change updates the main workspace.
+4. Gotion saves it as their main workspace and reopens it at the next login. Every workspace they open later takes its place.
 
 **Alternative flows:**
 
 - The user opens an existing workspace from their directory. Each successful opening changes the active workspace and updates the saved main workspace.
 - Gotion refuses access to a workspace the user does not belong to, without changing the saved main workspace.
 - An Admin renames a workspace. Its members see the new name, while its pages and memberships stay unchanged.
-- An Admin deletes a workspace. Gotion makes it unavailable to its members and removes its membership, pages, content and discussions. For each member whose main workspace was deleted, Gotion makes the next accessible workspace in directory order main, wrapping to the beginning if needed. If none remain, it clears the main workspace.
+- An Admin deletes a workspace. Gotion makes it unavailable to its members and removes its membership, pages, content and discussions. Members who had it as their main workspace are left with none.
 - Gotion refuses a blank workspace name, or a rename or deletion requested by an Editor or Viewer.
 
-**Outcome:** the user can organize and navigate their workspaces and resume in the main workspace at the next login, with the next accessible workspace as fallback.
+**Outcome:** the user can organize and navigate their workspaces, and at the next login finds the last one they opened, or the first of their directory if they lost it.
 
 </section>
 
@@ -130,13 +130,13 @@ follow the [Ubiquitous language](#ubiquitous-language); an Admin can also do eve
 1. The Admin selects a member and requests their removal.
 2. Gotion checks that the workspace will keep at least one Admin.
 3. Gotion removes the member. They can no longer read or change the workspace's pages or take part in its discussions.
-4. If this was the removed member's main workspace, Gotion makes the next accessible workspace in directory order main, wrapping to the beginning if needed, or clears it if none remain. Otherwise, their main workspace stays unchanged.
+4. If this was the removed member's main workspace, Gotion clears it, and their next login opens the first workspace of their directory. Otherwise, their main workspace stays unchanged.
 
 **Alternative flows:**
 
 - The Admin changes the member's role instead. Gotion applies the new role, provided the workspace keeps at least one Admin.
 - Removal from a user's only workspace is allowed. Their account remains usable, with an empty workspace directory.
-- A member leaves voluntarily. Gotion applies the same last-Admin check and main-workspace update as for removal.
+- A member leaves voluntarily. Gotion applies the same last-Admin check as for removal and clears the main workspace in the same way.
 - Gotion refuses removal or demotion of the last Admin. Another member must first become an Admin.
 - Gotion refuses membership administration requested by an Editor or Viewer.
 
