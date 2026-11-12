@@ -21,7 +21,6 @@ Feature: US-01 Sign up and sign in
     When Alice registers with that email address and a valid password
     Then Gotion creates her account
     And she gets a first workspace as its Admin
-    And that workspace becomes her main workspace
 
   Scenario: Refuse an email address already in use
     Given Alice has registered with "alice@example.com"
@@ -34,6 +33,14 @@ Feature: US-01 Sign up and sign in
     When she signs in with her email address and the correct password
     Then she can access her workspaces
 
+  Scenario: Sign in without any workspace
+    Given Alice has a registered account
+    And she belongs to no workspace
+    When she signs in with her email address and the correct password
+    Then Gotion shows an empty workspace directory
+    And she can create a workspace or accept a pending invitation
+    And no workspace is opened automatically
+
   Scenario: Refuse an incorrect password
     Given Alice has a registered account
     When she tries to sign in with an incorrect password
@@ -43,14 +50,14 @@ Feature: US-01 Sign up and sign in
 
 #### Workspace organisation
 
-- **US-02 — Manage workspaces**: As a user, I want to create, rename, delete, and switch between multiple workspaces, and choose my main one, so that I can keep different projects or teams separate. A user can be removed from a workspace only if they also belong to another one.
-If the removed workspace is their main one, Gotion automatically sets one of their remaining workspaces as main.
+- **US-02 — Manage workspaces**: As a user, I want to create, rename, delete, and switch between multiple workspaces, and return to the last one I visited at login, so that I can keep different projects or teams separate and resume my work. Each workspace the user opens becomes their main workspace, and Gotion reopens it at the next login. When the user loses access to it, Gotion clears the main workspace, and with none set, login opens the first workspace of the directory. A user may belong to no workspace: login then shows an empty directory, from which they can create a workspace or accept an invitation.
 
 ```gherkin
 Feature: US-02 Manage workspaces
 
   Scenario: Create a workspace
     Given Alice is signed in
+    And she belongs to no workspace
     When she creates a workspace named "Research"
     Then "Research" appears in her workspace directory
     And she is its first Admin
@@ -62,50 +69,71 @@ Feature: US-02 Manage workspaces
     Then its members see the name "Lab notes"
     And its pages and memberships stay unchanged
 
-  Scenario: Switch workspaces without changing the main one
+  Scenario: Update the main workspace when switching
     Given Alice belongs to "Research" and "Teaching"
     And her main workspace is "Research"
     When she switches to "Teaching"
     Then "Teaching" becomes her active workspace
-    And her main workspace is still "Research"
+    And Gotion remembers "Teaching" as her main workspace
 
-  Scenario: Choose a main workspace
+  Scenario: Return to the last opened workspace at login
     Given Alice belongs to "Research" and "Teaching"
-    When she chooses "Teaching" as her main workspace
-    Then Gotion saves "Teaching" as her default workspace 
-    And every login takes her there
+    And her main workspace is "Teaching"
+    When she signs in again
+    Then Gotion opens "Teaching"
 
-  Scenario: Automatically replace the main workspace after removal by another Admin
+  Scenario: Clear the main workspace after losing it
     Given Alice and Bob are Admins of "Research"
     And Bob's main workspace is "Research"
-    And Bob also belongs to "Teaching"
+    And Bob also belongs to "Archive" and "Teaching"
     When Alice removes Bob from "Research"
     Then Bob no longer belongs to "Research"
     And Alice remains its Admin
-    And "Teaching" automatically becomes Bob's main workspace
+    And Gotion clears Bob's main workspace
 
-  Scenario: Refuse removal from a user's only workspace
+  Scenario: Move to the first workspace when the open one is lost
+    Given Alice and Bob are Admins of "Research"
+    And Bob is working in "Research"
+    And his workspace directory lists "Archive" and "Teaching" in that order
+    When Alice removes Bob from "Research"
+    Then Gotion opens "Archive" for Bob
+    And "Archive" becomes his main workspace
+
+  Scenario: Open the first workspace of the directory when no main one is set
+    Given Bob has no main workspace
+    And his workspace directory lists "Archive" and "Teaching" in that order
+    When Bob signs in
+    Then Gotion opens "Archive"
+    And "Archive" becomes his main workspace
+
+  Scenario: Remove a member from their only workspace
     Given Alice and Bob are Admins of "Research"
     And Bob's main workspace is "Research"
     And Bob belongs to no other workspace
-    When Alice tries to remove Bob from "Research"
-    Then Gotion refuses the removal
-    And Bob remains an Admin of "Research"
-    And "Research" remains his main workspace
+    When Alice removes Bob from "Research"
+    Then Bob belongs to no workspace
+    And Gotion clears his main workspace
+    And he can no longer read or change its pages or take part in its discussions
+    And Alice remains its Admin
 
-  Scenario: Refuse a main workspace the user does not belong to
+  Scenario: Refuse opening a workspace the user does not belong to
     Given Alice does not belong to "Research"
-    When she tries to choose "Research" as her main workspace
-    Then Gotion refuses the change
-    And her main workspace stays unchanged
+    And her main workspace is "Teaching"
+    When she tries to open "Research"
+    Then Gotion refuses access
+    And her main workspace is still "Teaching"
 
   Scenario: Delete a workspace
     Given Alice is an Admin of "Research"
+    And it is her only workspace
+    And it is her main workspace
     And the workspace contains pages, discussions and other members
     When she deletes "Research"
     Then the workspace is no longer available to its members
     And Gotion removes its root page, sub-pages, content and discussions
     And Gotion removes its workspace membership
+    And Alice belongs to no workspace
+    And Gotion clears her main workspace
 
   Scenario Outline: Refuse workspace administration by other roles
     Given Alice has the <role> role in "Research"
@@ -123,7 +151,7 @@ Feature: US-02 Manage workspaces
 
 #### Membership and roles
 
-- **US-03 — Manage workspace members**: As a workspace Admin, I want to invite people to the workspace, remove members, and assign them the Admin, Editor, or Viewer role so that I can control who can read and who can change its content. A workspace always keeps at least one Admin. An invitee can accept or decline the invitation, which does not expire. A member can be removed only if they also belong to another workspace.
+- **US-03 — Manage workspace members**: As a workspace Admin, I want to invite people to the workspace, remove members, and assign them the Admin, Editor, or Viewer role so that I can control who can read and who can change its content. A workspace always keeps at least one Admin. An invitee can accept or decline the invitation, which does not expire. A member can be removed or leave even if they belong to no other workspace, provided the workspace keeps an Admin.
 
 ```gherkin
 Feature: US-03 Manage workspace members
@@ -151,6 +179,13 @@ Feature: US-03 Manage workspace members
     Then the invitation is no longer pending
     And he does not become a member of "Research"
 
+  Scenario: Accept an invitation with no workspace
+    Given Bob belongs to no workspace
+    And he has a pending invitation to "Research" as a Viewer
+    When he accepts it
+    Then he belongs to "Research" as a Viewer
+    And the invitation is no longer pending
+
   Scenario: Change a member's role
     Given Alice is an Admin of "Research"
     And Bob is a Viewer in that workspace
@@ -165,6 +200,16 @@ Feature: US-03 Manage workspace members
     Then Bob no longer belongs to "Research"
     And he can no longer read or change its pages or take part in its discussions
     And "Teaching" remains his main workspace
+
+  Scenario: Leave the only workspace as a Viewer
+    Given Alice is an Admin of "Research"
+    And Bob is a Viewer in that workspace
+    And "Research" is Bob's only workspace and his main workspace
+    When Bob leaves "Research"
+    Then Bob belongs to no workspace
+    And Gotion clears his main workspace
+    And he can no longer read its pages or take part in its discussions
+    And Alice remains its Admin
 
   Scenario Outline: Keep at least one Admin
     Given Alice is the only Admin of "Research"

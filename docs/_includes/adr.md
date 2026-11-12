@@ -183,21 +183,9 @@ On the bad side:
 
 **Status:** Proposed.
 
-**Context.** Membership is the one writer of the roles and of who is a member, but three other
-contexts check them on their own commands, as the [Roles](#roles) table shows: Account lets only
-an Admin rename or delete a workspace and keeps the main workspace among the user's own, Editing
-lets a Viewer read but not change the content, and Discussion lets only members post, resolve
-and be mentioned. The [Context Map](#context-map) says *what* each of them gets from Membership;
-this record settles *how* it reaches them, which is
-[PP-04](analysis.html#open-pain-points). Notification is not part of it: it reacts to Member
-Invited and never checks a role or a membership.
+**Context.** Membership is the one writer of the roles and of who is a member, but three other contexts check them on their own commands, as the [Roles](#roles) table shows: Account lets only an Admin rename or delete a workspace and opens only workspaces the user belongs to, Editing lets a Viewer read but not change the content, and Discussion lets only members post, resolve and be mentioned. The [Context Map](#context-map) says *what* each of them gets from Membership; this record settles *how* it reaches them, which is [PP-04](analysis.html#open-pain-points). Notification is not part of it: it reacts to Member Invited and never checks a role or a membership.
 
-The three contexts differ in what is at stake. Editing checks the role on every edit, on the path
-that QA-01 bounds at 500 ms (p95) from the edit to the ack, and inside a session that stays open
-for as long as the page is edited. Account checks it on renaming and deleting a workspace, rare
-commands that cannot be undone. Discussion checks it on a comment, where a few milliseconds more
-change nothing. QA-06 asks that every request of a non-member or a Viewer is denied. The
-alternatives were:
+The three contexts differ in what is at stake. Editing checks the role on every edit, on the path that QA-01 bounds at 500 ms (p95) from the edit to the ack, and inside a session that stays open for as long as the page is edited. Account checks it on renaming and deleting a workspace, rare commands that cannot be undone, and on opening one, where it only decides whether to save it as the main workspace. Discussion checks it on a comment, where a few milliseconds more change nothing. QA-06 asks that every request of a non-member or a Viewer is denied. The alternatives were:
 
 - **a local copy of the roles**, kept by each context from the events of Membership (Member
   Joined, Member Role Changed, Member Removed, Member Left, Workspace Membership Deleted): a CQRS
@@ -232,10 +220,7 @@ the map.
   Workspace Membership Deleted a policy makes the user leave the sessions of the workspace, so
   they stop receiving the operations of its pages. A change to Viewer needs no policy: the next
   edit is checked against the table and refused.
-- **Account asks Membership** whether the user is an Admin before renaming or deleting a
-  workspace, and whether the user is a member before setting a main workspace. If Membership
-  does not answer, the command is refused. Account keeps listening to Member Removed only for
-  the policy that replaces a removed main workspace.
+- **Account asks Membership** whether the user is an Admin before renaming or deleting a workspace, and whether the user is a member before opening a workspace and saving it as main. If Membership does not answer, the command is refused and the saved main workspace stays unchanged. Account listens to Member Removed, Member Left and Workspace Membership Deleted to clear a main workspace the user has lost.
 - **Discussion asks Membership** whether the author, every user mentioned and whoever resolves
   are members, in one query per command for all of them. If Membership does not answer, the
   command is refused. Discussion no longer listens to the events of Membership.
@@ -260,10 +245,7 @@ This settles PP-04.
 On the bad side:
 
 - **Editing is eventually consistent with Membership.** Between Member Removed and the moment Editing applies it, a removed member can still edit and still receives the operations of the session; between Member Role Changed and its event, a member demoted to Viewer can still edit. The window is the lag of the events, including their wait in the outbox of Membership ([ADR-05](#adr-05-go-publishers-use-a-transactional-outbox-with-polling)), bounded by the response measure added to QA-06.
-- **Account and Discussion depend on Membership at run time.** When it is down, no workspace can
-  be renamed or deleted and no comment posted. Account and Membership already depend on each
-  other through events; now each one also calls the other (Membership asks Account for the user
-  registered with an email address), so each one's availability depends on the other's.
+- **Account and Discussion depend on Membership at run time.** When it is down, no workspace can be renamed or deleted, opening one leaves the main workspace as it was, and no comment can be posted. Account and Membership already depend on each other through events; now each one also calls the other (Membership asks Account for the user registered with an email address), so each one's availability depends on the other's.
 - Editing has two adapters behind one port, the table and the query, both to be tested.
 - While a new instance of Editing rebuilds its table, every check falls back to Membership, so a
   restart under load moves that load onto Membership for a moment.

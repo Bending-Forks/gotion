@@ -10,7 +10,7 @@ the timeline.
 | Subdomain | What it covers | User stories | Type |
 |---|---|---|---|
 | Identity | Registering and signing in | US-01 | Generic |
-| Workspace organisation | The workspaces a user creates, renames, deletes and switches between, and the main one | US-02 | Supporting |
+| Workspace organisation | The workspaces a user creates, renames, deletes and switches between, and the main one, the last they opened | US-02 | Supporting |
 | Membership and roles | Who belongs to a workspace, invitations, and the Admin, Editor and Viewer roles | US-03 | Supporting |
 | Page content | Nested pages made of Markdown blocks | US-04, US-05, US-06, US-07 | Core |
 | Real-time collaboration | Editing a page together, and seeing who else is on it | US-08 | Core |

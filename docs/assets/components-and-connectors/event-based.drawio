@@ -198,7 +198,7 @@
             <mxPoint x="0" y="12" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="w-chm-ac" value="Member Removed only" style="dashed=1;endArrow=open;endSize=8;html=0;strokeColor=#b7791f;strokeWidth=1.5;fontSize=10;fontColor=#744210;labelBackgroundColor=none;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="chm-sub-account" target="ac-sub-membership">
+        <mxCell id="w-chm-ac" value="Removed, Left, Deleted" style="dashed=1;endArrow=open;endSize=8;html=0;strokeColor=#b7791f;strokeWidth=1.5;fontSize=10;fontColor=#744210;labelBackgroundColor=none;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="chm-sub-account" target="ac-sub-membership">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="0" y="12" as="offset" />
           </mxGeometry>

@@ -25,7 +25,7 @@ With one service per bounded context, the boundary of a model is also the bounda
 **Why not smaller services.** A further split would put a network call inside a rule that one service now keeps on its own:
 
 - Splitting page content from real-time collaboration would put a hop between the session and the Page Block Tree. The tree checks every operation before the ack, so the hop would be on the path of every keystroke, which QA-01 and QA-02 bound. The same holds for a service per aggregate of Editing.
-- Splitting identity from workspace organisation would turn two steps of Account into calls between services: a workspace is created through `createWorkspace` on User, so that it always has a registered creator, and the main workspace is a preference kept on User. Identity is a generic subdomain, so if it is later covered by an existing component, Account is where that component plugs in, and the split can be made then.
+- Splitting identity from workspace organisation would turn two steps of Account into calls between services: a workspace is created through `createWorkspace` on User, so that it always has a registered creator, and the main workspace, the last one the user opened, is kept on User. Identity is a generic subdomain, so if it is later covered by an existing component, Account is where that component plugs in, and the split can be made then.
 
 **Why not fewer services.** Two merges were worth weighing:
 
@@ -41,11 +41,11 @@ What each service offers and needs. The *client API* goes through the API gatewa
 | Aspect | Description |
 |---|---|
 | Responsibility | Users and workspaces (`User`, `Workspace`), US-01, US-02 |
-| Client API | Register, Sign in, Create, Rename and Delete workspace, Set main workspace. Sign in issues the token the gateway checks, which carries only the identity of the user (ADR-03) and is rate limited per account (QA-07) |
+| Client API | Register, Sign in, Create, Rename, Open and Delete workspace. Sign in issues the token the gateway checks, which carries only the identity of the user (ADR-03) and is rate limited per account (QA-07) |
 | Answers | The `UserId` registered with an email address, to Membership; the names of a batch of workspaces and the main workspace of a user, to the gateway for the [Workspace directory](#api-composition) |
-| Asks | Membership: the role of the user in the workspace, which must be Admin before Rename and Delete workspace, and any role before Set main workspace |
+| Asks | Membership: the role of the user in the workspace, which must be Admin before Rename and Delete workspace, and any role before Open workspace, which saves it as the main workspace |
 | Publishes | Workspace Created, Workspace Deleted |
-| Consumes | Member Removed, as a conformist, to replace a removed main workspace |
+| Consumes | Member Removed, Member Left and Workspace Membership Deleted, as a conformist, to clear a main workspace the user has lost |
 | Owns | The users and the workspaces, as current state; the store keeps the email address unique |
 
 #### Membership
@@ -104,7 +104,7 @@ A synchronous call couples the caller to the callee in time: the caller's comman
 
 | Caller | Callee | Query | Before | If the callee fails |
 |---|---|---|---|---|
-| Account | Membership | Role of a user | Rename, Delete workspace; Set main workspace | The command is refused |
+| Account | Membership | Role of a user | Rename, Open, Delete workspace | The command is refused; an unanswered Open leaves the main workspace as it was |
 | Membership | Account | `UserId` of an email address | Invite member | The command is refused |
 | Editing | Membership | Role of a user, only without a row in the local copy | Join session, Submit edit, Set title, icon, cover | The command is denied |
 | Discussion | Membership | Which users are members | Post comment, Resolve thread | The command is refused |
@@ -126,10 +126,10 @@ Account, Membership and Discussion do not wait for Kafka to run a command: they 
 The API gateway builds the *Workspace directory* on demand, so the client gets the workspaces of the signed-in user in one request (US-02). The gateway takes the `UserId` from the verified sign-in token, never from a user identifier supplied by the client (QA-06), then:
 
 1. asks Membership for the `WorkspaceId` and role of each workspace the user belongs to;
-2. asks Account for the names of those workspaces in one batch, and for the user's main workspace preference;
+2. asks Account for the names of those workspaces in one batch, and for the user's main workspace;
 3. joins the answers by `WorkspaceId` and returns the directory, marking the main workspace only if it is among the user's memberships.
 
-The gateway keeps no copy of this view and reads each service through its API. It holds no business rule either: joining by `WorkspaceId` and leaving out a main workspace the user no longer belongs to only shape the answer, since Account itself replaces a removed main workspace when Member Removed arrives, and every rule on workspaces and roles stays in Account and Membership. A workspace already deleted in Account is omitted while its membership is being removed by policy. If either service fails to answer, the directory request fails rather than returning an incomplete list. Account owns the workspace data and the preference, and Membership owns the memberships and roles.
+The gateway keeps no copy of this view and reads each service through its API. It holds no business rule either: joining by `WorkspaceId` and leaving out a main workspace the user no longer belongs to only shape the answer, since Account itself clears a main workspace the user has lost when Member Removed, Member Left or Workspace Membership Deleted arrives, and every rule on workspaces and roles stays in Account and Membership. A workspace already deleted in Account is omitted while its membership is being removed by policy. If either service fails to answer, the directory request fails rather than returning an incomplete list. Account owns the workspace data and the main workspace, and Membership owns the memberships and roles.
 
 ### State and scaling
 

@@ -37,11 +37,12 @@ follow the [Ubiquitous language](#ubiquitous-language); an Admin can also do eve
 
 1. The user provides their email address and password.
 2. Gotion checks the credentials and signs the user in.
-3. The user opens a workspace they belong to.
+3. Gotion opens the user's main workspace, the last one they opened. If they have none, because they never opened one or have lost access to it, Gotion opens the first workspace of their directory.
 
 **Alternative flows:**
 
-- A visitor registers with an unused email address and a valid password. Gotion creates the account and a first workspace, makes the user its Admin, and sets it as their main workspace. The user can then sign in.
+- A visitor registers with an unused email address and a valid password. Gotion creates the account and a first workspace and makes the user its Admin. The user can then sign in.
+- A registered user with no workspaces can still sign in. Gotion shows an empty workspace directory, from which they can create a workspace or accept a pending invitation.
 - If the email address is already registered, Gotion refuses the registration and keeps the existing account unchanged.
 - If the credentials are incorrect, Gotion refuses the sign-in. Repeated failed attempts are throttled as specified in [QA-07](#security).
 
@@ -66,17 +67,17 @@ follow the [Ubiquitous language](#ubiquitous-language); an Admin can also do eve
 1. The user creates a workspace and gives it a name.
 2. Gotion adds the workspace to their directory, makes them its first Admin, and creates its root page.
 3. The user opens the workspace and starts working in it.
-4. The user chooses it as their main workspace if they want it to be their default.
+4. Gotion saves it as their main workspace and reopens it at the next login. Every workspace they open later takes its place.
 
 **Alternative flows:**
 
-- The user opens an existing workspace from their directory. Switching changes the active workspace and keeps the main workspace unchanged.
-- The user chooses another workspace they belong to as main. Gotion saves the preference; it refuses a workspace the user does not belong to.
+- The user opens an existing workspace from their directory. Each successful opening changes the active workspace and updates the saved main workspace.
+- Gotion refuses access to a workspace the user does not belong to, without changing the saved main workspace.
 - An Admin renames a workspace. Its members see the new name, while its pages and memberships stay unchanged.
-- An Admin deletes a workspace. Gotion makes it unavailable to its members and removes its membership, pages, content and discussions.
+- An Admin deletes a workspace. Gotion makes it unavailable to its members and removes its membership, pages, content and discussions. Members who had it as their main workspace are left with none.
 - Gotion refuses a blank workspace name, or a rename or deletion requested by an Editor or Viewer.
 
-**Outcome:** the user can organize and navigate their workspaces, with a separate preference for the main one.
+**Outcome:** the user can organize and navigate their workspaces, and at the next login finds the last one they opened, or the first of their directory if they lost it.
 
 </section>
 
@@ -127,18 +128,19 @@ follow the [Ubiquitous language](#ubiquitous-language); an Admin can also do eve
 **Main flow:**
 
 1. The Admin selects a member and requests their removal.
-2. Gotion checks that the workspace will keep at least one Admin and that the member belongs to at least one other workspace.
+2. Gotion checks that the workspace will keep at least one Admin.
 3. Gotion removes the member. They can no longer read or change the workspace's pages or take part in its discussions.
-4. If this was the removed member's main workspace, Gotion automatically sets one of their remaining workspaces as main. Otherwise, their main workspace stays unchanged.
+4. If this was the removed member's main workspace, Gotion clears it, and their next login opens the first workspace of their directory. Otherwise, their main workspace stays unchanged.
 
 **Alternative flows:**
 
 - The Admin changes the member's role instead. Gotion applies the new role, provided the workspace keeps at least one Admin.
-- Gotion refuses removal from a user's only workspace. Their membership and main workspace stay unchanged.
+- Removal from a user's only workspace is allowed. Their account remains usable, with an empty workspace directory.
+- A member leaves voluntarily. Gotion applies the same last-Admin check as for removal and clears the main workspace in the same way.
 - Gotion refuses removal or demotion of the last Admin. Another member must first become an Admin.
 - Gotion refuses membership administration requested by an Editor or Viewer.
 
-**Outcome:** the member's access reflects the accepted change. Removal leaves them in at least one workspace, and the original workspace keeps an Admin.
+**Outcome:** the member's access reflects the accepted change. They may have no workspaces afterward, and the original workspace keeps an Admin.
 
 </section>
 

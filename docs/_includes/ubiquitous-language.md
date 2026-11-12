@@ -10,8 +10,8 @@ This glossary records the ubiquitous language of Gotion. Following DDD, the lang
 |---|---|---|
 | User | A person registered in Gotion with an email address and a password (US-01). The identity that signs in. | *Member*, which is a user seen inside one workspace. |
 | Workspace | A separate space that contains pages, used to keep different projects or teams apart (US-02). A user's first workspace is created when the user registers. | *Workspace Membership*, which holds who belongs to the workspace. |
-| Main workspace | The user's default workspace. Initially it is the first workspace created when the user registers, and the user can choose another. It's the arrival workspace at every login. If an Admin removes the user from it, Gotion automatically sets one of their remaining workspaces as main. Removal is refused if the user belongs to no other workspace (US-02, US-03). | *Active workspace*. |
-| Active workspace | The workspace the user is currently working in; switching workspace changes it. | *Main workspace*. |
+| Main workspace | The workspace Gotion opens at login: the last one the user opened. It is cleared when the user loses access to it, and while it is unset, login opens the first workspace of the directory. A user with no workspaces has none and sees an empty directory (US-02, US-03). | *Active workspace*, which belongs to the current client session. |
+| Active workspace | The workspace the user is currently working in. Opening another one changes it and saves that one as the main workspace. | *Main workspace*, which is saved across sessions. |
 
 #### Membership
 
@@ -31,7 +31,7 @@ This glossary records the ubiquitous language of Gotion. Following DDD, the lang
 | Term | Definition | Not to be confused with |
 |---|---|---|
 | Page | A document of a workspace, with its metadata and its place in the page tree (US-04). A page is either the root page or a sub-page, which is also a block of its parent page. | *Page Block Tree*, the content of the page. |
-| Root page | The only page of a workspace that has no parent, created together with the workspace. It holds content like any other page, and it is where new pages start: every other page is created inside it or inside one of its sub-pages, so every page of the workspace descends from it. A workspace has exactly one root page: no other can be created, and it is deleted only together with its workspace. | *Main workspace*. |
+| Root page | The only page of a workspace that has no parent, created together with the workspace. It holds content like any other page, and it is where new pages start: every other page is created inside it or inside one of its sub-pages, so every page of the workspace descends from it. A workspace has exactly one root page: no other can be created, and it is deleted only together with its workspace. | *Workspace*, which contains pages. |
 | Sub-page | Any page other than the root page: a page whose page block lives inside another page, its parent. | — |
 | Page tree | The hierarchy of the pages of a workspace, rooted at the root page and given by the parent of each page. | *Page Block Tree*. |
 | Page metadata | The title, icon and cover of a page (US-05). | *Page content*. |
