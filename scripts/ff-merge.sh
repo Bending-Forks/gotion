@@ -46,5 +46,11 @@ gh pr checks "$pr"
 # and if it refuses, nothing has changed locally.
 git push origin "$branch:$base"
 
+# GitHub closes the PRs into a deleted branch: move them onto the base, which now holds the branch.
+for n in $(gh pr list --base "$branch" --json number -q '.[].number'); do
+  gh pr edit "$n" --base "$base"
+  echo "Retargeted #$n from $branch to $base."
+done
+
 echo "Merged #$pr ($branch) into $base. Delete the branch with:"
 echo "  git switch $base && git pull --ff-only && git branch -d $branch && git push origin --delete $branch"

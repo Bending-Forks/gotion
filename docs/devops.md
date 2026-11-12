@@ -27,12 +27,7 @@ makes it fail. Tying the check to GitHub Actions means a status set by hand thro
 cannot stand in for it. So a red CI keeps a change out whatever way it comes in: the merge
 script, a manual push, or the squash of a Renovate pull request.
 
-A pull request is merged with `scripts/ff-merge.sh`: it rebases the branch on `main`, checks
-that the CI passed and the PR is approved, so it stops before the server would refuse, then
-pushes the head of the branch straight onto `main`. The server accepts only a fast-forward, so
-the commits keep their signatures and the history stays linear. Renovate pull requests are
-squashed instead, by Renovate itself (see [CI/CD](#cicd)). Locally, each of us pulls with
-`pull.rebase = true`.
+A pull request is merged with `scripts/ff-merge.sh`: it rebases the branch on `main`, checks that the CI passed and the PR is approved, so it stops before the server would refuse, then pushes the head of the branch straight onto `main`. The server accepts only a fast-forward, so the commits keep their signatures and the history stays linear. Then it moves onto `main` the open pull requests that had the merged branch as their base, because GitHub closes a pull request whose base branch is deleted. For the same reason the `pre-push` hook refuses to delete a remote branch that an open pull request comes from or goes into. Renovate pull requests are squashed instead, by Renovate itself (see [CI/CD](#cicd)). Locally, each of us pulls with `pull.rebase = true`.
 
 Until [#15](https://github.com/Bending-Forks/gotion/pull/15) the report lived on a separate
 `gh-pages` branch, published by the legacy Pages build, while the repository tooling lived on

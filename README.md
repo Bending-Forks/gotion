@@ -17,4 +17,4 @@ Then open <http://127.0.0.1:4000/gotion/>. The `/gotion` path comes from `baseur
 
 ## Contributing
 
-Run `npm install` once after cloning: it installs the git hooks (through [husky](https://typicode.github.io/husky/)) that check every commit title against [Conventional Commits](https://www.conventionalcommits.org/).
+Run `npm install` once after cloning: it installs the git hooks (through [husky](https://typicode.github.io/husky/)) that check every commit title against [Conventional Commits](https://www.conventionalcommits.org/) and refuse to delete a remote branch with open pull requests into or out of it.

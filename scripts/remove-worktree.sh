@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Remove the worktree of a task branch and delete the branch, locally and on origin.
-# Asks for confirmation if the branch has commits not in origin/main.
+# Asks for confirmation if the branch has commits not in origin/main; stops first if open PRs use it.
 # Usage: scripts/remove-worktree.sh <type>/<task>   e.g. scripts/remove-worktree.sh docs/hexagonal
 set -euo pipefail
 
@@ -30,6 +30,11 @@ for ref in "$local_ref" "$remote_ref"; do
   fi
 done
 [[ -n $dir ]] && warn "worktree of $branch: $dir" || warn "no worktree has $branch checked out"
+
+# A dry run triggers the pre-push hook, which refuses if open PRs use the branch: stop before touching anything.
+if has "$remote_ref" && ! git -C "$repo" push --dry-run -q origin --delete "$branch"; then
+  echo "Aborted: nothing was removed." >&2; exit 1
+fi
 
 if ((unmerged)); then
   read -rp "Those commits will be lost. Delete anyway? [y/N] " answer || true
