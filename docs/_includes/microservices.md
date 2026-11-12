@@ -126,10 +126,10 @@ Account, Membership and Discussion do not wait for Kafka to run a command: they 
 The API gateway builds the *Workspace directory* on demand, so the client gets the workspaces of the signed-in user in one request (US-02). The gateway takes the `UserId` from the verified sign-in token, never from a user identifier supplied by the client (QA-06), then:
 
 1. asks Membership for the `WorkspaceId` and role of each workspace the user belongs to;
-2. asks Account for the names of those workspaces in one batch, and for the user's main workspace preference;
+2. asks Account for the names of those workspaces in one batch, and for the user's main workspace;
 3. joins the answers by `WorkspaceId` and returns the directory, marking the main workspace only if it is among the user's memberships.
 
-The gateway keeps no copy of this view and reads each service through its API. It holds no business rule either: joining by `WorkspaceId` and leaving out a main workspace the user no longer belongs to only shape the answer, since Account itself clears a main workspace the user has lost when Member Removed, Member Left or Workspace Membership Deleted arrives, and every rule on workspaces and roles stays in Account and Membership. A workspace already deleted in Account is omitted while its membership is being removed by policy. If either service fails to answer, the directory request fails rather than returning an incomplete list. Account owns the workspace data and the preference, and Membership owns the memberships and roles.
+The gateway keeps no copy of this view and reads each service through its API. It holds no business rule either: joining by `WorkspaceId` and leaving out a main workspace the user no longer belongs to only shape the answer, since Account itself clears a main workspace the user has lost when Member Removed, Member Left or Workspace Membership Deleted arrives, and every rule on workspaces and roles stays in Account and Membership. A workspace already deleted in Account is omitted while its membership is being removed by policy. If either service fails to answer, the directory request fails rather than returning an incomplete list. Account owns the workspace data and the main workspace, and Membership owns the memberships and roles.
 
 ### State and scaling
 
