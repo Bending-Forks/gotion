@@ -81,8 +81,11 @@ which Grafana reads through Prometheus.
 
 ### Hexagonal Architecture
 
-<!-- TODO: the internal architecture shared by every service: domain model at the centre,
-ports for the repositories and the events, adapters for HTTP, the database and the broker. -->
+Every service follows the ports and adapters style. The inner hexagon is the application: the domain model of the [Tactical Design](#tactical-design) and one application service for each command, query or policy. On its border are the ports, the interfaces the application declares for what it needs from outside, such as a repository, the outbox or `AccessLookupService`. The outer hexagon holds the adapters. An inbound adapter (REST, WebSocket, a Kafka consumer) calls a port; an outbound adapter (the database, the outbox table, a Kafka producer, an HTTP client) implements one.
+
+![Hexagonal architecture of each service]({{ '/assets/components-and-connectors/hexagonal.svg' | relative_url }})
+
+A service has only the ports its work needs. Account and Membership answer queries of other services, so only they have a Query API. Notification publishes nothing and asks no other context, so it has neither an outbox nor an HTTP client. Editing also writes the session log of ADR-02 and sends the operations to the collaborators over the WebSocket. The timeout, retry and circuit breaker of [Dependencies at run time](#dependencies-at-run-time) live in the HTTP client, and the anticorruption layers of the context map in the Kafka consumers, so changing them leaves the domain model untouched. In the tests, in-memory adapters take the place of the database and the broker.
 
 <!-- TODO SLO: the metrics are collected in the adapters (HTTP, WebSocket), where requests
 come in and acknowledgements go out, so the domain model does not depend on Prometheus. -->
