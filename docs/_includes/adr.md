@@ -166,9 +166,7 @@ On the bad side:
   operations before them.
 - The tree lags behind the log for a moment, so anything that reads the tree, such as the page
   open of QA-03, may miss the last operations.
-- The store of the log is still to choose; it must make an append durable before it returns,
-  and refuse an append whose sequence number is not the next one of its page, so that two
-  instances of Editing can never both extend the log of the same page.
+- The store of the log must make an append durable before it returns, and refuse an append whose sequence number is not the next one of its page, so that two instances of Editing can never both extend the log of the same page. [ADR-06](#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own) chooses it and meets both.
 - The operations in the log outlive the version of the protocol that wrote them: a change to the
   operations needs a version on each one and a way to replay the older ones.
 
@@ -341,3 +339,45 @@ On the bad side:
 - Concurrent commands and competing publishers are tested for publication in transaction order within each aggregate and takeover after the active publisher stops.
 - A repeated incoming event changes the state and enqueues its outgoing events only once, including when the consumer restarts before committing its offset.
 - The security test of QA-06 measures from the change in Membership to its application in Editing, including the wait in the outbox.
+
+### ADR-06: Each service keeps its data in a PostgreSQL server of its own
+
+**Status:** Proposed.
+
+**Context.** Every service owns its store, and no other service reads or migrates it (Database-per-Service, [Repository view](#components-and-connectors)). Three records ask something of those stores. [ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log) leaves the store of the session log of Editing to choose, with two requirements: an append is durable before it returns, and an append whose sequence number is not the next one of its page is refused. [ADR-05](#adr-05-go-publishers-use-a-transactional-outbox-with-polling) needs the change of an aggregate and its outbox row in one transaction in Account, Membership and Discussion. [ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership) keeps a copy of the roles in Editing. Two scenarios bound the choice: QA-08 installs the whole system on a clean host, with the schema migrations run automatically and no manual database step, and QA-01 allows 500 ms (p95) from an edit to its ack, which includes the append. The alternatives were:
+
+- a dedicated event store for the session log, such as EventStoreDB (now KurrentDB), next to the database of the other stores;
+- Kafka as the session log;
+- a database of a different technology for each service;
+- PostgreSQL for every store, the session log included.
+
+An event store has the append the log needs: it takes the version the stream is expected to have and refuses the append otherwise. But it is a second engine to install, configure, back up and migrate next to the one of the other services, for a single store. Kafka is already deployed, but it has no append conditional on the expected sequence number, so it cannot refuse the append of an instance that fell behind. A different database for each service adds technologies that QA-08 must install, migrate and back up.
+
+**Decision.** We will keep every store in PostgreSQL, with one server for each service:
+
+- Account, Membership, Editing, Discussion and Notification each have their own PostgreSQL server, holding the schema of that service only, with no replica. The API gateway has no database.
+- The session log of Editing is a table with the primary key `(page_id, seq)`. An append is an `INSERT` in a transaction that commits before Editing acknowledges the operation; an `INSERT` with a `seq` already used violates the key, and that is the refused append of ADR-02 and of [State and scaling](#state-and-scaling).
+- The session log, the snapshots, the pages and the copy of the roles are all in the one server of Editing. The Log store and Database adapters of [Hexagonal Architecture](#hexagonal-architecture) implement two different ports on the same database.
+- Each service migrates its own schema when it starts, under a PostgreSQL advisory lock, so that two instances starting together never run the same migration twice. The Go services use goose, with the migrations embedded in the binary; Editing uses node-pg-migrate.
+
+This settles the store of the log that ADR-02 left open.
+
+**Consequences.** On the good side:
+
+- One database engine to install, configure and back up for all the services, and a fresh install creates every schema with no manual step (QA-08).
+- The primary key alone meets both requirements of ADR-02: a committed insert is durable, and a repeated `seq` is refused by the database, not by the code of Editing.
+- The change of an aggregate, its outbox row and the record of an applied event commit in one transaction, as ADR-05 needs.
+
+On the bad side:
+
+- Every operation of a page waits for a commit before its ack: one write to the database on the path that QA-01 bounds, to be measured.
+- Five PostgreSQL servers run on the reference node of 8 GB, next to Kafka and the services, so their memory must be sized to fit.
+- The log grows with every operation, and needs the snapshots and the compaction that ADR-02 already lists.
+- An instance that starts with a new migration runs it before it becomes ready, so a long migration delays its readiness.
+- Each server is a single point of failure of its service. The reference deployment is a single node, so replicating the stores is out of scope.
+
+**Compliance.**
+
+- A test appends two operations with the same `seq` to the log of a page: the second is refused.
+- The fresh install test of QA-08 starts from empty databases and runs no manual step on them.
+- The SLI of QA-01 is measured with the append on PostgreSQL.
