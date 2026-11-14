@@ -166,9 +166,7 @@ On the bad side:
   operations before them.
 - The tree lags behind the log for a moment, so anything that reads the tree, such as the page
   open of QA-03, may miss the last operations.
-- The store of the log is still to choose; it must make an append durable before it returns,
-  and refuse an append whose sequence number is not the next one of its page, so that two
-  instances of Editing can never both extend the log of the same page.
+- The store of the log must make an append durable before it returns, and refuse an append whose sequence number is not the next one of its page, so that two instances of Editing can never both extend the log of the same page. [ADR-06](#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own) chooses it and meets both.
 - The operations in the log outlive the version of the protocol that wrote them: a change to the
   operations needs a version on each one and a way to replay the older ones.
 
@@ -276,6 +274,7 @@ On the bad side:
 - Editing is written in TypeScript and runs on Node.js. It holds the WebSocket of every open page and relays its operations (ADR-01).
 - The CRDT is one TypeScript package, with no dependency on the browser, on Node.js or on any editor. The client and Editing both import it. The protocol of the operations and the block schema are shared the same way.
 - The client is written in TypeScript with React.
+- The API gateway is written in Go too, on the same chassis as the four Go services ([ADR-07](#adr-07-each-runtime-has-its-own-microservice-chassis-assembled-from-libraries)).
 - Every service is built into its own container image, so the deployment handles a Go service and a Node.js one the same way.
 
 This settles the runtimes left open by ADR-01.
@@ -289,8 +288,8 @@ This settles the runtimes left open by ADR-01.
 On the bad side:
 
 - Each language has its own build, tests, linter and image, so the CI has jobs for both, and the team works in two languages.
-- The events cross languages: Editing publishes and consumes them in TypeScript, the other services in Go. Each published language needs a schema from which both sides generate their types, and its format is still to choose. Without it, a field renamed on one side breaks the other only at run time.
-- The skeleton of a service exists twice, in Go and in TypeScript: the hexagonal structure, `/health` and `/metrics`, the Kafka consumer that ignores a repeated event, the migrations of QA-08.
+- The events cross languages: Editing publishes and consumes them in TypeScript, the other services in Go. Each published language needs a schema from which both sides generate their types, in the format of [ADR-08](#adr-08-contracts-are-json-schema-with-no-schema-registry). Without it, a field renamed on one side breaks the other only at run time.
+- The skeleton of a service exists twice, in Go and in TypeScript: the hexagonal structure, `/health` and `/metrics`, the Kafka consumer that ignores a repeated event, the migrations of QA-08. ADR-07 reduces it to a thin chassis per runtime, assembled from libraries.
 
 **Compliance.**
 
@@ -320,6 +319,7 @@ Publishing before the commit can announce a change that is rolled back. Publishi
 - Changes to the same aggregate are serialized in their database transactions, including the insertion into the outbox. The publisher preserves that order and does not pass an unacknowledged event with a later one of the same aggregate. A database lock allows only one publisher per service to be active across its replicas; another replica takes over when the lock is released after a failure.
 - An event can be published again if the publisher stops after Kafka acknowledges it but before the row is marked as sent. It keeps the same identifier, and the idempotent consumers of [Contracts](#contracts) ignore the duplicate.
 - Notification has no outbox because it publishes no events. Editing is excluded: it still publishes directly after the operation is in its session log ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)) and applied to the Page Block Tree, retrying from memory until Kafka acknowledges it.
+- The library that realizes the outbox and its publisher, the Forwarder of Watermill, is chosen in [ADR-07](#adr-07-each-runtime-has-its-own-microservice-chassis-assembled-from-libraries).
 
 **Consequences.** On the good side:
 
@@ -341,3 +341,152 @@ On the bad side:
 - Concurrent commands and competing publishers are tested for publication in transaction order within each aggregate and takeover after the active publisher stops.
 - A repeated incoming event changes the state and enqueues its outgoing events only once, including when the consumer restarts before committing its offset.
 - The security test of QA-06 measures from the change in Membership to its application in Editing, including the wait in the outbox.
+
+### ADR-06: Each service keeps its data in a PostgreSQL server of its own
+
+**Status:** Proposed.
+
+**Context.** Every service owns its store, and no other service reads or migrates it (Database-per-Service, [Repository view](#components-and-connectors)). Three records ask something of those stores. [ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log) leaves the store of the session log of Editing to choose, with two requirements: an append is durable before it returns, and an append whose sequence number is not the next one of its page is refused. [ADR-05](#adr-05-go-publishers-use-a-transactional-outbox-with-polling) needs the change of an aggregate and its outbox row in one transaction in Account, Membership and Discussion. [ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership) keeps a copy of the roles in Editing. Two scenarios bound the choice: QA-08 installs the whole system on a clean host, with the schema migrations run automatically and no manual database step, and QA-01 allows 500 ms (p95) from an edit to its ack, which includes the append. The alternatives were:
+
+- a dedicated event store for the session log, such as EventStoreDB (now KurrentDB), next to the database of the other stores;
+- Kafka as the session log;
+- a database of a different technology for each service;
+- PostgreSQL for every store, the session log included.
+
+An event store has the append the log needs: it takes the version the stream is expected to have and refuses the append otherwise. But it is a second engine to install, configure, back up and migrate next to the one of the other services, for a single store. Kafka is already deployed, but it has no append conditional on the expected sequence number, so it cannot refuse the append of an instance that fell behind. A different database for each service adds technologies that QA-08 must install, migrate and back up.
+
+**Decision.** We will keep every store in PostgreSQL, with one server for each service:
+
+- Account, Membership, Editing, Discussion and Notification each have their own PostgreSQL server, holding the schema of that service only, with no replica. The API gateway has no database.
+- The session log of Editing is a table with the primary key `(page_id, seq)`. An append is an `INSERT` in a transaction that commits before Editing acknowledges the operation; an `INSERT` with a `seq` already used violates the key, and that is the refused append of ADR-02 and of [State and scaling](#state-and-scaling).
+- The session log, the snapshots, the pages and the copy of the roles are all in the one server of Editing. The Log store and Database adapters of [Hexagonal Architecture](#hexagonal-architecture) implement two different ports on the same database.
+- Each service migrates its own schema when it starts, under a PostgreSQL advisory lock, so that two instances starting together never run the same migration twice. The Go services use goose, with the migrations embedded in the binary; Editing uses node-pg-migrate.
+
+This settles the store of the log that ADR-02 left open.
+
+**Consequences.** On the good side:
+
+- One database engine to install, configure and back up for all the services, and a fresh install creates every schema with no manual step (QA-08).
+- The primary key alone meets both requirements of ADR-02: a committed insert is durable, and a repeated `seq` is refused by the database, not by the code of Editing.
+- The change of an aggregate, its outbox row and the record of an applied event commit in one transaction, as ADR-05 needs.
+
+On the bad side:
+
+- Every operation of a page waits for a commit before its ack: one write to the database on the path that QA-01 bounds, to be measured.
+- Five PostgreSQL servers run on the reference node of 8 GB, next to Kafka and the services, so their memory must be sized to fit.
+- The log grows with every operation, and needs the snapshots and the compaction that ADR-02 already lists.
+- An instance that starts with a new migration runs it before it becomes ready, so a long migration delays its readiness.
+- Each server is a single point of failure of its service. The reference deployment is a single node, so replicating the stores is out of scope.
+
+**Compliance.**
+
+- A test appends two operations with the same `seq` to the log of a page: the second is refused.
+- The fresh install test of QA-08 starts from empty databases and runs no manual step on them.
+- The SLI of QA-01 is measured with the append on PostgreSQL.
+
+### ADR-07: Each runtime has its own microservice chassis, assembled from libraries
+
+**Status:** Proposed.
+
+**Context.** [ADR-04](#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go) puts four services on Go and Editing on Node.js, and records among its bad sides that the skeleton of a service exists twice. Next to its domain, every service needs the same cross-cutting concerns: the health checks and the metrics of [Observability](#observability), its configuration in each environment, the timeout, retry and circuit breaker of [Dependencies at run time](#dependencies-at-run-time), the keyed publication and the idempotent consumers of [Contracts](#contracts), the outbox of [ADR-05](#adr-05-go-publishers-use-a-transactional-outbox-with-polling), the REST APIs of the OpenAPI specifications, the access to the data, the migrations of [ADR-06](#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own) and the logs. The API gateway needs most of them too. Some concerns are already covered by the platform: Kubernetes finds a service by the DNS name of its Service, injects the configuration of a ConfigMap or a Secret as environment variables, which Compose sets the same way, and polls the health checks. The alternatives were:
+
+- a framework for Go: go-kit, go-micro, or one that generates the code of a service, such as go-zero or Kratos;
+- NestJS for Editing;
+- Dapr, a sidecar that offers the same building blocks to both runtimes;
+- one chassis per runtime, assembled from libraries that each cover one concern.
+
+The last release of go-kit is v0.13.0, of August 2023, and its last commit is of March 2024; its packages for service discovery and tracing cover what Kubernetes already does or what the prototype leaves out. go-micro has a registry and a broker of its own, which overlap with Kubernetes and Kafka; its Kafka broker is in a separate repository of plugins and does not set the key of a message, which the order of the events of an aggregate needs. go-zero and Kratos impose a folder structure of their own on the code they generate. The Kafka transport of NestJS is built on KafkaJS, whose last release is of February 2023, and a NestJS application is built around its decorators. Dapr gives both runtimes one sidecar, but adds a control plane and a sidecar for every service to the deployment, in Kubernetes and in Compose.
+
+**Decision.** Each runtime will have a thin chassis of its own, assembled from libraries:
+
+- One shared Go module is the chassis of the API gateway and of Account, Membership, Discussion and Notification, on Go 1.25 or later. Fastify with its plugins is the chassis of Editing.
+- Each concern is covered by these libraries:
+
+| Concern | Go services and API gateway | Editing |
+|---|---|---|
+| HTTP server, REST APIs from the OpenAPI contracts | `net/http`, with the strict server of `oapi-codegen` | `fastify` |
+| WebSocket | The gateway forwards it with `net/http/httputil.ReverseProxy` | `@fastify/websocket` |
+| Kafka: keyed publisher, router of the consumers | `ThreeDotsLabs/watermill` with `watermill-kafka` | `@confluentinc/kafka-javascript` |
+| Transactional Outbox and Polling Publisher (ADR-05) | `watermill-sql`, with its standard PostgreSQL schema, and the Forwarder of Watermill | None: Editing publishes directly |
+| PostgreSQL driver and data access | `jackc/pgx/v5`, with the code generated by `sqlc` | `pg` |
+| Migrations (ADR-06) | `pressly/goose` | `node-pg-migrate` |
+| Metrics | `prometheus/client_golang` | `fastify-metrics`, on `prom-client` |
+| Timeout, retry, circuit breaker | `context` of the standard library, `sony/gobreaker/v2` | `opossum` |
+| Types of the messages ([ADR-08](#adr-08-contracts-are-json-schema-with-no-schema-registry)) | `go-jsonschema` | `json-schema-to-typescript`, `openapi-typescript` |
+| Logs | `log/slog` of the standard library, JSON on the standard output | pino, part of Fastify |
+| Health checks, configuration | Two handlers, environment variables read with `os.Getenv` | Two routes, environment variables |
+
+- The libraries appear only in `main` and in the adapters of [Hexagonal Architecture](#hexagonal-architecture), never in the domain model or in the application services.
+- No OpenTelemetry: distributed tracing is left out of the prototype ([Observability](#observability)), and Prometheus scrapes the metrics of each service directly.
+
+Watermill realizes the outbox of ADR-05 as follows:
+
+- The change of the aggregate, the outbox row and the record of an applied event share one `pgx.Tx`, which the SQL publisher of Watermill writes into through `TxFromPgx`.
+- The PostgreSQL schema orders the rows by the identifier of the transaction that wrote them (`xid8`), and reads a row only once every transaction with a lower identifier has ended, so no row is passed while an earlier transaction is still open. The transactions of one aggregate are serialized, and each one locks its aggregate before any other write, so its events keep their order.
+- The row of the consumer group in the offsets table is locked with `FOR UPDATE`, so only one replica at a time reads and publishes the pending rows: the lock between publishers of ADR-05.
+- *Marked as sent* is the offset committed for that consumer group: every row up to it has been sent.
+- The standard schema keeps the sent rows, and a small periodic task of ours deletes the old ones.
+- The `PollInterval` of the Forwarder is set well within the 5 s (p99) of QA-06.
+- The Kafka key of each event is the identity of its aggregate, set through `NewWithPartitioningMarshaler`.
+- The consumers deduplicate on the identifier in the envelope of [Contracts](#contracts), never on the `UUID` of a Watermill message, which is empty for the events published by Editing.
+- The Go producer is synchronous, so the Forwarder confirms a row only after Kafka acknowledges it.
+
+This narrows the skeleton that ADR-04 records twice to one thin chassis per runtime.
+
+**Consequences.** On the good side:
+
+- Two thin chassis, each a set of libraries that cover one concern each, while discovery, configuration and probes stay with the platform.
+- The outbox of ADR-05 is not written by hand: the order, the lock between replicas and the offset of what is sent come from `watermill-sql`.
+- The contracts generate code: the REST servers from OpenAPI, the access to the data from SQL, the types of the messages from JSON Schema.
+
+On the bad side:
+
+- More dependencies to keep up to date. Renovate finds them in `go.mod` and `package.json`.
+- The `Message` type of Watermill must stay inside the adapters.
+- The Kafka client of Confluent for Node.js is a native binding, so the image of Editing is built from an official Node.js image.
+- Every Go module needs Go 1.25 or later.
+- The cleanup of the outbox and its metrics, the pending rows and the age of the oldest one promised in [Observability](#observability), stay our code, which reads the tables of Watermill.
+
+**Compliance.**
+
+- A fitness function in the CI forbids importing these libraries from the domain and application packages: the depguard rules of golangci-lint for Go, dependency-cruiser for TypeScript.
+- The Compliance tests of ADR-05 run against the publisher built on Watermill.
+- A test checks that the Kafka key of every event is the identity of its aggregate.
+
+### ADR-08: Contracts are JSON Schema, with no schema registry
+
+**Status:** Proposed.
+
+**Context.** [Contracts](#contracts) gives each contract a specification kept with its service, OpenAPI for the REST APIs and AsyncAPI for the events, and makes the schema of each message the source of the types of both languages. [ADR-04](#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go) leaves the format of those schemas to choose: the events of Editing are produced in TypeScript and consumed in Go, and the reverse. It is also open whether a schema registry checks a new version before it is published. The alternatives were:
+
+- JSON Schema, with JSON on the wire;
+- Avro;
+- Protocol Buffers.
+
+Avro messages are binary, and are usually read through a schema registry, one more component to deploy. Protocol Buffers are binary too, with solid type generation in both languages, but they are less natural to describe in AsyncAPI, whose schemas are JSON Schema, as those of OpenAPI 3.1 are.
+
+**Decision.** We will write the contracts in JSON Schema:
+
+- The payload of every event and query is a JSON Schema, inside the AsyncAPI specification of the events and the OpenAPI 3.1 specification of the REST APIs. The messages travel as JSON on Kafka and over HTTP, events in the envelope of Contracts.
+- Go generates its types with `go-jsonschema` and TypeScript with `json-schema-to-typescript`; Editing generates the types of its calls to Membership with `openapi-typescript`. The generated code is never edited by hand.
+- No schema registry. Every producer and consumer of an event lives in this repository, so the pipeline of a change sees the schema and all its consumers. The consumer-driven contract tests of Contracts, in the pipeline of each producer, refuse an incompatible version before it goes to production; a registry would refuse it only once a running producer publishes it.
+
+This settles the format left open by ADR-04.
+
+**Consequences.** On the good side:
+
+- A message can be read as it is, in a Kafka tool or a log.
+- One schema language for the REST APIs and the events, with generators in both languages.
+- An incompatible schema is caught in the pull request, before a release.
+- No registry to deploy (QA-08).
+
+On the bad side:
+
+- JSON messages are larger than binary ones.
+- Without a registry, nothing at run time stops an incompatible message: only the tests in the pipeline do.
+- The choice holds only while every consumer lives in this repository. A consumer outside it, such as a third-party integration, reopens it.
+
+**Compliance.**
+
+- The CI regenerates the types from the schemas and fails if they differ from the committed ones.
+- The contract test of each event checks a producer in one language against a consumer in the other (ADR-04).
