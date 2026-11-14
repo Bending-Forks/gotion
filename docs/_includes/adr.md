@@ -287,7 +287,7 @@ This settles the runtimes left open by ADR-01.
 On the bad side:
 
 - Each language has its own build, tests, linter and image, so the CI has jobs for both, and the team works in two languages.
-- The events cross languages: Editing publishes and consumes them in TypeScript, the other services in Go. Each published language needs a schema from which both sides generate their types, and its format is still to choose. Without it, a field renamed on one side breaks the other only at run time.
+- The events cross languages: Editing publishes and consumes them in TypeScript, the other services in Go. Each published language needs a schema from which both sides generate their types, in the format of [ADR-08](#adr-08-contracts-are-json-schema-with-no-schema-registry). Without it, a field renamed on one side breaks the other only at run time.
 - The skeleton of a service exists twice, in Go and in TypeScript: the hexagonal structure, `/health` and `/metrics`, the Kafka consumer that ignores a repeated event, the migrations of QA-08.
 
 **Compliance.**
@@ -381,3 +381,39 @@ On the bad side:
 - A test appends two operations with the same `seq` to the log of a page: the second is refused.
 - The fresh install test of QA-08 starts from empty databases and runs no manual step on them.
 - The SLI of QA-01 is measured with the append on PostgreSQL.
+
+### ADR-08: Contracts are JSON Schema, with no schema registry
+
+**Status:** Proposed.
+
+**Context.** [Contracts](#contracts) gives each contract a specification kept with its service, OpenAPI for the REST APIs and AsyncAPI for the events, and makes the schema of each message the source of the types of both languages. [ADR-04](#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go) leaves the format of those schemas to choose: the events of Editing are produced in TypeScript and consumed in Go, and the reverse. It is also open whether a schema registry checks a new version before it is published. The alternatives were:
+
+- JSON Schema, with JSON on the wire;
+- Avro;
+- Protocol Buffers.
+
+Avro messages are binary, and are usually read through a schema registry, one more component to deploy. Protocol Buffers are binary too, with solid type generation in both languages, but they are less natural to describe in AsyncAPI, whose schemas are JSON Schema, as those of OpenAPI 3.1 are.
+
+**Decision.** We will write the contracts in JSON Schema:
+
+- The payload of every event and query is a JSON Schema, inside the AsyncAPI specification of the events and the OpenAPI 3.1 specification of the REST APIs. The messages travel as JSON on Kafka and over HTTP, events in the envelope of Contracts.
+- Go generates its types with `go-jsonschema` and TypeScript with `json-schema-to-typescript`; Editing generates the types of its calls to Membership with `openapi-typescript`. The generated code is never edited by hand.
+- No schema registry: the consumer-driven contract tests of Contracts, in the pipeline of each producer, guard the compatibility of a new version.
+
+This settles the format left open by ADR-04.
+
+**Consequences.** On the good side:
+
+- A message can be read as it is, in a Kafka tool or a log.
+- One schema language for the REST APIs and the events, with generators in both languages.
+- No registry to deploy (QA-08).
+
+On the bad side:
+
+- JSON messages are larger than binary ones.
+- Without a registry, nothing at run time stops an incompatible message: only the tests in the pipeline do.
+
+**Compliance.**
+
+- The CI regenerates the types from the schemas and fails if they differ from the committed ones.
+- The contract test of each event checks a producer in one language against a consumer in the other (ADR-04).
