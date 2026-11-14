@@ -5,20 +5,20 @@
 The view below is the whole system as it is planned for now: it guides the development and will
 change with the design. Each bounded context is a service with its own database, the client
 reaches them through the API gateway, the events between contexts go through Kafka, and
-Prometheus pulls the metrics of every service. Account, Membership, Discussion and Notification run on Go, Editing on Node.js, where it imports the same CRDT package as the client ([ADR-04](#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go)).
+Prometheus pulls the metrics of every service. Account, Membership, Discussion, Notification and the API gateway run on Go, Editing on Node.js, where it imports the same CRDT package as the client ([ADR-04](#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go)).
 
 ![Components and connectors of Gotion]({{ '/assets/components-and-connectors/gotion.svg' | relative_url }})
 
 | Element | Type | Responsibility | Properties |
 |---|---|---|---|
 | Web client | Client | Edits the pages with BlockNote, through the editor adapter and a CRDT replica of each open page | Talks only to the API gateway: REST for the requests, one WebSocket for each open page |
-| API Gateway | Infrastructure | The one entry point from outside: authenticates each request, routes it to its service and composes the Workspace directory from Membership and Account ([API Composition](#api-composition)) | Forwards the WebSocket of a page to the instance of Editing that owns the page; technology still open |
+| API Gateway | Infrastructure | The one entry point from outside: authenticates each request, routes it to its service and composes the Workspace directory from Membership and Account ([API Composition](#api-composition)) | Forwards the WebSocket of a page to the instance of Editing that owns the page; written in Go, on the same chassis as the Go services ([ADR-04](#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go), [ADR-07](#adr-07-each-runtime-has-its-own-microservice-chassis-assembled-from-libraries)) |
 | Account | Service | Users and workspaces (`User`, `Workspace`) | Answers the user registered with an email address to Membership, and workspace names in a batch and the user's main workspace to the gateway; asks Membership for the role before renaming or deleting a workspace and for membership before opening one; remembers the main workspace; publishes Workspace Created and Workspace Deleted |
 | Membership | Service | Members, roles and invitations (`Workspace Membership`) | Asks Account for the user of an email address before an invitation; answers the role of a user and which users are members ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)), and the workspace identities and roles of a user to the gateway; publishes the changes of membership and roles, and Member Invited |
 | Editing | Service | Pages and their content (`Page`, `Page Block Tree`, `Real-time Editing Session`); the one relay of the operations of a page | One instance owns each page; event-sourced ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)); keeps a local copy of the roles and asks Membership only when it has no row ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)); publishes Page Deleted and Block Deleted |
 | Discussion | Service | Comment threads on pages and blocks (`Comment Thread`) | Asks Membership which users of a command are members; publishes Comment Posted |
 | Notification | Service | The in-app notifications of invitations and mentions (`Notification`) | Only subscribes, publishes nothing |
-| Service databases | Repository | One for each service, with the data of its context only | Read and written only by the service that owns it (Database-per-Service); in Account, Membership and Discussion it also holds the outbox of the events still to publish ([ADR-05](#adr-05-go-publishers-use-a-transactional-outbox-with-polling)) |
+| Service databases | Repository | One PostgreSQL server for each service, with the data of its context only ([ADR-06](#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own)) | Read and written only by the service that owns it (Database-per-Service); in Account, Membership and Discussion it also holds the outbox of the events still to publish ([ADR-05](#adr-05-go-publishers-use-a-transactional-outbox-with-polling)) |
 | Prometheus | Monitoring | Pulls the metrics of every service from `/metrics` and keeps them as time series | The only accessor of the metrics store |
 | Grafana | Monitoring | The SLO dashboards and the alerts | Reads the metrics only through Prometheus, with PromQL |
 | REST | Call-return connector | A synchronous request and its response: from the client through the gateway, from Membership to Account, and from Account, Editing and Discussion to Membership | The caller waits for the response |
@@ -54,20 +54,7 @@ check, the collaborators for the relay).
 
 ![Data-flow view of one edit operation]({{ '/assets/components-and-connectors/data-flow.svg' | relative_url }})
 
-**Repository.** Every store has exactly one data accessor, the service that owns it: no
-service reads or migrates the store of another (Database-per-Service). A new block type
-therefore never touches the store of another service, and inside Editing it leaves the schema
-alone as long as the operations stay generic
-([ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)):
-together, the two give the "no change to the persistence schema" of QA-09. Each service also
-migrates only its own schema, so the automatic migrations of QA-08 need no step coordinated
-across services. The stores of Account, Membership, Discussion and Notification hold the
-current state of their aggregates. The store of Editing is event-sourced
-([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)): next to
-Page, it keeps the session log, the operations of every page in the order Editing accepted
-them, snapshots of the Page Block Tree and the local copy of the roles ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)); the tree is rebuilt from the last snapshot by
-replaying the operations that follow it. Prometheus is the only accessor of the metrics store,
-which Grafana reads through Prometheus.
+**Repository.** Every store has exactly one data accessor, the service that owns it: no service reads or migrates the store of another (Database-per-Service). A new block type therefore never touches the store of another service, and inside Editing it leaves the schema alone as long as the operations stay generic ([ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)): together, the two give the "no change to the persistence schema" of QA-09. Each service also migrates only its own schema, so the automatic migrations of QA-08 need no step coordinated across services. The stores of Account, Membership, Discussion and Notification hold the current state of their aggregates. The store of Editing is event-sourced ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)), all in one PostgreSQL server ([ADR-06](#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own)): next to Page, it keeps the session log, the operations of every page in the order Editing accepted them, snapshots of the Page Block Tree and the local copy of the roles ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)); the tree is rebuilt from the last snapshot by replaying the operations that follow it. Prometheus is the only accessor of the metrics store, which Grafana reads through Prometheus.
 
 ![Repository view of Gotion]({{ '/assets/components-and-connectors/repository.svg' | relative_url }})
 

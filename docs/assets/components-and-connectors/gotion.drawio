@@ -15,7 +15,7 @@
           <mxGeometry x="30" y="140" width="1180" height="250" as="geometry" />
         </mxCell>
 
-        <mxCell id="gateway" value="API Gateway&#xa;routing, authentication" style="rounded=1;html=0;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+        <mxCell id="gateway" value="API Gateway&#xa;Go&#xa;routing, authentication" style="rounded=1;html=0;fillColor=#edf2f7;strokeColor=#4a5568;fontSize=13;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry x="500" y="170" width="240" height="60" as="geometry" />
         </mxCell>
 

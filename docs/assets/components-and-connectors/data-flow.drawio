@@ -16,7 +16,7 @@
         <mxCell id="b-remote" value=":Web client of another collaborator" style="rounded=1;arcSize=3;dashed=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=4;fontSize=12;fontStyle=1;fillColor=#faf5ff;strokeColor=#6b46c1;fontColor=#553c9a;html=0;" vertex="1" parent="1">
           <mxGeometry x="1160" y="70" width="660" height="250" as="geometry" />
         </mxCell>
-        <mxCell id="b-gw" value="API Gateway (technology open): the WebSocket pipes pass through it" style="rounded=0;fillColor=#edf2f7;strokeColor=#4a5568;align=left;spacingLeft=10;verticalAlign=middle;fontSize=11;fontColor=#2d3748;dashed=1;html=0;" vertex="1" parent="1">
+        <mxCell id="b-gw" value="API Gateway (Go): the WebSocket pipes pass through it" style="rounded=0;fillColor=#edf2f7;strokeColor=#4a5568;align=left;spacingLeft=10;verticalAlign=middle;fontSize=11;fontColor=#2d3748;dashed=1;html=0;" vertex="1" parent="1">
           <mxGeometry x="20" y="350" width="1800" height="36" as="geometry" />
         </mxCell>
         <mxCell id="b-editing" value=":Editing (one relay per page)" style="rounded=1;arcSize=3;dashed=1;verticalAlign=top;align=right;spacingRight=10;spacingTop=4;fontSize=12;fontStyle=1;fillColor=#f0fff4;strokeColor=#2f855a;fontColor=#276749;html=0;" vertex="1" parent="1">
@@ -312,7 +312,7 @@
         <mxCell id="l-s" value="" style="shape=cylinder3;size=5;fillColor=#edf2f7;strokeColor=#4a5568;html=0;" vertex="1" parent="1">
           <mxGeometry x="58" y="938" width="24" height="24" as="geometry" />
         </mxCell>
-        <mxCell id="l-s-t" value="Data store (technology open), grey line: DB access" style="text;align=left;verticalAlign=middle;fontSize=11;html=0;" vertex="1" parent="1">
+        <mxCell id="l-s-t" value="Data store (PostgreSQL), grey line: DB access" style="text;align=left;verticalAlign=middle;fontSize=11;html=0;" vertex="1" parent="1">
           <mxGeometry x="112" y="940" width="290" height="20" as="geometry" />
         </mxCell>
         <mxCell id="e24" value="" style="endArrow=block;endFill=1;strokeColor=#2d3748;fontSize=10;labelBackgroundColor=#ffffff;edgeStyle=orthogonalEdgeStyle;rounded=0;html=0;" edge="1" parent="1">
