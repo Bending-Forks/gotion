@@ -469,7 +469,7 @@ Avro messages are binary, and are usually read through a schema registry, one mo
 
 - The payload of every event and query is a JSON Schema, inside the AsyncAPI specification of the events and the OpenAPI 3.1 specification of the REST APIs. The messages travel as JSON on Kafka and over HTTP, events in the envelope of Contracts.
 - Go generates its types with `go-jsonschema` and TypeScript with `json-schema-to-typescript`; Editing generates the types of its calls to Membership with `openapi-typescript`. The generated code is never edited by hand.
-- No schema registry: the consumer-driven contract tests of Contracts, in the pipeline of each producer, guard the compatibility of a new version.
+- No schema registry. Every producer and consumer of an event lives in this repository, so the pipeline of a change sees the schema and all its consumers. The consumer-driven contract tests of Contracts, in the pipeline of each producer, refuse an incompatible version before it goes to production; a registry would refuse it only once a running producer publishes it.
 
 This settles the format left open by ADR-04.
 
@@ -477,12 +477,14 @@ This settles the format left open by ADR-04.
 
 - A message can be read as it is, in a Kafka tool or a log.
 - One schema language for the REST APIs and the events, with generators in both languages.
+- An incompatible schema is caught in the pull request, before a release.
 - No registry to deploy (QA-08).
 
 On the bad side:
 
 - JSON messages are larger than binary ones.
 - Without a registry, nothing at run time stops an incompatible message: only the tests in the pipeline do.
+- The choice holds only while every consumer lives in this repository. A consumer outside it, such as a third-party integration, reopens it.
 
 **Compliance.**
 
