@@ -6,6 +6,10 @@ nav_order: 5
 
 ## Project Structure
 
+Gotion lives in one Git repository. Every service, the web client and every shared library is a package of its own, a Go module or an npm workspace, with its own `.claude/` folder for the instructions of Claude Code that apply only to that package.
+
+![Packages of the Gotion monorepo]({{ '/assets/devops/monorepo.svg' | relative_url }})
+
 ## VCS & Repo
 
 Gotion follows trunk-based development: `main` is the only long-lived branch, for both the
@@ -86,6 +90,10 @@ persistence do not depend on any block type), QA-10 (axe-core with 0 WCAG 2.1 AA
 and a keyboard-only e2e test for every block operation). -->
 
 ## Deployment
+
+Gotion runs on Kubernetes, on a single node (kind or Minikube). Every stateless service is a Deployment; Editing, Kafka and every database are StatefulSets, each with its own volume.
+
+![Deployment of Gotion on Kubernetes]({{ '/assets/devops/deployment.svg' | relative_url }})
 
 <!-- TODO SLO: Gotion is self-hosted, so the running instance is the customer's: the
 monitoring stack (Prometheus, and Grafana with the SLO dashboards and alerts) is part of the
