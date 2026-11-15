@@ -10,6 +10,16 @@ Gotion lives in one Git repository. Every service, the web client and every shar
 
 ![Packages of the Gotion monorepo]({{ '/assets/devops/monorepo.svg' | relative_url }})
 
+Inside each service, `internal/` (`src/` in Editing) holds the hexagon of [Hexagonal Architecture](design.html#hexagonal-architecture):
+
+- `domain/` holds the aggregates, value objects and rules of the bounded context. It imports only the standard library, and in Editing the CRDT of `packages/crdt`, which is the model of the document.
+- `app/` holds one application service per command, query or policy, and declares the ports as interfaces: a repository, the outbox, the query to another service.
+- `adapters/` implements the ports and calls the application services: the REST server, the Kafka consumers, the repositories on PostgreSQL, the clients of other services. The code generated from the specifications in `api/` and from SQL lives in the adapter that uses it. A consumer generates the types of an event from the `api/` of its producer, so no package of shared types exists.
+
+`main.go` (`src/main.ts` in Editing) reads the configuration, builds the adapters and connects them to the ports. `migrations/` holds the SQL migrations of the service's database, run at start ([ADR-06](design.html#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own)). The gateway has no domain and no database: `proxy/` forwards the client's requests to the services and the WebSocket of each page to its Editing instance, and `directory/` composes the Workspace directory ([API Composition](design.html#api-composition)).
+
+The chassis has one package per concern: the HTTP server, the health checks, the metrics, the configuration, the logs, the PostgreSQL pool with its migrations, the Kafka consumers, the outbox and the client of the queries ([ADR-07](design.html#adr-07-each-runtime-has-its-own-microservice-chassis-assembled-from-libraries)). A service imports only the ones it needs: the gateway imports neither `postgres/` nor `outbox/`.
+
 ## VCS & Repo
 
 Gotion follows trunk-based development: `main` is the only long-lived branch, for both the
