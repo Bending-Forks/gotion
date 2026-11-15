@@ -455,7 +455,7 @@ On the bad side:
 
 ### ADR-08: Contracts are JSON Schema, with no schema registry
 
-**Status:** Proposed.
+**Status:** Accepted.
 
 **Context.** [Contracts](#contracts) gives each contract a specification kept with its service, OpenAPI for the REST APIs and AsyncAPI for the events, and makes the schema of each message the source of the types of both languages. [ADR-04](#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go) leaves the format of those schemas to choose: the events of Editing are produced in TypeScript and consumed in Go, and the reverse. It is also open whether a schema registry checks a new version before it is published. The alternatives were:
 
