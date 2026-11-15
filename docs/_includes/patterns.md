@@ -35,7 +35,7 @@ The quality attribute scenarios of Analysis set the targets; observability shows
 **Health Check API.** Each service answers two checks, which Kubernetes polls:
 
 - **Liveness**, `/health/live`, answers as long as the process can serve a request. It checks no dependency, since restarting a service does not bring its database back. A failed check makes Kubernetes restart the instance.
-- **Readiness**, `/health/ready`, requires a reachable database. Account, Membership and Discussion must be able to commit the state and outbox together, but do not require Kafka: their commands can enqueue events during an outage (ADR-05). Editing and Notification still require Kafka; Editing also waits for the session logs of its pages to be replayed (ADR-02). Until ready, the instance gets no traffic. The time from a crash to readiness is the recovery time of QA-04.
+- **Readiness**, `/health/ready`, requires a reachable database. It does not require Kafka where a lost connection loses no event: Account, Membership and Discussion enqueue their events in the outbox during an outage (ADR-05), and every consumer, Notification included, resumes from its offset when Kafka returns. Only Editing requires Kafka, since it publishes directly; it also waits for the session logs of its pages to be replayed (ADR-02). Until ready, the instance gets no traffic. The time from a crash to readiness is the recovery time of QA-04.
 
 Readiness leaves out the services a service queries: a Membership that is down is handled by the circuit breaker ([Dependencies at run time](#dependencies-at-run-time)), and must not make Editing unready, which ADR-03 avoids.
 
