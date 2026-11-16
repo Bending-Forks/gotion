@@ -41,8 +41,7 @@ the styles Markdown can express, and Editing writes each page as Markdown as wel
 
 **Tests.**
 
-- Browser tests with several clients, run in CI, check that the cursor, the selection and the
-  focus hold under remote edits, and that undo undoes only local edits.
+- Browser tests written with [Playwright](https://playwright.dev) and run in CI open one browser context per client on the same page. They check that the clients converge after concurrent edits, that the cursor, the selection and the focus hold under remote edits, and that undo undoes only local edits.
 - A test checks that the editor schema holds only the block types of US-07 and the page block,
   and only styles Markdown can express.
 
