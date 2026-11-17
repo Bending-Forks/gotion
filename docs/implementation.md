@@ -114,6 +114,8 @@ The provider still owns the schema: it is its published language. The example ho
 ```text
 services/editing/api/
 ├── asyncapi.yaml
+├── events/
+│   └── page-deleted.v1.json
 └── contracts/
     └── discussion/
         └── page-deleted.json
@@ -124,7 +126,9 @@ services/editing/api/
   "eventId": "0b9a6c1e-6f0d-4c7a-9a43-2f1d5e8b7c10",
   "type": "PageDeleted",
   "version": 1,
-  "pageId": "5d2f8e4a-1c3b-4e6f-8a9d-7b0c2e4f6a81"
+  "data": {
+    "pageId": "5d2f8e4a-1c3b-4e6f-8a9d-7b0c2e4f6a81"
+  }
 }
 ```
 

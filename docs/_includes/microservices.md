@@ -144,9 +144,28 @@ The CRDT needs every operation of a page to go through the same relay (ADR-01), 
 The services are deployed and versioned separately, so what one of them shows to the others is a contract: the client API, the queries it answers and the events it publishes. Inside a service the model can change freely, and only a change of the contract concerns another service.
 
 - **Each contract has a specification kept with its service.** The REST APIs, the client API and the queries alike, are described in OpenAPI; the events and their channels in AsyncAPI. The schema of each message is the source from which Go and TypeScript generate their types, since an event of Editing is published in TypeScript and consumed in Go, and the reverse (ADR-04). The schemas are JSON Schema, with no schema registry ([ADR-08](#adr-08-contracts-are-json-schema-with-no-schema-registry)).
-- **Every event has the same envelope:** its own identifier, its type and the version of its schema, the identity of its aggregate, which is also its Kafka key, and when it happened. The body carries the identities and values the consumers need, never an object of the producer's model.
+- **Every event has the same envelope,** one JSON Schema for the whole system, `api/envelope.schema.json` at the root of the repository: `eventId`, its own identifier; `type` and `version`, the name of the event and the version of the schema of its body; `aggregateId`, the identity of its aggregate, which is also its Kafka key; `occurredAt`, when it happened, in UTC; and `data`, the body. The body carries the identities and values the consumers need, never an object of the producer's model, and repeats the identity of the aggregate under its own name, such as `workspaceId`, so that it reads on its own. Since the envelope is the same for every event, a consumer reads it first, skips an event it has already applied and picks the handler by `type` and `version`, and only then reads the body.
 - **A compatible change keeps the version.** Adding an optional field is compatible: a consumer ignores a field it does not know. Removing or renaming a field, changing its type or its meaning is not: the producer publishes the new version next to the old one until every consumer has moved, then stops the old one. The queries follow the same rule, with the version in their path.
 - **Every consumer is idempotent.** Kafka delivers an event at least once, so a consumer may read it twice, for instance after a restart of the consumer, or of a publisher that sent the event but had not marked it as sent (ADR-05). A consumer commits its offset only once the change the event causes is stored, and keeps the identifiers of the events it has applied, so a repeated one changes nothing. Many policies are idempotent anyway: deleting the threads of a page that has none changes nothing.
 - **A contract test guards each contract.** The consumer states what it reads, and the test runs in the pipeline of the producer, so a change that breaks a consumer fails before it is merged. For the events, it checks that a consumer in one language reads what a producer in the other writes (ADR-04). [Contract tests](implementation.html#contract-tests) describes how.
+
+Every service keeps its specifications in the `api/` folder at its root, Account for instance:
+
+```text
+api/
+└── envelope.schema.json          the envelope of every event
+services/account/api/
+├── openapi.yaml                  the client API and the queries
+├── asyncapi.yaml                 the channel of Account and its events
+├── events/
+│   ├── workspace-created.v1.json the body of each version of an event
+│   └── workspace-deleted.v1.json
+└── contracts/<consumer>/         what each consumer reads
+```
+
+- **`openapi.yaml`** is in OpenAPI 3.1. The client API is under `/v1/`, and the gateway forwards it with the identity of the signed-in user in `X-User-Id` (ADR-09). The queries for other services are under `/internal/v1/` and take the user as a parameter; the gateway never forwards them, so a client cannot ask, for instance, which user an email address belongs to. The version in the path is the major one, raised only by a change that is not compatible. Errors are answered as `application/problem+json`.
+- **`asyncapi.yaml`** is in AsyncAPI 3.0, with one channel: a Kafka topic named after the context (`account`, `membership`) that carries all its events. Kafka keeps the order only within a partition of one topic, so the events of one aggregate, of whatever type, stay in order only if they share the topic as well as the key: Member Joined and Member Removed for the same workspace, for instance. Each message is the envelope with its `type` and `version` fixed and the schema of its body as `data`.
+- **`events/<event>.v<version>.json`** holds the JSON Schema of the body of one version of an event, the file from which Go and TypeScript generate their types. A new version is a new file next to the old one. The envelope has one type in each runtime, in its chassis.
+- **`contracts/<consumer>/`** holds the examples of each consumer ([Contract tests](implementation.html#contract-tests)).
 
 The protocol between the client and Editing is not one of these contracts: both import it from the same package as the CRDT, and they are upgraded together (ADR-01, ADR-04). The operations in the session log are the exception, because they outlive the version that wrote them: each one carries the version of the protocol, so that the older ones can still be replayed (ADR-02).
