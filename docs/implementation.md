@@ -55,6 +55,7 @@ The API gateway and Account, Membership, Discussion and Notification share one G
 | Kafka consumer | `watermill`, `watermill-kafka` | The router of the consumers: one handler per event, in the consumer group of the service |
 | Outbox table and Polling Publisher | `watermill-sql`, the Forwarder of Watermill, `watermill-kafka` | The events written into the outbox in the transaction of the command, then sent to Kafka keyed by their aggregate ([ADR-05](design.html#adr-05-go-publishers-use-a-transactional-outbox-with-polling)) |
 | HTTP client | `net/http`, `oapi-codegen`, `sony/gobreaker/v2` | The queries to other services, with a client generated from the OpenAPI specification of the callee, a timeout and one retry through `context`, and a circuit breaker |
+| Sign-in token | `golang-jwt/jwt/v5`, `crypto/ed25519` | Account signs the token after Sign in and sets it in a cookie; the gateway checks it on every request and on the upgrade of a WebSocket, accepting only EdDSA ([ADR-09](design.html#adr-09-the-sign-in-token-is-a-jwt-signed-with-ed25519-in-an-httponly-cookie)) |
 | Database | `jackc/pgx/v5`, `sqlc` | The pool of connections, and typed queries generated from SQL |
 | Migrations | `pressly/goose` | The migrations of the service, embedded in the binary with `embed`, run at start ([ADR-06](design.html#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own)) |
 | Metrics | `prometheus/client_golang` | `/metrics`, served with `promhttp` |
@@ -75,7 +76,7 @@ The API gateway and Account, Membership, Discussion and Notification share one G
 
 **What each service generates.** Its server from its OpenAPI specification, the access to its data from its SQL, and the types of its events from their JSON Schema. The generated code is committed, and the CI checks that it matches its source ([ADR-08](design.html#adr-08-contracts-are-json-schema-with-no-schema-registry)).
 
-**The API gateway** uses the chassis without a database, a consumer or an outbox. It forwards the REST requests and the WebSocket of each page with `net/http/httputil.ReverseProxy`, which also carries the upgrade of a WebSocket. The WebSocket of page `P` goes to the instance `hash(P) mod N` of Editing ([State and scaling](design.html#state-and-scaling)). The Workspace directory is composed with the client of the queries ([API Composition](design.html#api-composition)).
+**The API gateway** uses the chassis without a database, a consumer or an outbox. Before forwarding a request, it checks the sign-in token in its cookie, replaces any `X-User-Id` sent by the client with the `sub` of the token, and refuses the upgrade of a WebSocket from a foreign `Origin` ([ADR-09](design.html#adr-09-the-sign-in-token-is-a-jwt-signed-with-ed25519-in-an-httponly-cookie)). It forwards the REST requests and the WebSocket of each page with `net/http/httputil.ReverseProxy`, which also carries the upgrade of a WebSocket. The WebSocket of page `P` goes to the instance `hash(P) mod N` of Editing ([State and scaling](design.html#state-and-scaling)). The Workspace directory is composed with the client of the queries ([API Composition](design.html#api-composition)).
 
 ### Editing service
 
@@ -84,7 +85,7 @@ Editing uses Fastify and its plugins as its chassis ([ADR-07](design.html#adr-07
 | Adapter or concern | Library | Purpose |
 |---|---|---|
 | REST API | `fastify` | Set title, icon, cover |
-| WebSocket, WebSocket sender | `@fastify/websocket` | One WebSocket per client and open page: the commands of the session in, the acks, the operations of the others and the presence out |
+| WebSocket, WebSocket sender | `@fastify/websocket` | One WebSocket per client and open page: the commands of the session in, the acks, the operations of the others and the presence out. The collaborator is the user in the `X-User-Id` header that the gateway sets on the upgrade |
 | Kafka consumer | `@confluentinc/kafka-javascript` | The events of Account and Membership; the anticorruption layer turns a role into *read* or *change* |
 | Kafka producer | `@confluentinc/kafka-javascript` | Page Deleted and Block Deleted, published directly |
 | Roles adapter and its HTTP client | `pg`, the `fetch` of Node.js, `opossum`, `openapi-typescript` | The local copy of the roles, and the query to Membership when it has no row, with types generated from the OpenAPI specification of Membership ([ADR-03](design.html#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)) |

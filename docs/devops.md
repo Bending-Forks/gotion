@@ -18,7 +18,7 @@ Inside each service, `internal/` (`src/` in Editing) holds the hexagon of [Hexag
 
 `main.go` (`src/main.ts` in Editing) reads the configuration, builds the adapters and connects them to the ports. `migrations/` holds the SQL migrations of the service's database, run at start ([ADR-06](design.html#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own)). The gateway has no domain and no database: `proxy/` forwards the client's requests to the services and the WebSocket of each page to its Editing instance, and `directory/` composes the Workspace directory ([API Composition](design.html#api-composition)).
 
-The chassis has one package per concern: the HTTP server, the health checks, the metrics, the configuration, the logs, the PostgreSQL pool with its migrations, the Kafka consumers, the outbox and the client of the queries ([ADR-07](design.html#adr-07-each-runtime-has-its-own-microservice-chassis-assembled-from-libraries)). A service imports only the ones it needs: the gateway imports neither `postgres/` nor `outbox/`.
+The chassis has one package per concern: the HTTP server, the health checks, the metrics, the configuration, the logs, the PostgreSQL pool with its migrations, the Kafka consumers, the outbox, the client of the queries and the sign-in token ([ADR-07](design.html#adr-07-each-runtime-has-its-own-microservice-chassis-assembled-from-libraries), [ADR-09](design.html#adr-09-the-sign-in-token-is-a-jwt-signed-with-ed25519-in-an-httponly-cookie)). A service imports only the ones it needs: the gateway imports neither `postgres/` nor `outbox/`, and only Account and the gateway import `token/`.
 
 ## VCS & Repo
 

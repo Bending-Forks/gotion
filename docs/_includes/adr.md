@@ -484,3 +484,49 @@ On the bad side:
 
 - The CI regenerates the types from the schemas and fails if they differ from the committed ones.
 - The contract test of each event checks a producer in one language against a consumer in the other (ADR-04).
+
+### ADR-09: The sign-in token is a JWT signed with Ed25519, in an HttpOnly cookie
+
+**Status:** Proposed.
+
+**Context.** Sign in (US-01) gives the client a token, which the API gateway checks on every request without calling Account (Access Token, [Patterns](#patterns)) and which carries only the identity of the user ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)). The client sends it on its REST requests and on the WebSocket of each open page, both through the gateway. Still open were the format of the token, how it is signed, how long it lasts, how it travels and the library that handles it. The alternatives were:
+
+- an opaque token, looked up in Account, or a token signed by Account that carries the identity itself (a JWT);
+- for a signed token, a secret shared by Account and the gateway (HS256), or a key pair, RSA (RS256) or Ed25519 (EdDSA);
+- the token in an `Authorization` header, kept by the JavaScript of the client, or in an `HttpOnly` cookie;
+- a short access token renewed by a refresh token, or a single token that expires.
+
+An opaque token puts Account on the path of every request. With a shared secret, whoever checks a token can also sign one, so the gateway could issue tokens; a key pair leaves signing to Account alone, and Ed25519 keys and signatures are much smaller than RSA ones. The `WebSocket` API of the browser cannot set a header, so the token would travel in the URL of the WebSocket, where the access logs of the Ingress and the gateway may record it, and a token kept by JavaScript can be read by any script injected into the page. A browser sends a cookie by itself, on the upgrade of a WebSocket too, and an `HttpOnly` cookie is out of reach of scripts. Being sent by itself, a cookie could ride on a request from another site, which `SameSite` prevents as long as the client and the API share one site, as the Ingress of [Deployment](devops.html#deployment) already serves them. A refresh token needs an endpoint of its own, a store of the issued tokens and their rotation.
+
+**Decision.** We will sign the identity of the user into a JWT with Ed25519 and carry it in a cookie:
+
+- After a successful Sign in, the REST adapter of Account signs a JWT with `alg: EdDSA` whose claims are only `sub`, the `UserId`, `iat` and `exp`, 8 hours later: no role (ADR-03) and no email address. The domain and the application services of Account do not know the token.
+- Account sets it in the cookie `__Host-gotion-token`, with `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/` and a `Max-Age` of 8 hours.
+- The gateway checks the cookie on every REST request but Register and Sign in, and on the upgrade of every WebSocket: the signature against the public key of Account, `EdDSA` as the only algorithm accepted, and `exp`, which is required. A missing, invalid or expired token gets a 401, and the client shows the sign-in. The gateway also refuses the upgrade of a WebSocket whose `Origin` is not the one of Gotion.
+- The gateway removes any `X-User-Id` header from the request of the client and sets it to the `sub` of the token. The services take the identity of the user only from that header: no client reaches them but through the gateway, since the Ingress routes only to the web client and to the gateway.
+- Only Account holds the private key, from a Secret; the gateway reads the public key from its configuration. The installation generates the key pair, which is never committed. The keys are not rotated.
+- Both sides use `golang-jwt/jwt/v5` with `crypto/ed25519`, in a `token/` package of the Go chassis ([ADR-07](#adr-07-each-runtime-has-its-own-microservice-chassis-assembled-from-libraries)) that only Account and the gateway import. Editing reads the header and has no JWT code.
+- No refresh token and no sign-out: US-01 asks for neither.
+
+**Consequences.** On the good side:
+
+- The gateway checks the identity of a request without calling Account, and a signed-in user still reaches the other services while Account is down.
+- No script in the page can read the token, and one mechanism covers the REST requests and the WebSocket.
+- Only Account can issue a token.
+- Editing, on Node.js, needs no JWT library (ADR-04).
+
+On the bad side:
+
+- A token cannot be revoked before it expires: a stolen cookie works for up to 8 hours.
+- An open WebSocket outlives the expiry of its token, which is checked only on the upgrade. The role is still checked on every edit (ADR-03), so a removed member stops editing anyway.
+- The user signs in again every 8 hours.
+- The client and the API must stay on one site. Serving them from different sites reopens this record.
+- Changing the key pair signs every user out.
+- The services trust `X-User-Id`: whatever reaches a service without going through the gateway can act as any user. The choice holds only while the gateway is the one way in.
+
+**Compliance.**
+
+- The tests of `token/` refuse a token signed with another algorithm, `none` and `HS256` included, or with another key, and an expired token or one without `exp`.
+- A test of the gateway checks that an `X-User-Id` sent by the client never reaches a service.
+- A test checks the attributes of the cookie in the response of Sign in.
+- A test checks that the gateway refuses the upgrade of a WebSocket from a foreign `Origin`.
