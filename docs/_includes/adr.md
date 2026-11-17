@@ -36,26 +36,23 @@ block is a move too, so what a collaborator types in it meanwhile goes with the 
 Yjs does not define when an edit is acknowledged. And the merge, a concern of the core
 subdomain, would be left to a generic library.
 
+Our CRDT also has to move text between blocks. Dividing a block in two (Enter) and joining a block to the one before (Backspace at its start) move characters from one block to another. With a sequence of characters for each block, the moved text would be deleted from one sequence and copied into the other as new characters, while an operation that a collaborator makes meanwhile on that text would still target the old ones: an insertion would end up in the block that keeps the first part, a deletion would be undone by the copy, two divisions of the same block at once would duplicate the text between them, and an edit in a block joined at the same time would be lost. Every replica would converge, but those edits would be discarded or misplaced without anyone being told, against QA-05.
+
 **Decision.** We will synchronize the replicas with a CRDT of ours. This settles PP-01:
 
 - every replica merges concurrent operations on its own, with our CRDT;
 - Editing is the one relay of the operations of a page: it checks each operation, stores it,
   acknowledges it to its author and relays it to the other collaborators;
-- the CRDT is a module with no dependency on any editor: a sequence of characters for the text
-  of a block, with the styles as marks over its characters, and a tree of blocks with a move
-  operation;
-- dividing a block in two and joining a block to the one before move text from the sequence of
-  one block to the sequence of another. The CRDT has no operation for that: the text is
-  deleted in one block and a copy of it is inserted in the other;
+- the CRDT is a module with no dependency on any editor: one sequence of characters for the text of the whole page, with the styles as marks over its characters, and a tree of blocks with a move operation;
+- every block has a marker in the sequence, and a character belongs to the block of the nearest marker before it. A marker only says which block its characters belong to: where a block is, and under which parent, is decided by the tree alone, so moving or nesting a block touches neither its marker nor its characters. Blocks inserted at the same place in the tree at the same time are ordered as their markers are in the sequence, so two divisions of the same block keep the order of its text;
+- dividing a block (Enter) inserts the marker of a new block after the character where it is divided, and the new block in the tree right after the divided one. No character is copied: the second part keeps its own characters, and an edit made meanwhile on them stays with them. A line break inside a block (Shift+Enter) is a character, not a marker;
+- joining a block to the one before removes its marker and takes the block out of the tree, so its characters belong to the block of the previous marker, again with no copy. That is the block before it as long as the two are neighbours in the sequence too (see the bad side below);
+- deleting a block deletes its characters and takes it out of the tree, but keeps its marker, so a character typed in it meanwhile stays in the deleted block instead of moving to the one before;
 - the editor of the client is only an adapter: it turns the changes of the editor into
   operations and applies the remote ones. The choice of the editor is a design choice behind
   the adapter, described in [Editing client](implementation.html#editing-client).
 
-A prototype confirmed the approach. Ten clients typed in the same block, the cursor and the
-selection held under remote edits, every client converged, and the local render stayed well
-within QA-01. That prototype edited a single block. Three later ones, with BlockNote, Slate and
-plain ProseMirror behind the same operations, also kept two clients in step while blocks
-were divided, joined and nested, and while each client undid its own edits only.
+A prototype confirmed the approach. Ten clients typed in the same block, the cursor and the selection held under remote edits, every client converged, and the local render stayed well within QA-01. That prototype edited a single block. Three later ones, with BlockNote, Slate and plain ProseMirror behind the same operations, also kept two clients in step while blocks were divided, joined and nested, and while each client undid its own edits only. Those prototypes divided and joined blocks by copying their text; the markers of the sequence of the page are not prototyped yet.
 
 **Consequences.** On the good side:
 
@@ -67,6 +64,7 @@ were divided, joined and nested, and while each client undid its own edits only.
 - The tree of blocks has its own move, so two concurrent moves can neither duplicate a block nor
   nest one under itself. Nesting a block moves it without touching its text, so what a
   collaborator types in it meanwhile stays.
+- Dividing and joining a block copy no character, so an edit made meanwhile on its text keeps its effect, and two divisions of the same block at once leave every character in one block only (QA-05).
 - Editing defines when an edit is acknowledged. It can append each operation to a durable log
   before acknowledging it, as QA-01 and QA-04 ask, and that log is the Event Sourcing of
   Editing. The log itself is settled in
@@ -76,22 +74,12 @@ were divided, joined and nested, and while each client undid its own edits only.
   becomes read-only when the connection drops, as the
   [scope](analysis.html#out-of-scope-for-now-1) requires.
 
-On the bad side, each to be settled before or while Editing is built, except the accepted
-risk:
+On the bad side, each to be settled before or while Editing is built:
 
-- **More to build:** the styles as marks, the tree of blocks with its move, a snapshot for a
-  collaborator who joins late, reconnection and the resending of unacknowledged operations.
+- **More to build:** the styles as marks, the markers of the blocks in the sequence of the page, the tree of blocks with its move, a snapshot for a collaborator who joins late, reconnection and the resending of unacknowledged operations.
 - **Presence (US-08)** is part of our own protocol, with no Yjs awareness to rely on.
-- **Accepted risk: QA-05 does not hold for an edit concurrent with dividing or joining its
-  block.** The copy has new characters, so an operation that a collaborator makes meanwhile on
-  the moved text still targets the old ones: an insertion ends up in the block that keeps the
-  first part, a deletion is undone by the copy, dividing the same block at two points at once
-  duplicates the text between them, and an edit in a block that is joined to the one before at
-  the same time is lost. Every replica still converges, but these edits are discarded or
-  misplaced without anyone being told. We accept the risk: it takes a block divided or joined
-  within the round trip of another edit, in the text that moves, and avoiding it means changing
-  the CRDT itself, with an operation that divides a block and forwards the moved characters, or
-  one sequence for the whole page with a marker for each block.
+- **Joining two blocks that are not neighbours in the sequence is still to be settled.** Once a block has been moved or nested, the block before it in the tree may not own the marker before its own, and removing its marker would give its characters to that other block: such a join needs an operation of its own. What a join does to the blocks nested in the joined one, and to the comment threads anchored to it, is still to be settled too.
+- **One sequence holds the text of the whole page**, so finding a character and the block it belongs to needs an index over the sequence, as a long page already does ([Editing client](implementation.html#editing-client)).
 - **QA-09 holds only while the operations stay generic:** insert a block of any type with its
   properties, set a property, edit text. A block type that needs an operation of its own breaks
   it.
@@ -111,15 +99,21 @@ risk:
 
 **Compliance.**
 
-- The convergence test of QA-05, over 1 000 randomized interleavings, runs on the CRDT module
-  alone. It includes concurrent moves of the same block, moves that would create a cycle, and
-  edits concurrent with a move. It also divides and joins blocks while other edits change the
-  moved text, and divides the same block at two points at once: there it checks convergence
-  only.
-- Four deterministic tests pin down the outcomes of the accepted risk listed above, so that a
-  change to the CRDT that alters them is noticed.
+- The test of QA-05, over 1 000 randomized interleavings, runs on the CRDT module alone. It includes concurrent moves of the same block, moves that would create a cycle, edits concurrent with a move, and blocks divided and joined while other edits insert, delete and style their text. Besides convergence, it checks that every character inserted, never deleted and not in a deleted block appears exactly once, and that no deleted character appears. Until the join of blocks that are not neighbours in the sequence is settled, the test joins only neighbours.
 - A fitness function checks that only the adapter of the client imports the editor library or
   ProseMirror, and never the CRDT module or the domain of Editing.
+
+Deterministic tests on the CRDT module check that an insertion, a deletion or a style concurrent with dividing or joining a block keeps its effect on the same characters, and pin down the outcomes below, which follow from the rules of the Decision. In each row Alice and Bob start from the blocks shown, act at the same time, and every replica ends with the last column. Blocks listed together are neighbours in the sequence, as after typing one after the other.
+
+| Blocks | Alice | Bob | Every replica |
+|---|---|---|---|
+| "Hello world" | Divides it before "world" | Types "X" right before "world" | "X" at the end of the first block or at the start of the second, the same on every replica |
+| "Hello world" | Divides it before "world" | Divides it before "world" too | "Hello ", an empty block and "world" |
+| "one two three" | Divides it before "two" | Divides it before "three" | "one ", "two " and "three" |
+| "Hello", "big world" | Joins "big world" to "Hello" | Divides "big world" before "world" | "Hellobig " and "world" |
+| "a", "b", "c" | Joins "b" to "a" | Joins "c" to "b" | "abc" |
+| "Hello", "world" | Joins "world" to "Hello" | Deletes the block "world" | "Hello" |
+| "Hello", "world" | Deletes the block "world" | Types "!" at the end of "world" | "Hello" |
 
 ### ADR-02: Editing acknowledges an operation once it is in a durable log
 
