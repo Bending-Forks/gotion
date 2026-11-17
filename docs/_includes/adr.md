@@ -246,8 +246,7 @@ On the bad side:
 
 **Compliance.**
 
-- A contract test of each adapter checks that a denied, an unreachable and a slow Membership all
-  end in a refused command.
+- An integration test of each adapter checks that a denied, an unreachable and a slow Membership all end in a refused command.
 - The security test of QA-06 removes a member while they are editing, demotes another to Viewer,
   and checks that Editing refuses their edits and drops the removed one from the session within
   the bound of QA-06.

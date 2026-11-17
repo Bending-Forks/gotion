@@ -13,7 +13,10 @@
         <mxCell id="s-account" value="account&#10;Go" style="rounded=1;arcSize=6;fillColor=#bee3f8;strokeColor=#2b6cb0;verticalAlign=top;spacingTop=6;fontSize=12;fontStyle=1;html=0;" vertex="1" parent="1"><mxGeometry x="40" y="170" width="150" height="298" as="geometry" /></mxCell>
         <mxCell id="s-account-claude" value=".claude/" style="rounded=0;fillColor=#feebc8;strokeColor=#c05621;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="55" y="220" width="120" height="22" as="geometry" /></mxCell>
         <mxCell id="s-account-mf" value="go.mod" style="rounded=0;fillColor=#ffffff;strokeColor=#a0aec0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="55" y="248" width="120" height="22" as="geometry" /></mxCell>
-        <mxCell id="s-account-api" value="api/" style="rounded=0;fillColor=#e9d8fd;strokeColor=#6b46c1;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="55" y="276" width="120" height="22" as="geometry" /></mxCell>
+        <mxCell id="s-account-api" value="api/" style="rounded=0;fillColor=#e9d8fd;strokeColor=#6b46c1;fontSize=10;fontStyle=1;fontFamily=Courier New;align=left;spacingLeft=6;html=0;" vertex="1" parent="1"><mxGeometry x="55" y="276" width="120" height="22" as="geometry" /></mxCell>
+        <mxCell id="s-account-api-contracts" value="contracts/" style="rounded=0;fillColor=#ffffff;strokeColor=#6b46c1;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1">
+          <mxGeometry x="99" y="279" width="72" height="16" as="geometry" />
+        </mxCell>
         <mxCell id="s-account-mig" value="migrations/" style="rounded=0;fillColor=#ffffff;strokeColor=#a0aec0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="55" y="304" width="120" height="22" as="geometry" /></mxCell>
         <mxCell id="s-account-main" value="main.go" style="rounded=0;fillColor=#ffffff;strokeColor=#a0aec0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="55" y="332" width="120" height="22" as="geometry" /></mxCell>
         <mxCell id="s-account-int" value="internal/" style="rounded=0;fillColor=#ffffff;strokeColor=#718096;verticalAlign=top;align=left;spacingLeft=6;spacingTop=1;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="55" y="360" width="120" height="98" as="geometry" /></mxCell>
@@ -23,7 +26,10 @@
         <mxCell id="s-membership" value="membership&#10;Go" style="rounded=1;arcSize=6;fillColor=#bee3f8;strokeColor=#2b6cb0;verticalAlign=top;spacingTop=6;fontSize=12;fontStyle=1;html=0;" vertex="1" parent="1"><mxGeometry x="210" y="170" width="150" height="298" as="geometry" /></mxCell>
         <mxCell id="s-membership-claude" value=".claude/" style="rounded=0;fillColor=#feebc8;strokeColor=#c05621;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="225" y="220" width="120" height="22" as="geometry" /></mxCell>
         <mxCell id="s-membership-mf" value="go.mod" style="rounded=0;fillColor=#ffffff;strokeColor=#a0aec0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="225" y="248" width="120" height="22" as="geometry" /></mxCell>
-        <mxCell id="s-membership-api" value="api/" style="rounded=0;fillColor=#e9d8fd;strokeColor=#6b46c1;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="225" y="276" width="120" height="22" as="geometry" /></mxCell>
+        <mxCell id="s-membership-api" value="api/" style="rounded=0;fillColor=#e9d8fd;strokeColor=#6b46c1;fontSize=10;fontStyle=1;fontFamily=Courier New;align=left;spacingLeft=6;html=0;" vertex="1" parent="1"><mxGeometry x="225" y="276" width="120" height="22" as="geometry" /></mxCell>
+        <mxCell id="s-membership-api-contracts" value="contracts/" style="rounded=0;fillColor=#ffffff;strokeColor=#6b46c1;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1">
+          <mxGeometry x="269" y="279" width="72" height="16" as="geometry" />
+        </mxCell>
         <mxCell id="s-membership-mig" value="migrations/" style="rounded=0;fillColor=#ffffff;strokeColor=#a0aec0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="225" y="304" width="120" height="22" as="geometry" /></mxCell>
         <mxCell id="s-membership-main" value="main.go" style="rounded=0;fillColor=#ffffff;strokeColor=#a0aec0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="225" y="332" width="120" height="22" as="geometry" /></mxCell>
         <mxCell id="s-membership-int" value="internal/" style="rounded=0;fillColor=#ffffff;strokeColor=#718096;verticalAlign=top;align=left;spacingLeft=6;spacingTop=1;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="225" y="360" width="120" height="98" as="geometry" /></mxCell>
@@ -33,7 +39,10 @@
         <mxCell id="s-discussion" value="discussion&#10;Go" style="rounded=1;arcSize=6;fillColor=#bee3f8;strokeColor=#2b6cb0;verticalAlign=top;spacingTop=6;fontSize=12;fontStyle=1;html=0;" vertex="1" parent="1"><mxGeometry x="380" y="170" width="150" height="298" as="geometry" /></mxCell>
         <mxCell id="s-discussion-claude" value=".claude/" style="rounded=0;fillColor=#feebc8;strokeColor=#c05621;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="395" y="220" width="120" height="22" as="geometry" /></mxCell>
         <mxCell id="s-discussion-mf" value="go.mod" style="rounded=0;fillColor=#ffffff;strokeColor=#a0aec0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="395" y="248" width="120" height="22" as="geometry" /></mxCell>
-        <mxCell id="s-discussion-api" value="api/" style="rounded=0;fillColor=#e9d8fd;strokeColor=#6b46c1;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="395" y="276" width="120" height="22" as="geometry" /></mxCell>
+        <mxCell id="s-discussion-api" value="api/" style="rounded=0;fillColor=#e9d8fd;strokeColor=#6b46c1;fontSize=10;fontStyle=1;fontFamily=Courier New;align=left;spacingLeft=6;html=0;" vertex="1" parent="1"><mxGeometry x="395" y="276" width="120" height="22" as="geometry" /></mxCell>
+        <mxCell id="s-discussion-api-contracts" value="contracts/" style="rounded=0;fillColor=#ffffff;strokeColor=#6b46c1;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1">
+          <mxGeometry x="439" y="279" width="72" height="16" as="geometry" />
+        </mxCell>
         <mxCell id="s-discussion-mig" value="migrations/" style="rounded=0;fillColor=#ffffff;strokeColor=#a0aec0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="395" y="304" width="120" height="22" as="geometry" /></mxCell>
         <mxCell id="s-discussion-main" value="main.go" style="rounded=0;fillColor=#ffffff;strokeColor=#a0aec0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="395" y="332" width="120" height="22" as="geometry" /></mxCell>
         <mxCell id="s-discussion-int" value="internal/" style="rounded=0;fillColor=#ffffff;strokeColor=#718096;verticalAlign=top;align=left;spacingLeft=6;spacingTop=1;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="395" y="360" width="120" height="98" as="geometry" /></mxCell>
@@ -61,7 +70,10 @@
         <mxCell id="s-editing" value="editing&#10;TypeScript" style="rounded=1;arcSize=6;fillColor=#c6f6d5;strokeColor=#2f855a;verticalAlign=top;spacingTop=6;fontSize=12;fontStyle=1;html=0;" vertex="1" parent="1"><mxGeometry x="890" y="170" width="150" height="298" as="geometry" /></mxCell>
         <mxCell id="s-editing-claude" value=".claude/" style="rounded=0;fillColor=#feebc8;strokeColor=#c05621;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="905" y="220" width="120" height="22" as="geometry" /></mxCell>
         <mxCell id="s-editing-mf" value="package.json" style="rounded=0;fillColor=#ffffff;strokeColor=#a0aec0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="905" y="248" width="120" height="22" as="geometry" /></mxCell>
-        <mxCell id="s-editing-api" value="api/" style="rounded=0;fillColor=#e9d8fd;strokeColor=#6b46c1;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="905" y="276" width="120" height="22" as="geometry" /></mxCell>
+        <mxCell id="s-editing-api" value="api/" style="rounded=0;fillColor=#e9d8fd;strokeColor=#6b46c1;fontSize=10;fontStyle=1;fontFamily=Courier New;align=left;spacingLeft=6;html=0;" vertex="1" parent="1"><mxGeometry x="905" y="276" width="120" height="22" as="geometry" /></mxCell>
+        <mxCell id="s-editing-api-contracts" value="contracts/" style="rounded=0;fillColor=#ffffff;strokeColor=#6b46c1;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1">
+          <mxGeometry x="949" y="279" width="72" height="16" as="geometry" />
+        </mxCell>
         <mxCell id="s-editing-mig" value="migrations/" style="rounded=0;fillColor=#ffffff;strokeColor=#a0aec0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="905" y="304" width="120" height="22" as="geometry" /></mxCell>
         <mxCell id="s-editing-int" value="src/" style="rounded=0;fillColor=#ffffff;strokeColor=#718096;verticalAlign=top;align=left;spacingLeft=6;spacingTop=1;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="905" y="332" width="120" height="126" as="geometry" /></mxCell>
         <mxCell id="s-editing-int-0" value="domain/" style="rounded=0;fillColor=#ffffff;strokeColor=#a0aec0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="913" y="352" width="104" height="20" as="geometry" /></mxCell>
@@ -108,7 +120,13 @@
         <mxCell id="lg-pkg" value="server/" style="rounded=0;fillColor=#ffffff;strokeColor=#2b6cb0;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="560" y="854" width="90" height="22" as="geometry" /></mxCell>
         <mxCell id="lg-pkg-t" value="Go package of the chassis, imported only by the services that need it" style="text;align=left;verticalAlign=middle;fontSize=11;html=0;" vertex="1" parent="1"><mxGeometry x="655" y="854" width="460" height="22" as="geometry" /></mxCell>
         <mxCell id="lg-int" value="internal/" style="rounded=0;fillColor=#ffffff;strokeColor=#718096;fontSize=10;fontStyle=1;fontFamily=Courier New;html=0;" vertex="1" parent="1"><mxGeometry x="20" y="884" width="90" height="22" as="geometry" /></mxCell>
-        <mxCell id="lg-int-t" value="the hexagon of the service, described below the picture" style="text;align=left;verticalAlign=middle;fontSize=11;html=0;" vertex="1" parent="1"><mxGeometry x="115" y="884" width="900" height="22" as="geometry" /></mxCell>
+        <mxCell id="lg-int-t" value="the hexagon of the service, described below the picture" style="text;align=left;verticalAlign=middle;fontSize=11;html=0;" vertex="1" parent="1"><mxGeometry x="115" y="884" width="420" height="22" as="geometry" /></mxCell>
+        <mxCell id="lg-contracts" value="contracts/" style="rounded=0;fillColor=#ffffff;strokeColor=#6b46c1;fontSize=10;fontFamily=Courier New;html=0;" vertex="1" parent="1">
+          <mxGeometry x="560" y="884" width="90" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="lg-contracts-t" value="examples of what each consumer reads, one folder per consumer" style="text;align=left;verticalAlign=middle;fontSize=11;html=0;" vertex="1" parent="1">
+          <mxGeometry x="655" y="884" width="460" height="22" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>

@@ -105,6 +105,38 @@ Editing uses Fastify and its plugins as its chassis ([ADR-07](design.html#adr-07
 
 <!-- TODO SLO: the scenarios whose target is 100 % are invariants, verified by tests and not by an SLO: QA-04 zero loss of acknowledged edits (chaos test: kill the process under load, then check every acknowledged edit after the restart), QA-05 convergence and preservation of acknowledged edits (property-based test over 1 000 randomized interleavings, plus the deterministic tests of ADR-01), QA-06 (authorization matrix per role and operation; for a non-member, "forbidden" and "non-existent" responses compared byte by byte), QA-07 (after 5 failed logins the 6th attempt gets 429). -->
 
+### Contract tests
+
+Every relation of the [Context Map](design.html#context-map) has consumer-driven contract tests, and so do the two queries of the gateway's [API Composition](design.html#api-composition). A contract is a concrete example of one interaction: an event as the consumer reads it, or a request with the response it expects. The consumer writes it, in the `api/contracts/<consumer>/` folder of the provider, next to the OpenAPI or AsyncAPI specification it refers to.
+
+The provider still owns the schema: it is its published language. The example holds only the fields the consumer reads, and must validate against that schema, so a consumer cannot invent a field. When it needs one the provider does not publish, it asks the provider to add it as an optional field, a compatible change ([Contracts](design.html#contracts)), and then adds it to its example. Discussion, for instance, reads only the identity of the deleted page from Page Deleted, besides the envelope it needs to recognize a repeated event:
+
+```text
+services/editing/api/
+├── asyncapi.yaml
+└── contracts/
+    └── discussion/
+        └── page-deleted.json
+```
+
+```json
+{
+  "eventId": "0b9a6c1e-6f0d-4c7a-9a43-2f1d5e8b7c10",
+  "type": "PageDeleted",
+  "version": 1,
+  "pageId": "5d2f8e4a-1c3b-4e6f-8a9d-7b0c2e4f6a81"
+}
+```
+
+Each example is used twice:
+
+- **In the tests of the provider**, as the expected output. For an event, the producer builds it in the scenario of the example; the result must validate against its schema and contain the example, while any other field is ignored. For a query, the test replays the request on the handler in memory (`httptest` in Go, `fastify.inject` in Editing), with the application services stubbed, and the response must contain the one of the example.
+- **In the tests of the consumer**, as the input. An event goes into the real Kafka adapter of the consumer. A conformist checks that its application service receives the identities of the example; a consumer with an anticorruption layer checks the translated value instead, so Editing checks that a role of Membership becomes "may read" or "may also change", and Notification that Member Invited becomes an invitation `Subject`. For a query, the example serves as a stub of the provider for the HTTP client adapter.
+
+Removing or renaming a field that no consumer reads passes; removing or renaming one that a consumer reads fails in the pull request of the provider, and the path of the example names the consumer to agree the change with. Since the provider and the consumer may be written in different languages, this is the check that [ADR-04](design.html#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go) requires.
+
+The tests need a JSON Schema validator in each runtime, `santhosh-tekuri/jsonschema` in Go and `ajv` in Editing, and a match of an example inside a message of a few lines. Pact would run the same checks, with its own DSL in both languages and a native library to install in the CI of Go; its broker pays off when the provider and its consumers are released from separate repositories, which [ADR-08](design.html#adr-08-contracts-are-json-schema-with-no-schema-registry) excludes. Validating each message against the schema alone would not say which fields a consumer reads.
+
 ## Multiplatform
 
 Gotion runs on two runtimes ([ADR-04](design.html#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go)). Account, Membership, Discussion, Notification and the API gateway are written in Go, and every Go module needs Go 1.25 or later. Editing is written in TypeScript on Node.js, and the web client in TypeScript with React. Editing and the client import the same CRDT package.

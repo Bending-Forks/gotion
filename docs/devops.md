@@ -16,6 +16,8 @@ Inside each service, `internal/` (`src/` in Editing) holds the hexagon of [Hexag
 - `app/` holds one application service per command, query or policy, and declares the ports as interfaces: a repository, the outbox, the query to another service.
 - `adapters/` implements the ports and calls the application services: the REST server, the Kafka consumers, the repositories on PostgreSQL, the clients of other services. The code generated from the specifications in `api/` and from SQL lives in the adapter that uses it. A consumer generates the types of an event from the `api/` of its producer, so no package of shared types exists.
 
+`api/` holds the OpenAPI and AsyncAPI specifications of the service, and `api/contracts/<consumer>/` the examples each consumer writes of what it reads from them, one folder per relation of the context map ([Contract tests](implementation.html#contract-tests)).
+
 `main.go` (`src/main.ts` in Editing) reads the configuration, builds the adapters and connects them to the ports. `migrations/` holds the SQL migrations of the service's database, run at start ([ADR-06](design.html#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own)). The gateway has no domain and no database: `proxy/` forwards the client's requests to the services and the WebSocket of each page to its Editing instance, and `directory/` composes the Workspace directory ([API Composition](design.html#api-composition)).
 
 The chassis has one package per concern: the HTTP server, the health checks, the metrics, the configuration, the logs, the PostgreSQL pool with its migrations, the Kafka consumers, the outbox, the client of the queries and the sign-in token ([ADR-07](design.html#adr-07-each-runtime-has-its-own-microservice-chassis-assembled-from-libraries), [ADR-09](design.html#adr-09-the-sign-in-token-is-a-jwt-signed-with-ed25519-in-an-httponly-cookie)). A service imports only the ones it needs: the gateway imports neither `postgres/` nor `outbox/`, and only Account and the gateway import `token/`.
@@ -71,11 +73,7 @@ is up to date with `main` and green, so what reaches `main` has the same content
 request already checked. A new push to a pull request cancels the runs still going on its
 older commits; runs on `main` are never cancelled.
 
-<!-- TODO first service: add a `changes` job that lists the files changed by the pull request
-(`git diff --name-only` between base and head), and run each job only for its own part: `site`
-for `docs/`, and for every service a test matrix over the operating systems and the versions
-of its runtime (Go, Node.js, see ADR-04), only when its folder changes. Do not filter with
-`paths:` on the trigger: `success` must always report, or the ruleset blocks the pull request. -->
+<!-- TODO first service: add a `changes` job that lists the files changed by the pull request (`git diff --name-only` between base and head), and run each job only for its own part: `site` for `docs/`, and for every service a test matrix over the operating systems and the versions of its runtime (Go, Node.js, see ADR-04), only when its folder changes. A change in the `api/` of a service also runs the tests of its consumers, and a change in `services/X/api/contracts/Y/` runs the tests of both X, the provider, and Y, the consumer (see Contract tests in Implementation). Do not filter with `paths:` on the trigger: `success` must always report, or the ruleset blocks the pull request. -->
 
 On a push to `main`, and only if `success` passed, `deploy` publishes the report to GitHub
 Pages. The deployment goes to the `github-pages` environment, which accepts only `main`, so a
