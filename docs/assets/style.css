@@ -90,6 +90,9 @@ main { padding: 3rem 4rem 8rem; }
 /* text keeps a readable width, images and diagrams take all the room the sidebars leave */
 main > :not(figure, p:has(> img)) { max-width: 68rem; margin-inline: auto; }
 main h1 { margin: 0 0 2rem; font-size: 2.25rem; font-weight: 700; letter-spacing: -.01em; }
+/* the homepage shows the Gotion icon beside its title */
+main h1:has(.logo) { display: flex; align-items: center; gap: .6rem; }
+main h1 .logo { height: 1.4em; margin: 0; }
 main h2 { margin: 2.75rem 0 1rem; font-size: 1.4rem; font-weight: 600; scroll-margin-top: 1.25rem; }
 main h3 { margin: 1.75rem 0 .75rem; font-size: 1.1rem; font-weight: 600; scroll-margin-top: 1.25rem; }
 main h4 { margin: 1.5rem 0 .5rem; font-size: 1rem; font-weight: 600; scroll-margin-top: 1.25rem; }
