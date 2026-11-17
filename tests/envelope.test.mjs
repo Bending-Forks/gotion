@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import Ajv from 'ajv/dist/2020.js';
+import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 
 const schema = JSON.parse(readFileSync(new URL('../api/envelope.schema.json', import.meta.url)));
