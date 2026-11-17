@@ -23,8 +23,8 @@ The microservice patterns Gotion applies, gathered in one place. Most of them ar
 | Cross-cutting concerns | Microservice Chassis | API gateway and every service, one chassis per runtime | Health checks, metrics, configuration, logs, messaging, the outbox and the calls to other services are built once for each runtime, not in every service | [ADR-07](#adr-07-each-runtime-has-its-own-microservice-chassis-assembled-from-libraries) |
 | Cross-cutting concerns | Externalized Configuration | Every service | The same image runs in every environment, configured by environment variables from a ConfigMap or a Secret in Kubernetes, and from Compose (QA-08) | [ADR-07](#adr-07-each-runtime-has-its-own-microservice-chassis-assembled-from-libraries) |
 | Cross-cutting concerns | Server-side discovery | Kubernetes Services | A caller reaches a service by the DNS name of its Service, and Kubernetes picks the replica, with no registry of our own | [State and scaling](#state-and-scaling) |
-| Deployment | Service per container | Every service | Each service is built, shipped and restarted on its own, whatever its runtime (ADR-04) | TODO |
-| Deployment | Service deployment platform | Kubernetes | The platform restarts, scales and routes the instances, with no script of our own (QA-04) | TODO |
+| Deployment | Service per container | Every service | Each service is built, shipped and restarted on its own, whatever its runtime (ADR-04) | [Deployment](devops.html#deployment) |
+| Deployment | Service deployment platform | Kubernetes | The platform restarts, scales and routes the instances, with no script of our own (QA-04) | [Deployment](devops.html#deployment) |
 | Observability | Health Check API | Every service | Kubernetes restarts an instance that is stuck and sends traffic only to one that is ready (QA-04) | [Observability](#observability) |
 | Observability | Application Metrics | Every service and the client | The runtime scenarios are measured while the system runs (QA-01 to QA-04, QA-06, QA-07) | [Observability](#observability) |
 
