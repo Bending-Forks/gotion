@@ -406,6 +406,21 @@ Feature: US-08 Collaborate in real time
     And Gotion acknowledges both edits
     Then both collaborators see the same merged content
     And Gotion does not silently discard either acknowledged edit
+    But an edit to a block that the other one deleted has no effect
+
+  Scenario Outline: Keep the edits made while blocks are divided or joined
+    Given Alice and Bob are Editors with the same page open
+    And the page holds <before>
+    When Alice <alice>
+    And at the same time Bob <bob>
+    And Gotion acknowledges both edits
+    Then both collaborators see <after>
+
+    Examples:
+      | before                         | alice                             | bob                             | after                                 |
+      | the block "Hello world"        | divides it before "world"         | types "!" at its end            | the blocks "Hello " and "world!"      |
+      | the blocks "Hello" and "world" | joins "world" to the block before | types "!" at the end of "world" | the block "Helloworld!"               |
+      | the block "one two three"      | divides it before "two"           | divides it before "three"       | the blocks "one ", "two " and "three" |
 
   Scenario: Follow edits as a Viewer
     Given Alice is an Editor and Bob is a Viewer in "Research"

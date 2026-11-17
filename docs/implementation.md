@@ -102,12 +102,7 @@ Editing uses Fastify and its plugins as its chassis ([ADR-07](design.html#adr-07
 
 ## Testing
 
-<!-- TODO SLO: the scenarios whose target is 100 % are invariants, verified by tests and not
-by an SLO: QA-04 zero loss of acknowledged edits (chaos test: kill the process under load,
-then check every acknowledged edit after the restart), QA-05 convergence (property-based
-test over 1 000 randomized interleavings), QA-06 (authorization matrix per role and
-operation; for a non-member, "forbidden" and "non-existent" responses compared byte by byte),
-QA-07 (after 5 failed logins the 6th attempt gets 429). -->
+<!-- TODO SLO: the scenarios whose target is 100 % are invariants, verified by tests and not by an SLO: QA-04 zero loss of acknowledged edits (chaos test: kill the process under load, then check every acknowledged edit after the restart), QA-05 convergence and preservation of acknowledged edits (property-based test over 1 000 randomized interleavings, plus the deterministic tests of ADR-01), QA-06 (authorization matrix per role and operation; for a non-member, "forbidden" and "non-existent" responses compared byte by byte), QA-07 (after 5 failed logins the 6th attempt gets 429). -->
 
 ## Multiplatform
 

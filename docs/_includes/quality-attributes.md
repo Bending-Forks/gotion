@@ -67,11 +67,11 @@ response measures that depend on them, the Benchmark in DevOps and the SLOs in M
 | Part | Value |
 |---|---|
 | Source | Multiple collaborators |
-| Stimulus | 10 users edit the same block simultaneously |
+| Stimulus | 10 users edit the same block simultaneously, dividing it and joining it to the block before as well |
 | Artifact | Synchronization engine |
 | Environment | Normal operation, client-server round-trip up to 500 ms |
-| Response | All replicas converge to an identical document state; no acknowledged edit is silently discarded |
-| Response measure | 100 % convergence within 2 s of the last edit, verified by an automated test over 1 000 randomized operation interleavings |
+| Response | All replicas converge to an identical document state; no acknowledged edit is silently discarded: each one keeps its effect, unless a concurrent edit deleted its block |
+| Response measure | 100 % convergence within 2 s of the last edit and 100 % of the acknowledged edits kept, verified by an automated test over 1 000 randomized operation interleavings and by deterministic tests of edits concurrent with dividing and joining blocks |
 
 #### Security
 
