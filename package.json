@@ -1,6 +1,9 @@
 {
   "name": "gotion",
   "private": true,
+  "workspaces": [
+    "client/web"
+  ],
   "scripts": {
     "prepare": "husky"
   },
