@@ -63,6 +63,7 @@ The CI runs on every pull request and on every push to `main`:
 - `test`, on pull requests only, runs the Node tests on Linux with Node 24: they cover a
   script that runs in the reader's browser, so other systems or Node versions would tell us
   nothing more;
+- `web`, on pull requests only, generates the types of the client from the OpenAPI specifications of the services, runs the tests of the web client, one of them against a fake gateway, builds it, and fails if the bundle loads anything from another domain (BR-01);
 - `site` builds the report with Jekyll, failing on invalid front matter;
 - `commits`, on pull requests only, checks the title of every commit against Conventional
   Commits, so skipping the local hook does not help;
