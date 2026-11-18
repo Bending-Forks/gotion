@@ -87,6 +87,8 @@ GitHub auto-merge disabled: it would put an auto-merge button on every pull requ
 squash as the only merge method allowed by the settings, that button would merge a human pull
 request past the merge script.
 
+The tasks of the project live in a Notion database, the Tasks Tracker, and a second workflow, `notion.yml`, keeps it in step with the pull requests. When a pull request is opened or its description is edited, the workflow writes the URL of the pull request into the PR property of every task the description links to. When a push reaches `main`, it looks for the pull request whose head is the pushed commit, which is how `scripts/ff-merge.sh` merges, and moves the tasks whose PR property holds its URL to Done. It calls the Notion API with the token of a Notion integration, kept as a repository secret, and does nothing without it. It stays out of the CI on purpose: it checks nothing, so a Notion outage must not turn `success` red.
+
 <!-- TODO SLO: the development time scenarios become gates in the pipeline: QA-08 (a
 fresh-install job on a clean runner: one documented command, reachable within 600 s, no
 manual database step), QA-09 (an architecture test: real-time synchronization and
