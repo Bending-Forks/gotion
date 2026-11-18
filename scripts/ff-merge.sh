@@ -5,7 +5,7 @@ set -euo pipefail
 if [ $# -gt 0 ]; then
   pr=$1
 else
-  read -ra prs <<< "$(gh pr list --head "$(git branch --show-current)" --json number -q '.[].number' | paste -sd ' ')"
+  read -ra prs <<< "$(gh pr list --head "$(git branch --show-current)" --json number -q '.[].number' | paste -sd ' ' -)"
   case ${#prs[@]} in
     0) echo "No open PR for this branch."; exit 1 ;;
     1) pr=${prs[0]} ;;
@@ -26,7 +26,7 @@ git merge-base --is-ancestor "origin/$branch" HEAD \
 if ! git merge-base --is-ancestor "origin/$base" HEAD; then
   me=$(gh api user -q .login)
   others=$(gh pr view "$pr" --json commits -q '.commits[].authors[] | if (.login // "") == "" then .email else .login end' \
-    | sort -u | grep -vxF "$me" | paste -sd ' ' || true)
+    | sort -u | grep -vxF "$me" | paste -sd ' ' - || true)
   if [ -n "$others" ]; then
     read -rp "Rebasing re-signs the commits of $others with your key. Go on? [y/N] " answer
     [ "$answer" = y ] || exit 1
