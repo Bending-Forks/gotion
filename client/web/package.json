@@ -7,7 +7,8 @@
     "fake-gateway": "node fake-gateway.mjs",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
-    "gen:api": "node gen-api.mjs"
+    "gen:api": "node gen-api.mjs",
+    "check:bundle": "node check-bundle.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.3.0",
@@ -17,6 +18,7 @@
     "react-router": "8.5.1"
   },
   "devDependencies": {
+    "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.3.0",
