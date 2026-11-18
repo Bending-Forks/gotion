@@ -1,2 +1,2 @@
-// Package logging gives the services the logs, as JSON on the standard output.
+// Package logging gives the services their logs, as JSON on the standard output with log/slog.
 package logging

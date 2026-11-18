@@ -1,2 +1,2 @@
-// Package consumer gives the services the router of the Kafka consumers, which skips a repeated event.
+// Package consumer gives the services the router of their Kafka consumers, built on Watermill with watermill-kafka. It records the identifier of each applied event in the transaction of its change and skips a repeated one.
 package consumer
