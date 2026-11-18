@@ -1,0 +1,10 @@
+go 1.25.0
+
+use (
+	./packages/chassis
+	./services/account
+	./services/discussion
+	./services/gateway
+	./services/membership
+	./services/notification
+)
