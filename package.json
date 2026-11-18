@@ -1,6 +1,11 @@
 {
   "name": "gotion",
   "private": true,
+  "workspaces": [
+    "client/*",
+    "packages/*",
+    "services/*"
+  ],
   "scripts": {
     "prepare": "husky"
   },
