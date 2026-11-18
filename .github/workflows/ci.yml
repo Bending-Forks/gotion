@@ -25,6 +25,36 @@ jobs:
           node-version: 24
       - run: node --test "tests/*.test.mjs"
 
+  go:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # The go directive of go.work is the oldest Go we support
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      # ./... does not reach into the modules of a workspace from its root, so list them
+      - run: |
+          modules=$(go list -m -f '{{.Dir}}/...')
+          go vet $modules
+          go build $modules
+          go test $modules
+
+  node:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w services/editing -w packages/crdt
+      - run: npm test -w services/editing -w packages/crdt
+
   site:
     runs-on: ubuntu-latest
     steps:
@@ -50,7 +80,7 @@ jobs:
           done
 
   success:
-    needs: [test, site, commits]
+    needs: [test, go, node, site, commits]
     if: always()
     runs-on: ubuntu-latest
     steps:
