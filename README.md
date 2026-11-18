@@ -21,8 +21,9 @@ The services need Go 1.25 or later and Node.js 24 or later. From the root of the
 
 ```sh
 npm install
-modules=$(go list -m -f '{{.Dir}}/...')
-go vet $modules && go build $modules && go test $modules
+go vet $(go list -m -f '{{.Dir}}/...')
+go build $(go list -m -f '{{.Dir}}/...')
+go test $(go list -m -f '{{.Dir}}/...')
 npm run build -w services/editing -w packages/crdt
 npm test -w services/editing -w packages/crdt
 ```
