@@ -141,6 +141,8 @@ The tests need a JSON Schema validator in each runtime, `santhosh-tekuri/jsonsch
 
 Gotion runs on two runtimes ([ADR-04](design.html#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go)). Account, Membership, Discussion, Notification and the API gateway are written in Go, and every Go module needs Go 1.25 or later. Editing is written in TypeScript on Node.js, and the web client in TypeScript with React. Editing and the client import the same CRDT package.
 
+Editing and the CRDT package run their TypeScript sources as they are: Node.js strips the types when it loads a file, so there is no build step and no compiled copy to keep in step with the sources. The CRDT package exports its sources, which Node.js reads in Editing and Vite in the web client. The price is that only TypeScript syntax that can be erased is allowed: no `enum`, no `namespace`, no parameter properties, and relative imports end in `.ts`. `tsc` checks the types without emitting anything and refuses that syntax, with the strict options every package takes from `tsconfig.base.json`. The CRDT package is checked with neither the DOM nor the types of Node.js, so `tsc` also refuses any use of the browser or of Node.js in it. The tests of both run on `node:test`, the test runner built into Node.js.
+
 ## Experiments
 
 ## Monitoring

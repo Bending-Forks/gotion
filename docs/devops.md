@@ -6,7 +6,7 @@ nav_order: 5
 
 ## Project Structure
 
-Gotion lives in one Git repository. Every service, the web client and every shared library is a package of its own, a Go module or an npm workspace, with its own `.claude/` folder for the instructions of Claude Code that apply only to that package.
+Gotion lives in one Git repository. Every service, the web client and every shared library is a package of its own, a Go module or an npm workspace, with its own `.claude/` folder for the instructions of Claude Code that apply only to that package; the rules every hexagon shares are written once, in the `.claude/` folder of the root. In the root, `go.work` joins the Go modules into one workspace, and the `workspaces` of `package.json` do the same for the npm packages.
 
 ![Packages of the Gotion monorepo]({{ '/assets/devops/monorepo.svg' | relative_url }})
 
