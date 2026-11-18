@@ -25,6 +25,21 @@ jobs:
           node-version: 24
       - run: node --test "tests/*.test.mjs"
 
+  web:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run gen:api -w client/web
+      - run: npm test -w client/web
+      - run: npm run build -w client/web
+      - run: npm run check:bundle -w client/web
+
   site:
     runs-on: ubuntu-latest
     steps:
@@ -50,7 +65,7 @@ jobs:
           done
 
   success:
-    needs: [test, site, commits]
+    needs: [test, web, site, commits]
     if: always()
     runs-on: ubuntu-latest
     steps:
