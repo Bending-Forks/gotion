@@ -1,13 +1,12 @@
 name: Notion
 
-# Keeps the Tasks Tracker on Notion in step with the pull requests:
-# - when a pull request is opened or its description edited, the URL of the pull request goes into the PR
-#   property of every task its description links to;
-# - when a pull request reaches main, the tasks whose PR property holds its URL move to Done.
+# Keeps the Pull Requests database on Notion in step with GitHub, related to the Tasks Tracker through the Notion links in
+# the description of each pull request, and moves to Done the tasks a merged pull request completes. The logic is in
+# .github/scripts/notion.mjs.
 # Separate from the CI: it checks nothing, and a Notion outage must not turn `success` red.
 on:
   pull_request:
-    types: [opened, edited, reopened]
+    types: [opened, edited, reopened, closed, ready_for_review, converted_to_draft]
   push:
     branches: [main]
 
@@ -15,39 +14,18 @@ permissions:
   contents: read
   pull-requests: read
 
-env:
-  NOTION_API_TOKEN: ${{ secrets.NOTION_API_TOKEN }}
-  TRACKER: 30cf720c-4b16-8292-af30-07ac9991dc17 # data source of the Tasks Tracker
+# One run at a time per pull request: each writes the whole page from its event, so a newer event can replace a waiting one
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
 
 jobs:
-  tasks:
+  pull-requests:
     runs-on: ubuntu-latest
     steps:
-      - env:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      - run: node .github/scripts/notion.mjs
+        env:
+          NOTION_API_TOKEN: ${{ secrets.NOTION_API_TOKEN }}
           GH_TOKEN: ${{ github.token }}
-          BODY: ${{ github.event.pull_request.body }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: |
-          [[ -n $NOTION_API_TOKEN ]] || { echo "::notice::NOTION_API_TOKEN is not set: nothing to do"; exit 0; }
-          notion() {
-            curl -sSf -H "Authorization: Bearer $NOTION_API_TOKEN" -H 'Notion-Version: 2026-03-11' \
-              -H 'Content-Type: application/json' "$@"
-          }
-          set_properties() { # set_properties PAGE JSON
-            notion -X PATCH "https://api.notion.com/v1/pages/$1" -d "{\"properties\":$2}" >/dev/null \
-              && echo "updated $1" || echo "::warning::could not update the Notion page $1"
-          }
-          if [[ $GITHUB_EVENT_NAME == pull_request ]]; then
-            # The page ID is the last 32 hex digits of the path of a Notion link, once the dashes are gone
-            pages=$(grep -oE 'https://[a-z.]*notion\.(so|com)/[^] )>"]+' <<<"$BODY" \
-              | sed 's/[?#].*//; s/-//g' | grep -oE '[0-9a-f]{32}$' | sort -u || true)
-            for page in $pages; do set_properties "$page" "{\"PR\":{\"url\":\"$PR_URL\"}}"; done
-          else
-            # scripts/ff-merge.sh moves main onto the head of the pull request, so the pushed commit is that head
-            prs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq ".[] | select(.head.sha == \"$GITHUB_SHA\") | .html_url")
-            for url in $prs; do
-              pages=$(notion "https://api.notion.com/v1/data_sources/$TRACKER/query" \
-                -d "{\"filter\":{\"property\":\"PR\",\"url\":{\"equals\":\"$url\"}}}" | jq -r '.results[].id')
-              for page in $pages; do set_properties "$page" '{"Status":{"status":{"name":"Done"}}}'; done
-            done
-          fi
