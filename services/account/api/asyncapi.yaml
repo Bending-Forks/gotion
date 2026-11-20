@@ -1,0 +1,70 @@
+asyncapi: 3.0.0
+info:
+  title: Account events
+  version: 1.0.0
+  description: >-
+    The events Account publishes, in the envelope of api/envelope.schema.json at the root of the
+    repository, keyed on Kafka by the identity of their aggregate.
+defaultContentType: application/json
+channels:
+  account:
+    address: account
+    description: Every event of Account, so that the events of one aggregate stay in order.
+    messages:
+      WorkspaceCreatedV1:
+        $ref: '#/components/messages/WorkspaceCreatedV1'
+      WorkspaceDeletedV1:
+        $ref: '#/components/messages/WorkspaceDeletedV1'
+operations:
+  publishAccountEvents:
+    action: send
+    channel:
+      $ref: '#/channels/account'
+    messages:
+      - $ref: '#/channels/account/messages/WorkspaceCreatedV1'
+      - $ref: '#/channels/account/messages/WorkspaceDeletedV1'
+components:
+  messages:
+    WorkspaceCreatedV1:
+      name: WorkspaceCreated
+      title: Workspace Created
+      summary: Consumed by Membership, to accept the creator as Admin, and by Editing, to create the root page.
+      bindings:
+        kafka:
+          key:
+            $ref: '#/components/schemas/WorkspaceKey'
+      payload:
+        allOf:
+          - $ref: '../../../api/envelope.schema.json'
+          - type: object
+            properties:
+              type:
+                const: WorkspaceCreated
+              version:
+                const: 1
+              data:
+                $ref: './events/workspace-created.v1.json'
+    WorkspaceDeletedV1:
+      name: WorkspaceDeleted
+      title: Workspace Deleted
+      summary: Consumed by Membership, to delete the membership, and by Editing, to delete the root page.
+      bindings:
+        kafka:
+          key:
+            $ref: '#/components/schemas/WorkspaceKey'
+      payload:
+        allOf:
+          - $ref: '../../../api/envelope.schema.json'
+          - type: object
+            properties:
+              type:
+                const: WorkspaceDeleted
+              version:
+                const: 1
+              data:
+                $ref: './events/workspace-deleted.v1.json'
+  schemas:
+    WorkspaceKey:
+      description: The aggregateId of the envelope, the WorkspaceId
+      type: string
+      format: uuid
