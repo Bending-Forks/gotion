@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MemberJoinedV1",
+  "description": "A user has become a member of a workspace: its creator, or an invitee who accepted.",
+  "type": "object",
+  "required": [
+    "workspaceId",
+    "userId",
+    "role"
+  ],
+  "properties": {
+    "workspaceId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "userId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "role": {
+      "description": "The role of the new member.",
+      "type": "string",
+      "enum": [
+        "Admin",
+        "Editor",
+        "Viewer"
+      ]
+    }
+  }
+}

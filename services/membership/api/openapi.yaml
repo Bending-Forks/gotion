@@ -1,0 +1,399 @@
+openapi: 3.1.0
+info:
+  title: Membership
+  version: 1.0.0
+  description: >-
+    Members, roles and invitations of each workspace (US-03). The client API under /v1 is forwarded
+    by the API gateway, which sets X-User-Id from the sign-in token (ADR-09). The queries under
+    /internal/v1 answer the other services, in the same published language as the events, and are
+    never forwarded to a client. A workspace that does not exist is answered as one the user is not
+    a member of (QA-06).
+tags:
+  - name: client
+    description: The client API, through the API gateway
+  - name: queries
+    description: The queries answered to other services
+paths:
+  /v1/workspaces/{workspaceId}/members:
+    parameters:
+      - $ref: '#/components/parameters/XUserId'
+      - $ref: '#/components/parameters/WorkspaceId'
+    get:
+      tags: [client]
+      operationId: listMembers
+      summary: The members of a workspace
+      responses:
+        '200':
+          description: Every member, with their role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Members'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/workspaces/{workspaceId}/members/{memberId}:
+    parameters:
+      - $ref: '#/components/parameters/XUserId'
+      - $ref: '#/components/parameters/WorkspaceId'
+      - $ref: '#/components/parameters/MemberId'
+    delete:
+      tags: [client]
+      operationId: removeMember
+      summary: Remove member
+      description: Only an Admin; refused if it would leave the workspace with no Admin.
+      responses:
+        '204':
+          description: Removed
+        '403':
+          $ref: '#/components/responses/NotAdmin'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/LastAdmin'
+  /v1/workspaces/{workspaceId}/members/{memberId}/role:
+    parameters:
+      - $ref: '#/components/parameters/XUserId'
+      - $ref: '#/components/parameters/WorkspaceId'
+      - $ref: '#/components/parameters/MemberId'
+    put:
+      tags: [client]
+      operationId: changeMemberRole
+      summary: Change member role
+      description: Only an Admin; refused if it would leave the workspace with no Admin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleBody'
+      responses:
+        '204':
+          description: The member has the new role
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/NotAdmin'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/LastAdmin'
+  /v1/workspaces/{workspaceId}/leave:
+    parameters:
+      - $ref: '#/components/parameters/XUserId'
+      - $ref: '#/components/parameters/WorkspaceId'
+    post:
+      tags: [client]
+      operationId: leaveWorkspace
+      summary: Leave workspace
+      description: Refused if the user is the last Admin.
+      responses:
+        '204':
+          description: The user is no longer a member
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/LastAdmin'
+  /v1/workspaces/{workspaceId}/invitations:
+    parameters:
+      - $ref: '#/components/parameters/XUserId'
+      - $ref: '#/components/parameters/WorkspaceId'
+    get:
+      tags: [client]
+      operationId: listInvitations
+      summary: The pending invitations of a workspace
+      responses:
+        '200':
+          description: Every pending invitation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [invitations]
+                properties:
+                  invitations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Invitation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags: [client]
+      operationId: inviteMember
+      summary: Invite member
+      description: >-
+        Only an Admin. Membership asks Account for the UserId of the email address first; the
+        invitee must be registered, and neither a member nor already invited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+                role:
+                  $ref: '#/components/schemas/Role'
+      responses:
+        '201':
+          description: The invitation is pending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/NotAdmin'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The invitee is already a member or already invited
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: No user is registered with the email address
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Account did not answer, so the command is refused (fail closed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/workspaces/{workspaceId}/invitations/{inviteeId}/accept:
+    parameters:
+      - $ref: '#/components/parameters/XUserId'
+      - $ref: '#/components/parameters/WorkspaceId'
+      - $ref: '#/components/parameters/InviteeId'
+    post:
+      tags: [client]
+      operationId: acceptInvitation
+      summary: Accept invitation
+      description: Only the invitee, who becomes a member with the role of the invitation.
+      responses:
+        '204':
+          description: The invitee is a member
+        '404':
+          $ref: '#/components/responses/NoInvitation'
+  /v1/workspaces/{workspaceId}/invitations/{inviteeId}/decline:
+    parameters:
+      - $ref: '#/components/parameters/XUserId'
+      - $ref: '#/components/parameters/WorkspaceId'
+      - $ref: '#/components/parameters/InviteeId'
+    post:
+      tags: [client]
+      operationId: declineInvitation
+      summary: Decline invitation
+      description: Only the invitee; the invitation ends.
+      responses:
+        '204':
+          description: The invitation has ended
+        '404':
+          $ref: '#/components/responses/NoInvitation'
+  /internal/v1/workspaces/{workspaceId}/members/{memberId}/role:
+    parameters:
+      - $ref: '#/components/parameters/WorkspaceId'
+      - $ref: '#/components/parameters/MemberId'
+    get:
+      tags: [queries]
+      operationId: getRole
+      summary: The role of a user in a workspace, for Account and Editing
+      responses:
+        '200':
+          description: The role of the member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleBody'
+        '404':
+          description: The user is not a member, or the workspace does not exist
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /internal/v1/workspaces/{workspaceId}/members:
+    parameters:
+      - $ref: '#/components/parameters/WorkspaceId'
+    get:
+      tags: [queries]
+      operationId: findMembers
+      summary: Which of a set of users are members of a workspace, for Discussion
+      description: >-
+        Answers the users of the set that are members, with their role; the others, and every user
+        of a workspace that does not exist, are left out.
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 100
+            items:
+              $ref: '#/components/schemas/Id'
+      responses:
+        '200':
+          description: The members among the users asked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Members'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /internal/v1/users/{userId}/workspaces:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Id'
+    get:
+      tags: [queries]
+      operationId: getUserWorkspaces
+      summary: The workspaces of a user with the role in each, for the gateway
+      responses:
+        '200':
+          description: Every workspace the user is a member of, empty if none
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [workspaces]
+                properties:
+                  workspaces:
+                    type: array
+                    items:
+                      type: object
+                      required: [workspaceId, role]
+                      properties:
+                        workspaceId:
+                          $ref: '#/components/schemas/Id'
+                        role:
+                          $ref: '#/components/schemas/Role'
+components:
+  parameters:
+    XUserId:
+      name: X-User-Id
+      in: header
+      required: true
+      description: The signed-in user, set by the API gateway from the sign-in token
+      schema:
+        $ref: '#/components/schemas/Id'
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      description: The UserId of the member
+      schema:
+        $ref: '#/components/schemas/Id'
+    InviteeId:
+      name: inviteeId
+      in: path
+      required: true
+      description: The UserId of the invitee, who must be the signed-in user
+      schema:
+        $ref: '#/components/schemas/Id'
+  responses:
+    BadRequest:
+      description: The request does not match its schema
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotAdmin:
+      description: The user is a member of the workspace but not an Admin
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: >-
+        The workspace does not exist, the user is not a member of it, or the member is not found;
+        a non-member cannot tell these apart (QA-06)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    LastAdmin:
+      description: The workspace would be left with no Admin
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NoInvitation:
+      description: >-
+        The signed-in user has no pending invitation to the workspace, including when the invitee
+        is someone else
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Id:
+      type: string
+      format: uuid
+    Role:
+      type: string
+      enum: [Admin, Editor, Viewer]
+    RoleBody:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: '#/components/schemas/Role'
+    Member:
+      type: object
+      required: [userId, role]
+      properties:
+        userId:
+          $ref: '#/components/schemas/Id'
+        role:
+          $ref: '#/components/schemas/Role'
+    Members:
+      type: object
+      required: [members]
+      properties:
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+    Invitation:
+      type: object
+      required: [inviteeId, role, invitedBy]
+      properties:
+        inviteeId:
+          $ref: '#/components/schemas/Id'
+        role:
+          $ref: '#/components/schemas/Role'
+        invitedBy:
+          $ref: '#/components/schemas/Id'
+    Problem:
+      description: An error, as in RFC 9457
+      type: object
+      required: [title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
