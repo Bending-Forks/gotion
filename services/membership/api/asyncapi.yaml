@@ -1,0 +1,159 @@
+asyncapi: 3.0.0
+info:
+  title: Membership events
+  version: 1.0.0
+  description: >-
+    The events Membership publishes, in the envelope of api/envelope.schema.json at the root of the
+    repository, keyed on Kafka by the identity of their aggregate, the WorkspaceId of the Workspace
+    Membership.
+defaultContentType: application/json
+channels:
+  membership:
+    address: membership
+    description: Every event of Membership, so that the events of one workspace stay in order.
+    messages:
+      MemberJoinedV1:
+        $ref: '#/components/messages/MemberJoinedV1'
+      MemberRoleChangedV1:
+        $ref: '#/components/messages/MemberRoleChangedV1'
+      MemberRemovedV1:
+        $ref: '#/components/messages/MemberRemovedV1'
+      MemberLeftV1:
+        $ref: '#/components/messages/MemberLeftV1'
+      WorkspaceMembershipDeletedV1:
+        $ref: '#/components/messages/WorkspaceMembershipDeletedV1'
+      MemberInvitedV1:
+        $ref: '#/components/messages/MemberInvitedV1'
+operations:
+  publishMembershipEvents:
+    action: send
+    channel:
+      $ref: '#/channels/membership'
+    messages:
+      - $ref: '#/channels/membership/messages/MemberJoinedV1'
+      - $ref: '#/channels/membership/messages/MemberRoleChangedV1'
+      - $ref: '#/channels/membership/messages/MemberRemovedV1'
+      - $ref: '#/channels/membership/messages/MemberLeftV1'
+      - $ref: '#/channels/membership/messages/WorkspaceMembershipDeletedV1'
+      - $ref: '#/channels/membership/messages/MemberInvitedV1'
+components:
+  messages:
+    MemberJoinedV1:
+      name: MemberJoined
+      title: Member Joined
+      summary: Consumed by Editing, to copy the role.
+      bindings:
+        kafka:
+          key:
+            $ref: '#/components/schemas/WorkspaceKey'
+      payload:
+        allOf:
+          - $ref: '../../../api/envelope.schema.json'
+          - type: object
+            properties:
+              type:
+                const: MemberJoined
+              version:
+                const: 1
+              data:
+                $ref: './events/member-joined.v1.json'
+    MemberRoleChangedV1:
+      name: MemberRoleChanged
+      title: Member Role Changed
+      summary: Consumed by Editing, to copy the new role.
+      bindings:
+        kafka:
+          key:
+            $ref: '#/components/schemas/WorkspaceKey'
+      payload:
+        allOf:
+          - $ref: '../../../api/envelope.schema.json'
+          - type: object
+            properties:
+              type:
+                const: MemberRoleChanged
+              version:
+                const: 1
+              data:
+                $ref: './events/member-role-changed.v1.json'
+    MemberRemovedV1:
+      name: MemberRemoved
+      title: Member Removed
+      summary: Consumed by Editing, to drop the role, and by Account, to clear a main workspace the user has lost.
+      bindings:
+        kafka:
+          key:
+            $ref: '#/components/schemas/WorkspaceKey'
+      payload:
+        allOf:
+          - $ref: '../../../api/envelope.schema.json'
+          - type: object
+            properties:
+              type:
+                const: MemberRemoved
+              version:
+                const: 1
+              data:
+                $ref: './events/member-removed.v1.json'
+    MemberLeftV1:
+      name: MemberLeft
+      title: Member Left
+      summary: Consumed by Editing, to drop the role, and by Account, to clear a main workspace the user has lost.
+      bindings:
+        kafka:
+          key:
+            $ref: '#/components/schemas/WorkspaceKey'
+      payload:
+        allOf:
+          - $ref: '../../../api/envelope.schema.json'
+          - type: object
+            properties:
+              type:
+                const: MemberLeft
+              version:
+                const: 1
+              data:
+                $ref: './events/member-left.v1.json'
+    WorkspaceMembershipDeletedV1:
+      name: WorkspaceMembershipDeleted
+      title: Workspace Membership Deleted
+      summary: Consumed by Editing, to drop the roles of the workspace, and by Account, to clear a main workspace its members have lost.
+      bindings:
+        kafka:
+          key:
+            $ref: '#/components/schemas/WorkspaceKey'
+      payload:
+        allOf:
+          - $ref: '../../../api/envelope.schema.json'
+          - type: object
+            properties:
+              type:
+                const: WorkspaceMembershipDeleted
+              version:
+                const: 1
+              data:
+                $ref: './events/workspace-membership-deleted.v1.json'
+    MemberInvitedV1:
+      name: MemberInvited
+      title: Member Invited
+      summary: Consumed by Notification, to tell the invitee.
+      bindings:
+        kafka:
+          key:
+            $ref: '#/components/schemas/WorkspaceKey'
+      payload:
+        allOf:
+          - $ref: '../../../api/envelope.schema.json'
+          - type: object
+            properties:
+              type:
+                const: MemberInvited
+              version:
+                const: 1
+              data:
+                $ref: './events/member-invited.v1.json'
+  schemas:
+    WorkspaceKey:
+      description: The aggregateId of the envelope, the WorkspaceId
+      type: string
+      format: uuid

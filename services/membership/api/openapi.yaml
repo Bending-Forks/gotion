@@ -1,0 +1,160 @@
+openapi: 3.1.0
+info:
+  title: Membership
+  version: 1.0.0
+  description: >-
+    Members, roles and invitations of each workspace (US-03). The queries under /internal/v1
+    answer the other services, in the same published language as the events, and are never
+    forwarded to a client. A workspace that does not exist is answered as one the user is not a
+    member of (QA-06).
+tags:
+  - name: queries
+    description: The queries answered to other services
+paths:
+  /internal/v1/workspaces/{workspaceId}/members/{memberId}/role:
+    parameters:
+      - $ref: '#/components/parameters/WorkspaceId'
+      - $ref: '#/components/parameters/MemberId'
+    get:
+      tags: [queries]
+      operationId: getRole
+      summary: The role of a user in a workspace, for Account and Editing
+      responses:
+        '200':
+          description: The role of the member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleBody'
+        '404':
+          description: The user is not a member, or the workspace does not exist
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /internal/v1/workspaces/{workspaceId}/members:
+    parameters:
+      - $ref: '#/components/parameters/WorkspaceId'
+    get:
+      tags: [queries]
+      operationId: findMembers
+      summary: Which of a set of users are members of a workspace, for Discussion
+      description: >-
+        Answers the users of the set that are members, with their role; the others, and every user
+        of a workspace that does not exist, are left out.
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 100
+            items:
+              $ref: '#/components/schemas/Id'
+      responses:
+        '200':
+          description: The members among the users asked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Members'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /internal/v1/users/{userId}/workspaces:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Id'
+    get:
+      tags: [queries]
+      operationId: getUserWorkspaces
+      summary: The workspaces of a user with the role in each, for the gateway
+      responses:
+        '200':
+          description: Every workspace the user is a member of, empty if none
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [workspaces]
+                properties:
+                  workspaces:
+                    type: array
+                    items:
+                      type: object
+                      required: [workspaceId, role]
+                      properties:
+                        workspaceId:
+                          $ref: '#/components/schemas/Id'
+                        role:
+                          $ref: '#/components/schemas/Role'
+components:
+  parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Id'
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      description: The UserId of the member
+      schema:
+        $ref: '#/components/schemas/Id'
+  responses:
+    BadRequest:
+      description: The request does not match its schema
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Id:
+      type: string
+      format: uuid
+    Role:
+      type: string
+      enum: [Admin, Editor, Viewer]
+    RoleBody:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: '#/components/schemas/Role'
+    Member:
+      type: object
+      required: [userId, role]
+      properties:
+        userId:
+          $ref: '#/components/schemas/Id'
+        role:
+          $ref: '#/components/schemas/Role'
+    Members:
+      type: object
+      required: [members]
+      properties:
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+    Problem:
+      description: An error, as in RFC 9457
+      type: object
+      required: [title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string

@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MemberInvitedV1",
+  "description": "An Admin has invited a registered user to a workspace.",
+  "type": "object",
+  "required": [
+    "workspaceId",
+    "inviteeId",
+    "role",
+    "invitedBy"
+  ],
+  "properties": {
+    "workspaceId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "inviteeId": {
+      "description": "The UserId of the invitee, whom Notification tells about the invitation.",
+      "type": "string",
+      "format": "uuid"
+    },
+    "role": {
+      "description": "The role the invitee will have on accepting.",
+      "type": "string",
+      "enum": [
+        "Admin",
+        "Editor",
+        "Viewer"
+      ]
+    },
+    "invitedBy": {
+      "description": "The UserId of the Admin who invited.",
+      "type": "string",
+      "format": "uuid"
+    }
+  }
+}
