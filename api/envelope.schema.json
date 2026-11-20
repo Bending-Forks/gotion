@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Event envelope",
+  "description": "The envelope of every event Gotion publishes on Kafka. The AsyncAPI specification of each producer narrows type, version and data for each of its events.",
+  "type": "object",
+  "required": ["eventId", "type", "version", "aggregateId", "occurredAt", "data"],
+  "properties": {
+    "eventId": {
+      "description": "The identifier of this event, which a consumer keeps to skip a repeated delivery.",
+      "type": "string",
+      "format": "uuid"
+    },
+    "type": {
+      "description": "The name of the event in the published language of its producer, in PascalCase.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z]*$"
+    },
+    "version": {
+      "description": "The version of the schema of data; a change that is not compatible publishes a new version next to the old one.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "aggregateId": {
+      "description": "The identity of the aggregate the event happened to, also the Kafka key of the event, so the events of one aggregate stay in order.",
+      "type": "string",
+      "format": "uuid"
+    },
+    "occurredAt": {
+      "description": "When the event happened, in UTC.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "data": {
+      "description": "The body of the event: only identities and values, never an object of the producer's model.",
+      "type": "object"
+    }
+  },
+  "examples": [
+    {
+      "eventId": "0b9a6c1e-6f0d-4c7a-9a43-2f1d5e8b7c10",
+      "type": "WorkspaceCreated",
+      "version": 1,
+      "aggregateId": "8f14e45f-ceea-467a-9575-1b4f0c3a2d11",
+      "occurredAt": "2026-11-17T21:04:05Z",
+      "data": {
+        "workspaceId": "8f14e45f-ceea-467a-9575-1b4f0c3a2d11",
+        "creatorId": "c4ca4238-a0b9-4382-8dcc-509a6f75849b"
+      }
+    }
+  ]
+}
