@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WorkspaceCreatedV1",
+  "description": "A user has created a workspace, of which they are the creator.",
+  "type": "object",
+  "required": ["workspaceId", "creatorId"],
+  "properties": {
+    "workspaceId": { "type": "string", "format": "uuid" },
+    "creatorId": { "description": "The UserId of the creator, whom Membership accepts as the first Admin.", "type": "string", "format": "uuid" }
+  }
+}

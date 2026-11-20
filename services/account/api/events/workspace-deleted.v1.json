@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WorkspaceDeletedV1",
+  "description": "An Admin has deleted a workspace, which accepts no further command.",
+  "type": "object",
+  "required": ["workspaceId"],
+  "properties": {
+    "workspaceId": { "type": "string", "format": "uuid" }
+  }
+}
