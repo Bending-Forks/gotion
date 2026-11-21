@@ -62,7 +62,7 @@ The CI runs on every pull request and on every push to `main`:
 
 - `test`, on pull requests only, runs the Node tests of the report on Linux with Node 24: they cover a script that runs in the reader's browser, so other systems or Node versions would tell us nothing more;
 - `go`, on pull requests only, runs `go vet`, `go build` and `go test` on every module of the Go workspace, with the oldest Go the modules accept, the one `go.work` declares;
-- `node`, on pull requests only, checks the types of Editing and of the CRDT package with `tsc` and runs their tests on Node 24;
+- `node`, on pull requests only, checks the types of Editing, of the CRDT package and of the web client with `tsc`, builds the web client with Vite and runs the tests of all three on Node 24;
 - `site` builds the report with Jekyll, failing on invalid front matter;
 - `commits`, on pull requests only, checks the title of every commit against Conventional Commits, so skipping the local hook does not help;
 - `success` collects the result of the jobs above.
