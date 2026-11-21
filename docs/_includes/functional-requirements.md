@@ -407,6 +407,8 @@ Feature: US-08 Collaborate in real time
     Then both collaborators see the same merged content
     And Gotion does not silently discard either acknowledged edit
     But an edit to a block that the other one deleted has no effect
+    And of two changes to the type or a property of that block, only one keeps its effect, the same for both collaborators
+    And a change to the type or the place of a block that the other one joined has no effect
 
   Scenario Outline: Keep the edits made while blocks are divided or joined
     Given Alice and Bob are Editors with the same page open
