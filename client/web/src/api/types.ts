@@ -1,13 +1,15 @@
-// shortcut: written by hand from the OpenAPI specifications of Account and Membership in PR #36; once they are on main, `npm run gen:api` generates them into src/api/generated/ and these become aliases of the generated ones.
+// The types of src/api/generated/ come from the OpenAPI specifications of the services through `npm run gen:api`, and are never edited by hand (ADR-08)
+import type { components as account } from './generated/account'
+import type { components as membership } from './generated/membership'
 
-export type Credentials = { email: string; password: string }
+export type Credentials = account['schemas']['Credentials']
 
-export type Role = 'Admin' | 'Editor' | 'Viewer'
+export type Role = membership['schemas']['Role']
 
-// The Workspace directory that the gateway composes from Membership and Account (API Composition)
+// shortcut: the gateway has no specification yet, so the Workspace directory it composes from Membership and Account (API Composition) is written here; generate it once the gateway has its openapi.yaml.
 export type Directory = {
-  workspaces: { workspaceId: string; name: string; role: Role; main: boolean }[]
+  workspaces: (account['schemas']['Workspace'] & { role: Role; main: boolean })[]
 }
 
 // RFC 9457, the error body of every service
-export type Problem = { type?: string; title: string; status: number; detail?: string }
+export type Problem = account['schemas']['Problem']
