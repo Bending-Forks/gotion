@@ -231,6 +231,7 @@ classDiagram
       <<Aggregate Root>>
       page: PageId
       blocks: Block[*]
+      text: Sequence
     }
     class Block {
       <<Entity>>
@@ -243,29 +244,23 @@ classDiagram
     }
     class TextContent {
       <<Value Object>>
-      text: Markdown
     }
     class HeadingContent {
       <<Value Object>>
       level: Integer
-      text: Markdown
     }
     class BulletedListContent {
       <<Value Object>>
-      text: Markdown
     }
     class NumberedListContent {
       <<Value Object>>
-      text: Markdown
     }
     class ToDoContent {
       <<Value Object>>
-      text: Markdown
       checked: Boolean
     }
     class CodeContent {
       <<Value Object>>
-      code: String
       language: CodeLanguage[0..1]
     }
     class PageBlockContent {
@@ -279,11 +274,17 @@ classDiagram
       page: PageId
       workspace: WorkspaceId
       presence: Presence
+      replicas: Replica[*]
       closed: Boolean
     }
     class Presence {
       <<Value Object>>
       collaborators: UserId[*]
+    }
+    class Replica {
+      <<Value Object>>
+      number: Integer
+      user: UserId
     }
     class Edit {
       <<Value Object>>
@@ -317,6 +318,7 @@ classDiagram
   BlockContent <|-- CodeContent
   BlockContent <|-- PageBlockContent
   RealTimeEditingSession --> Presence
+  RealTimeEditingSession "1" *-- "*" Replica
   RealTimeEditingSession ..> Edit : relays
   Page <|-- RootPage
   Page <|-- SubPage
@@ -363,27 +365,30 @@ A document of a workspace, with its metadata and its place in the page tree (US-
 
 The content of one page (US-06, US-07). It is identified by the `PageId` of its page and starts empty together with it. It needs no factory: no command creates it, and the first operation finds it empty and stores it.
 
-The tree is replicated ([ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)). Every client that has the page open holds a replica and applies its own edits to it at once, and Editing holds the replica that decides what the others get. An edit is an operation of our CRDT, the same package in the client and in Editing ([ADR-04](#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go)): insert, update, move or delete a block, or edit the text of a block. Editing takes the operations of a page one at a time. For each one it checks the rules below on its replica, appends the operation to the session log ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)) and applies it to its replica before it takes the next. The check therefore always runs on a replica that holds every operation accepted so far: only the snapshots of the tree lag behind the log, not the replica in memory.
+The tree is replicated ([ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)). Every client that has the page open holds a replica and applies its own edits to it at once, and Editing holds the replica that decides what the others get. An edit is an operation of our CRDT, the same package in the client and in Editing ([ADR-04](#adr-04-editing-runs-on-nodejs-with-the-crdt-of-the-client-the-other-services-on-go)): insert, update, move or delete a block, join a block to the one before it, or edit the text of a block. The text of the whole page is one sequence of characters, where each block has a marker and owns the characters after it, so `BlockContent` holds every field of a block but its text. Editing takes the operations of a page one at a time. For each one it checks the rules below on its replica, appends the operation to the session log ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)) and applies it to its replica before it takes the next. The check therefore always runs on a replica that holds every operation accepted so far: only the snapshots of the tree lag behind the log, not the replica in memory.
 
 The rules fall into two groups, by how they can be broken.
 
 **Kept by the CRDT.** Two concurrent operations, each valid on the replica of its author, can break these rules only together. Editing cannot refuse either of them, because each one passes the check on its own, so the CRDT keeps the rules on every replica by construction:
 
-- The blocks form an ordered tree: every block has exactly one parent, the page or another
-  block, and a position among its siblings. Two blocks inserted at the same position at once
-  end up in the same order on every replica.
+- The blocks form an ordered tree: every block has exactly one parent, the page or another block, and a position among its siblings, given by its position key and, between equal keys, by the order of the markers in the sequence ([CRDT package](implementation.html#crdt-package)). A block divided from another takes its key, so the blocks divided from one block, at once or not, follow the order of their text, and two blocks inserted at the same position at once end up in the same order on every replica.
 - A block cannot be nested under itself or one of its descendants. When two concurrent moves
   would make a cycle (A under B while B goes under A), every replica orders the moves by their
   timestamps and the one that would close the cycle has no effect, after Kleppmann et al.,
   "A highly-available move operation for replicated trees".
 - Deleting a block deletes the blocks nested in it, including a block moved under it at the
   same time. An operation on a deleted block has no effect.
+- Of two concurrent updates of the same block, every replica keeps the one with the greater identity, so the block ends with one type and one content everywhere ([CRDT package](implementation.html#crdt-package)).
+- Joining a block takes it out of the tree: a concurrent update or move of the joined block has no effect, while its characters, those typed meanwhile included, go with the join.
+- A code block shows its text plain, and a page block has no text. Since the text of the page is one sequence, a concurrent style can reach the characters of a code block, and a concurrent insertion can put characters after the marker of a page block: every replica ignores the styles of the characters of a code block, and gives the characters after the marker of a page block to the block of the nearest marker before them in the sequence that is not the marker of a page block. Editing writes the Markdown of BR-03 the same way.
 
 **Checked by Editing.** One operation can break these rules on its own. Editing refuses it before any other replica sees it, together with the later operations of the same author that build on it, and the author reverts them:
 
-- The type of a block is the subtype of its `BlockContent`, and each subtype holds only the fields its type needs. Text is Markdown (BR-03), so a heading also has its level, from 1 to 6 as in Markdown. A to-do has its checkbox, and a page block holds only its sub-page, so no other block can refer to one. A code block keeps its code as plain text, not Markdown, and may name its language in one word, the one written after the opening fence of a Markdown code block (`python`). Editing refuses a field that the type does not have and a value out of its range, such as a heading of level 7.
+- The type of a block is the subtype of its `BlockContent`, and each subtype holds only the fields its type needs. The text is written out as Markdown (BR-03), so a heading also has its level, from 1 to 6 as in Markdown. A to-do has its checkbox, and a page block holds only its sub-page, so no other block can refer to one. A code block may name its language in one word, the one written after the opening fence of a Markdown code block (`python`). Editing refuses a field that the type does not have and a value out of its range, such as a heading of level 7.
 - The editor of the client works on styled text, not Markdown, so Editing refuses a style that Markdown cannot express, and the Markdown of BR-03 loses nothing (see [Editing client](implementation.html#editing-client)).
 - Update block can turn a block into another type by replacing its content. The block keeps its `BlockId`, its place in the tree and the comment threads anchored to it. Page blocks are the exception: no block becomes a page block and a page block becomes nothing else, because a sub-page is created and deleted only by inserting and deleting its page block. For the same reason, Editing refuses a page block inserted with the `PageId` of a page that already exists, and one whose `PageId` holds another workspace than the page of the tree, since a sub-page belongs to the workspace of its parent. A page block holds nothing but its sub-page, which never changes, so Editing also refuses any update of a page block.
+- Join block removes the marker of the joined block and gives its characters to the block of the marker before. Editing therefore refuses joining a page block, or a block to a page block, and, until a later decision settles the join of blocks that are not neighbours in the sequence, which ADR-01 leaves open, joining a block whose marker is not the next one after the marker of the block before it in the tree. That includes joining a block to the one before after the block between them was deleted, since the marker of a deleted block stays.
+- Edit text deletes characters only: Editing refuses a deletion that covers a marker, or an identity that is not a character of the page.
 
 **Events come from the effect of an operation, not from the operation.** Editing derives them from what the operation changed on its replica, so a move that has no effect emits no Block Moved.
 
@@ -403,6 +408,7 @@ A new block type is a new subtype of `BlockContent` and its rendering, both insi
 | Update block | Same | None: the operation stays in the session log |
 | Move or nest block | Same | Block Moved, for a page block that moved |
 | Delete block | Same | Block Deleted |
+| Join block | Same | Still to be settled, with what a join does to the comment threads anchored to the joined block (ADR-01) |
 | Edit text | Same | None: the operation stays in the session log |
 | Delete block tree | Policy *whenever a page is deleted, delete its block tree* | Block Tree Deleted |
 
@@ -413,18 +419,9 @@ while reviewing the board, the session exists even with a single collaborator: t
 session opens it, so editing alone and editing together follow the same path.
 
 - Opening goes through `openSession` on Page, so a session exists only for a page that exists, and it starts with the collaborator who joined in its presence. It keeps the workspace of its page, which never changes, for the checks on later joins and edits. The page itself does not change, so one command still changes one aggregate.
+- Join session gives the replica of the collaborator its number, the next one of the page, and the session records the user it gave it to, so two replicas of the same page never share one ([CRDT package](implementation.html#crdt-package)). A replica that reconnects keeps its number if the session gave it to the same user, even after Editing restarts; an older connection of that replica still open is closed first. Submit edit refuses an operation that carries another number than the one of its replica, or a counter that does not grow past the last one of its replica, unless the operation is already in the log: Editing acknowledges it again if it is the same operation, without checking it again, and closes the connection as malformed otherwise (ADR-02).
 - Only a collaborator who has joined can submit edits, and only with a role that may change the content. A Viewer can join to follow the edits and appear in the presence, but cannot submit. Before Join session and Submit edit reach the session, or Page when it opens one, the `AccessLookupService` is asked whether whoever joins can read the content and whoever submits an edit can also change it.
-- The session does not merge. Every replica merges concurrent edits on its own with a CRDT of
-  ours, which settles PP-01
-  ([ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)),
-  so the `change` carried by an `Edit` is an operation of that CRDT. Submit edit checks that the
-  author has joined the open session, once the role has been checked, then hands the
-  operation to the [Page Block Tree](#page-block-tree), which checks it against its own rules
-  and applies it. The session itself does not change, so one command still changes one
-  aggregate. An accepted operation is appended to the session log and acknowledged, and only
-  then relayed to the other collaborators
-  ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)). Every
-  collaborator converges to the same content, and no acknowledged edit is dropped (QA-05).
+- The session does not merge. Every replica merges concurrent edits on its own with a CRDT of ours, which settles PP-01 ([ADR-01](#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)), so the `change` carried by an `Edit` is an operation of that CRDT. Submit edit checks that the author has joined the open session, once the role has been checked, then hands the operation to the [Page Block Tree](#page-block-tree), which checks it against its own rules and applies it. The session itself does not change, so one command still changes one aggregate. An accepted operation is appended to the session log and acknowledged, and only then relayed to the other collaborators ([ADR-02](#adr-02-editing-acknowledges-an-operation-once-it-is-in-a-durable-log)). Every collaborator converges to the same content, and no acknowledged edit is dropped except where QA-05 allows it: an edit of a block deleted or joined at the same time, and the losing one of two concurrent updates of the same block.
 - A closed session accepts no join and no edit. It is closed when its page is deleted, and the
   collaborators learn it from Session Closed itself: the *notify its participants* of the policy
   is that event, not an in-app notification, which US-10 keeps for invitations and mentions.

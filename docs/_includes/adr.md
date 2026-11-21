@@ -144,7 +144,8 @@ keystroke, against the 500 ms (p95) of QA-01.
   tree;
 - the log is the Event Sourcing of Editing: after a restart Editing replays it onto the tree
   from the last snapshot;
-- the ack is where the timer of the QA-01 SLI stops, and where the timer of QA-02 starts.
+- the ack is where the timer of the QA-01 SLI stops, and where the timer of QA-02 starts;
+- the ack names the operation by its identity and gives its sequence number in the log. A replica that reconnects, after its connection drops or Editing crashes, submits again the operations it has no ack for, and Editing acknowledges again, without appending it twice, one that is already in the log, provided it is the same operation, and closes the connection as malformed otherwise (QA-04).
 
 **Consequences.** On the good side:
 
@@ -158,8 +159,7 @@ On the bad side:
 
 - The log grows with every keystroke: it needs snapshots of the tree and a compaction of the
   operations before them.
-- The tree lags behind the log for a moment, so anything that reads the tree, such as the page
-  open of QA-03, may miss the last operations.
+- The tree lags behind the log for a moment, so anything that reads the stored tree may miss the last operations. The page open of QA-03 does not read it: the answer to Join session carries a snapshot up to a sequence number of the log, and the operations after it follow in the order of the log ([Components and Connectors](#components-and-connectors)).
 - The store of the log must make an append durable before it returns, and refuse an append whose sequence number is not the next one of its page, so that two instances of Editing can never both extend the log of the same page. [ADR-06](#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own) chooses it and meets both.
 - The operations in the log outlive the version of the protocol that wrote them: a change to the
   operations needs a version on each one and a way to replay the older ones.
@@ -352,7 +352,7 @@ An event store has the append the log needs: it takes the version the stream is 
 
 - Account, Membership, Editing, Discussion and Notification each have their own PostgreSQL server, holding the schema of that service only, with no replica. The API gateway has no database.
 - The session log of Editing is a table with the primary key `(page_id, seq)`. An append is an `INSERT` in a transaction that commits before Editing acknowledges the operation; an `INSERT` with a `seq` already used violates the key, and that is the refused append of ADR-02 and of [State and scaling](#state-and-scaling).
-- The session log, the snapshots, the pages and the copy of the roles are all in the one server of Editing. The Log store and Database adapters of [Hexagonal Architecture](#hexagonal-architecture) implement two different ports on the same database.
+- The session log, the snapshots, the pages, the numbered replicas of each page with their users ([CRDT package](implementation.html#crdt-package)) and the copy of the roles are all in the one server of Editing. The Log store and Database adapters of [Hexagonal Architecture](#hexagonal-architecture) implement two different ports on the same database.
 - Each service migrates its own schema when it starts, under a PostgreSQL advisory lock, so that two instances starting together never run the same migration twice. The Go services use goose, with the migrations embedded in the binary; Editing uses node-pg-migrate.
 
 This settles the store of the log that ADR-02 left open.

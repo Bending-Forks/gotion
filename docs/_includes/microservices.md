@@ -65,14 +65,14 @@ What each service offers and needs. The *client API* goes through the API gatewa
 | Aspect | Description |
 |---|---|
 | Responsibility | Pages and their content (`Page`, `Page Block Tree`, `Real-time Editing Session`), US-04 to US-08; the one relay of the operations of a page (ADR-01) |
-| Client API | One WebSocket per open page: Join and Leave session, Submit edit, then the ack or the refusal of each operation, the operations of the others, the presence and Session Closed. Over REST: Set title, icon, cover |
+| Client API | One WebSocket per open page: Join and Leave session, Submit edit, then the snapshot of the page in the answer to Join session, the ack or the refusal of each operation, the operations of the others, the presence and Session Closed. Over REST: Set title, icon, cover |
 | Answers | Nothing: no service asks Editing, since every `PageId` holds the `WorkspaceId` of its page |
 | Asks | Membership: the role of a user, only when the local copy of the roles has no row (ADR-03) |
 | Publishes | Page Deleted, Block Deleted, for Discussion |
 | Consumes | Workspace Created and Workspace Deleted, as a conformist, to create and delete the root page; Member Joined, Member Role Changed, Member Removed, Member Left and Workspace Membership Deleted, through an anticorruption layer that turns a role into *read* or *change* |
-| Owns | Event-sourced (ADR-02): the session log of every page, snapshots of the Page Block Trees, the pages and the local copy of the roles |
+| Owns | Event-sourced (ADR-02): the session log of every page, snapshots of the Page Block Trees, the pages, the numbered replicas of each page with their users ([CRDT package](implementation.html#crdt-package)) and the local copy of the roles |
 
-Two things are still open, among the points under [Components and Connectors](#components-and-connectors): how Editing serves the opening of a page, the snapshot for a collaborator who joins late and the list of sub-pages; and where the read model for page block metadata lives. The workspace directory a user switches workspace with, which needs the workspaces of Account and the memberships of Membership, is composed by the gateway ([API Composition](#api-composition)).
+A page opens over its WebSocket, with the snapshot in the answer to Join session ([Components and Connectors](#components-and-connectors)). Two things are still open, among the points under the same section: how Editing serves the root page and the list of sub-pages, and where the read model for page block metadata lives. The workspace directory a user switches workspace with, which needs the workspaces of Account and the memberships of Membership, is composed by the gateway ([API Composition](#api-composition)).
 
 #### Discussion
 
