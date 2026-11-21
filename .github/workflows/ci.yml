@@ -55,6 +55,7 @@ jobs:
       - run: npm ci
       - run: npm run build -w services/editing -w packages/crdt -w client/web
       - run: npm test -w services/editing -w packages/crdt -w client/web
+      - run: npm run check:bundle -w client/web
 
   site:
     runs-on: ubuntu-latest
