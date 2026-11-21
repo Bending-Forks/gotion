@@ -5,10 +5,11 @@
   "type": "module",
   "exports": "./src/index.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.lib.json && tsc",
     "test": "node --test"
   },
   "devDependencies": {
+    "@types/node": "24.19.2",
     "typescript": "5.9.3"
   }
 }
