@@ -4,21 +4,24 @@ import { createBrowserRouter, RouterProvider } from 'react-router'
 // The font comes from the bundle, never from a CDN: Gotion calls no external service at run time (BR-01)
 import '@fontsource-variable/inter'
 import './style.css'
-import { setUnauthorizedHandler } from './api/client'
-import { SignIn } from './routes/SignIn'
-import { Directory } from './routes/Directory'
+import { SignIn, signIn } from './routes/SignIn'
+import { Directory, directory, openWorkspace } from './routes/Directory'
 import { Page } from './routes/Page'
+import { RouteError } from './routes/RouteError'
 
+// Loaders and actions call the gateway; the root route shows what any of them throws, and waits for the first one
 const router = createBrowserRouter([
-  { path: '/sign-in', element: <SignIn /> },
-  { path: '/', element: <Directory /> },
-  { path: '/workspaces/:workspaceId', element: <Page /> },
-  { path: '/workspaces/:workspaceId/pages/:pageId', element: <Page /> },
+  {
+    ErrorBoundary: RouteError,
+    HydrateFallback: () => <p>Loading…</p>,
+    children: [
+      { path: '/sign-in', Component: SignIn, action: signIn },
+      { path: '/', Component: Directory, loader: directory, action: openWorkspace },
+      { path: '/workspaces/:workspaceId', Component: Page },
+      { path: '/workspaces/:workspaceId/pages/:pageId', Component: Page },
+    ],
+  },
 ])
-
-setUnauthorizedHandler(() => {
-  if (router.state.location.pathname !== '/sign-in') void router.navigate('/sign-in')
-})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

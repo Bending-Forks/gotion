@@ -8,4 +8,5 @@ export default defineConfig({
   plugins: [react()],
   server: { proxy: { '/v1': gateway } },
   preview: { proxy: { '/v1': gateway } },
+  test: { unstubGlobals: true },
 })
