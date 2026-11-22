@@ -8,10 +8,9 @@ nav_order: 4
 
 ### Editing client
 
-The client edits a page with [BlockNote](https://www.blocknotejs.org), a block editor built on
-ProseMirror. It sits behind the adapter of [ADR-01](design.html#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations)
-and could be replaced without touching that record. Only the adapter imports it, and the
-collaboration built into BlockNote (Yjs) is not used.
+The client edits a page with [BlockNote](https://www.blocknotejs.org), a block editor built on ProseMirror. It sits behind the adapter of [ADR-01](design.html#adr-01-replicas-merge-concurrent-edits-with-our-own-crdt-editing-relays-the-operations) and could be replaced without touching that record. Only the editor of the client imports it, in `client/web/src/editor/` where the adapter goes, and the collaboration built into BlockNote (Yjs) is not used.
+
+**The interface.** It follows the layout of Notion, cut down to the user stories. The sidebar holds the workspace switcher, the inbox, the settings and members of the workspace and the page tree; a page shows its cover, icon and title, its blocks, the avatars of the collaborators and its comment threads. Search, trash, page history, templates and the other features of Notion that the stories leave out are not there.
 
 **Why BlockNote.** Its blocks already match the ones of US-07: `paragraph`, `heading` with
 levels 1 to 6, `bulletListItem`, `numberedListItem`, `checkListItem` and `codeBlock` with its
@@ -33,8 +32,7 @@ the GPL-3.0 of Gotion (BR-06).
   edit made meanwhile at that place by someone else may end up on the other side.
 - Long pages need an index over the characters and batched operations.
 
-**Markdown (BR-03).** The text of BlockNote is styled text, not Markdown. The schema allows only
-the styles Markdown can express, and Editing writes each page as Markdown as well.
+**Markdown (BR-03).** The text of BlockNote is styled text, not Markdown. The schema allows only the styles Markdown can express, and Editing writes each page as Markdown as well. BlockNote also gives every block a text colour, a background colour and an alignment, which Markdown cannot express: the schema drops them, so a block holds only the fields of its type, as in the CRDT package.
 
 **Accessibility (QA-10).** BlockNote nests blocks with Tab and Shift+Tab and offers
 `moveBlocksUp` and `moveBlocksDown`, but claims no WCAG conformance. QA-10 is to be reviewed.
@@ -42,8 +40,7 @@ the styles Markdown can express, and Editing writes each page as Markdown as wel
 **Tests.**
 
 - Browser tests written with [Playwright](https://playwright.dev) and run in CI open one browser context per client on the same page. They check that the clients converge after concurrent edits, that the cursor, the selection and the focus hold under remote edits, and that undo undoes only local edits.
-- A test checks that the editor schema holds only the block types of US-07 and the page block,
-  and only styles Markdown can express.
+- A test checks that the editor schema holds only the block types of US-07 and the page block, each with only the fields of its type, and only styles Markdown can express.
 
 ### Go services and API gateway
 
