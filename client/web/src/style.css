@@ -493,3 +493,37 @@ button.danger {
 .rows li > .user {
   flex: 1;
 }
+
+/* On a phone the sidebar goes above the page, and the comments below it */
+@media (max-width: 720px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .page-view {
+    flex-direction: column;
+  }
+
+  .comments {
+    position: static;
+    width: auto;
+    height: auto;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .page-title {
+    padding-top: 32px;
+  }
+
+  .title {
+    font-size: 32px;
+  }
+}
