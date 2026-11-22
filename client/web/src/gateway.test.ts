@@ -55,6 +55,35 @@ test('opening a workspace the user is not a member of answers 404, as Account do
   expect((await post('/v1/workspaces/00000000-0000-4000-8000-000000000000/open', undefined, cookie)).status).toBe(404)
 })
 
+test('a registered user can sign in, and an email address registers only once (US-01)', async () => {
+  const carol = { email: 'carol@example.com', password: 'secret123' }
+  expect((await post('/v1/users', carol)).status).toBe(201)
+  expect((await post('/v1/users', carol)).status).toBe(409)
+  expect((await post('/v1/sessions', carol)).status).toBe(204)
+})
+
+test('a new workspace has its creator as its only Admin, who renames it and invites a registered user (US-02, US-03)', async () => {
+  const cookie = await signIn()
+  const { workspaceId } = await (await post('/v1/workspaces', { name: 'Research' }, cookie)).json()
+  const path = `/v1/workspaces/${workspaceId}`
+  const send = (method: string, rest: string, body?: unknown) =>
+    fetch(`${origin}${path}${rest}`, { method, headers: { cookie }, body: JSON.stringify(body) })
+  expect((await send('PATCH', '', { name: 'Lab notes' })).status).toBe(204)
+  expect((await directory(cookie)).workspaces.find((w) => w.workspaceId === workspaceId)).toMatchObject({ name: 'Lab notes', role: 'Admin' })
+  expect((await send('POST', '/invitations', { email: 'nobody@example.com', role: 'Editor' })).status).toBe(422)
+  expect((await send('POST', '/invitations', { email: 'carol@example.com', role: 'Viewer' })).status).toBe(201)
+  expect((await (await send('GET', '/invitations')).json()).invitations).toMatchObject([{ role: 'Viewer' }])
+  // The last Admin can neither leave nor give up the role
+  expect((await send('POST', '/leave')).status).toBe(409)
+  expect((await send('DELETE', '')).status).toBe(204)
+  expect((await send('GET', '/members')).status).toBe(404)
+})
+
+test('the commands of an Admin are refused to an Editor, as Account and Membership refuse them', async () => {
+  const cookie = await signIn()
+  expect((await fetch(`${origin}/v1/workspaces/${product}`, { method: 'PATCH', headers: { cookie }, body: JSON.stringify({ name: 'Mine' }) })).status).toBe(403)
+})
+
 test('the client routes are served by the SPA', async () => {
   const page = await fetch(`${origin}/sign-in`)
   expect(page.status).toBe(200)
