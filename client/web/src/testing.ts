@@ -15,3 +15,12 @@ export function stubFetch(status: number, body?: unknown) {
 // A form submitted to the action of a route
 export const form = (fields: Record<string, string>) =>
   new Request('http://gotion.test/', { method: 'POST', body: new URLSearchParams(fields) })
+
+// Where a loader or an action sends the user, whether it returns its redirect or throws it
+export async function redirectedTo(result: Promise<unknown>) {
+  const response = await result.catch((e: unknown) => e)
+  return response instanceof Response ? response.headers.get('Location') : undefined
+}
+
+// The requests a stubbed fetch received, as "METHOD path"
+export const requests = (fetch: ReturnType<typeof stubFetch>) => fetch.mock.calls.map(([path, init]) => `${init?.method} ${path}`)

@@ -29,3 +29,15 @@ export async function call<T = void>(method: string, path: string, body?: unknow
   }
   return (response.status === 204 ? undefined : await response.json()) as T
 }
+
+// An action whose refused command stays on its form: it returns the problem for the form to show, and lets a redirect or a network error through
+export const formAction =
+  <A extends unknown[], R>(action: (...args: A) => Promise<R>) =>
+  async (...args: A): Promise<R | string> => {
+    try {
+      return await action(...args)
+    } catch (e) {
+      if (e instanceof ApiError) return e.message
+      throw e
+    }
+  }

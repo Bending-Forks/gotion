@@ -1,35 +1,47 @@
-import { Form, redirect, useLoaderData } from 'react-router'
-import { Star } from 'lucide-react'
-import { call } from '../api/client'
-import type { Directory as DirectoryBody } from '../api/types'
+import { redirect, useFetcher } from 'react-router'
+import { Plus } from 'lucide-react'
+import { call, formAction } from '../api/client'
+import type { Directory as DirectoryBody, Workspace } from '../api/types'
+import { Inbox } from '../components/Inbox'
 
-// The workspaces of the signed-in user, in one request to the gateway (US-02)
-export const directory = () => call<DirectoryBody>('GET', '/v1/directory')
-
-// Open workspace saves it as the user's main workspace in Account
-export async function openWorkspace({ request }: { request: Request }) {
-  const workspaceId = String((await request.formData()).get('workspaceId'))
-  await call('POST', `/v1/workspaces/${workspaceId}/open`)
-  return redirect(`/workspaces/${workspaceId}`)
+// At login Gotion opens the main workspace or, with none, the first of the directory, which becomes main once open; with no workspace the directory stays (US-02)
+export async function directory() {
+  const { workspaces } = await call<DirectoryBody>('GET', '/v1/directory')
+  const open = workspaces.find((w) => w.main) ?? workspaces[0]
+  if (open) throw redirect(`/workspaces/${open.workspaceId}`)
+  return null
 }
 
+// The new workspace has the user as its first Admin and one root page (US-02)
+export const createWorkspace = formAction(async ({ request }: { request: Request }) => {
+  const name = String((await request.formData()).get('name'))
+  const { workspaceId } = await call<Workspace>('POST', '/v1/workspaces', { name })
+  return redirect(`/workspaces/${workspaceId}`)
+})
+
+// The empty Workspace directory, from which a user who belongs to no workspace creates one or accepts an invitation (US-01)
 export function Directory() {
-  const { workspaces } = useLoaderData<typeof directory>()
   return (
-    <main>
-      <h1>Workspaces</h1>
-      <ul>
-        {workspaces.map((w) => (
-          <li key={w.workspaceId}>
-            <Form method="post">
-              <button type="submit" name="workspaceId" value={w.workspaceId}>
-                {w.name}
-              </button>{' '}
-              ({w.role}) {w.main && <Star aria-label="Main workspace" size={14} />}
-            </Form>
-          </li>
-        ))}
-      </ul>
+    <main className="directory">
+      <h1>Welcome to Gotion</h1>
+      <p>You belong to no workspace yet: create one, or accept an invitation from your inbox.</p>
+      <CreateWorkspace />
+      {/* shortcut: Notification has no client API yet, so the inbox is empty here and in the sidebar; load it once it has */}
+      <Inbox notifications={[]} />
     </main>
+  )
+}
+
+// Posts to the directory from wherever it is shown, and stays there with the problem if the name is refused
+export function CreateWorkspace() {
+  const fetcher = useFetcher<string>()
+  return (
+    <fetcher.Form method="post" action="/" className="inline-form">
+      <input name="name" aria-label="Workspace name" placeholder="New workspace" required />
+      <button type="submit">
+        <Plus aria-hidden size={16} /> Create
+      </button>
+      {fetcher.data && <p role="alert">{fetcher.data}</p>}
+    </fetcher.Form>
   )
 }
