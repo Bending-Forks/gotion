@@ -1,9 +1,11 @@
 # The infrastructure for development and for the integration tests: Kafka and one PostgreSQL server per service (ADR-06).
 # `docker compose up -d` starts it and `docker compose wait kafka-topics` returns once the topics exist; `docker compose down` stops it and
 # keeps the data, `docker compose down -v` deletes the data too.
-# Every port is bound to 127.0.0.1, so nothing is reachable from outside this host.
+# Every port is bound to 127.0.0.1, so nothing is reachable from outside this host. GOTION_PORT_PREFIX, from 1 to 5, goes in front of
+# every host port, so that a second instance can run beside the first: with COMPOSE_PROJECT_NAME=gotion-x GOTION_PORT_PREFIX=1,
+# 5433 becomes 15433 and 9094 becomes 19094.
 
-# A fixed name, so every checkout and worktree shares one instance instead of fighting over the same ports
+# One name for every checkout and worktree, so they share one instance; COMPOSE_PROJECT_NAME overrides it
 name: gotion
 
 x-postgres: &postgres
@@ -23,7 +25,7 @@ services:
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_LISTENERS: INTERNAL://:9092,CONTROLLER://:9093,EXTERNAL://:9094
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:${GOTION_PORT_PREFIX:-}9094
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
@@ -35,7 +37,7 @@ services:
       # A misspelt topic fails instead of being created empty: the topics are the ones kafka-topics creates
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
     ports:
-      - 127.0.0.1:9094:9094
+      - 127.0.0.1:${GOTION_PORT_PREFIX:-}9094:9094
     volumes:
       - kafka:/var/lib/kafka/data
     healthcheck:
@@ -58,34 +60,36 @@ services:
           /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$$topic" --partitions 3 --replication-factor 1
         done
 
+  # TODO: every user and password is the name of its service, which is safe only on a development machine. The Compose of the whole
+  # system and the Kubernetes manifests must take the credentials from a secret, never from a file in the repository.
   account-db:
     <<: *postgres
     environment: { POSTGRES_USER: account, POSTGRES_PASSWORD: account, POSTGRES_DB: account }
-    ports: ["127.0.0.1:5433:5432"]
+    ports: ["127.0.0.1:${GOTION_PORT_PREFIX:-}5433:5432"]
     volumes: ["account-db:/var/lib/postgresql"]
 
   membership-db:
     <<: *postgres
     environment: { POSTGRES_USER: membership, POSTGRES_PASSWORD: membership, POSTGRES_DB: membership }
-    ports: ["127.0.0.1:5434:5432"]
+    ports: ["127.0.0.1:${GOTION_PORT_PREFIX:-}5434:5432"]
     volumes: ["membership-db:/var/lib/postgresql"]
 
   editing-db:
     <<: *postgres
     environment: { POSTGRES_USER: editing, POSTGRES_PASSWORD: editing, POSTGRES_DB: editing }
-    ports: ["127.0.0.1:5435:5432"]
+    ports: ["127.0.0.1:${GOTION_PORT_PREFIX:-}5435:5432"]
     volumes: ["editing-db:/var/lib/postgresql"]
 
   discussion-db:
     <<: *postgres
     environment: { POSTGRES_USER: discussion, POSTGRES_PASSWORD: discussion, POSTGRES_DB: discussion }
-    ports: ["127.0.0.1:5436:5432"]
+    ports: ["127.0.0.1:${GOTION_PORT_PREFIX:-}5436:5432"]
     volumes: ["discussion-db:/var/lib/postgresql"]
 
   notification-db:
     <<: *postgres
     environment: { POSTGRES_USER: notification, POSTGRES_PASSWORD: notification, POSTGRES_DB: notification }
-    ports: ["127.0.0.1:5437:5432"]
+    ports: ["127.0.0.1:${GOTION_PORT_PREFIX:-}5437:5432"]
     volumes: ["notification-db:/var/lib/postgresql"]
 
 volumes:
