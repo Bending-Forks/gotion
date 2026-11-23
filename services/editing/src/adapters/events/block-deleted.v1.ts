@@ -21,7 +21,19 @@ export interface BlockDeletedV1 {
     counter: number;
   };
   /**
-   * The sub-pages of the page blocks deleted with this block, the block itself when it is a page block and every page block nested in it, so that each of those sub-pages is deleted too; empty when there is none.
+   * The page blocks deleted with this block, the block itself when it is a page block and every page block nested in it, each with its sub-page, so that every sub-page underneath is deleted too; empty when there is none.
    */
-  subPages: string[];
+  pageBlocks: {
+    /**
+     * The BlockId of the page block.
+     */
+    blockId: {
+      replica: number;
+      counter: number;
+    };
+    /**
+     * The PageId of the sub-page the page block holds: the WorkspaceId, a dot and a UUID of its own.
+     */
+    subPage: string;
+  }[];
 }
