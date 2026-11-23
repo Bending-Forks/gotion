@@ -4,14 +4,45 @@ info:
   version: 1.0.0
   description: >-
     Pages and their content (US-04 to US-08). The content is edited over the WebSocket of each page,
-    whose protocol is in the CRDT package, shared with the client; this is the REST part of the
-    client API, forwarded by the API gateway, which sets X-User-Id from the sign-in token (ADR-09).
-    Editing answers no query: every PageId holds the WorkspaceId of its page. A page that does not
-    exist is answered as one in a workspace the user is not a member of (QA-06).
+    whose protocol is in the CRDT package, shared with the client; the client API under /v1 is its
+    REST part, forwarded by the API gateway, which sets X-User-Id from the sign-in token (ADR-09).
+    The query under /internal/v1 answers Discussion, in the same published language as the events,
+    and is never forwarded to a client. A page that does not exist is answered as one in a workspace
+    the user is not a member of (QA-06).
 tags:
   - name: client
     description: The client API, through the API gateway
+  - name: queries
+    description: The queries answered to other services
 paths:
+  /internal/v1/pages/{pageId}/workspace:
+    parameters:
+      - $ref: '#/components/parameters/PageId'
+    get:
+      tags: [queries]
+      operationId: getPageWorkspace
+      summary: The workspace of a page, for Discussion
+      description: >-
+        A PageId does not tell its workspace, so Discussion asks it when it opens a thread on the page
+        and keeps it with the thread: a page never changes workspace.
+      responses:
+        '200':
+          description: The workspace of the page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [workspaceId]
+                properties:
+                  workspaceId:
+                    type: string
+                    format: uuid
+        '404':
+          description: The page does not exist
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
   /v1/pages/{pageId}/metadata:
     parameters:
       - $ref: '#/components/parameters/XUserId'
@@ -88,12 +119,8 @@ components:
             $ref: '#/components/schemas/Problem'
   schemas:
     PageId:
-      description: >-
-        The identity of a page, which holds the WorkspaceId of its page: the WorkspaceId alone for
-        the root page of the workspace; for a sub-page, the WorkspaceId, a dot and a UUID of its own.
-        Lowercase.
       type: string
-      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$'
+      format: uuid
     PageMetadata:
       type: object
       required: [title]

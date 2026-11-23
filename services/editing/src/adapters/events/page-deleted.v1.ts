@@ -10,7 +10,7 @@
  */
 export interface PageDeletedV1 {
   /**
-   * The PageId of the deleted page: the WorkspaceId of its page, followed for a sub-page by a dot and a UUID of its own.
+   * The PageId of the deleted page.
    */
   pageId: string;
 }

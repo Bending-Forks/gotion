@@ -1,4 +1,26 @@
 export interface paths {
+    "/internal/v1/pages/{pageId}/workspace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageId: components["parameters"]["PageId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The workspace of a page, for Discussion
+         * @description A PageId does not tell its workspace, so Discussion asks it when it opens a thread on the page and keeps it with the thread: a page never changes workspace.
+         */
+        get: operations["getPageWorkspace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/pages/{pageId}/metadata": {
         parameters: {
             query?: never;
@@ -28,7 +50,7 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description The identity of a page, which holds the WorkspaceId of its page: the WorkspaceId alone for the root page of the workspace; for a sub-page, the WorkspaceId, a dot and a UUID of its own. Lowercase. */
+        /** Format: uuid */
         PageId: string;
         PageMetadata: {
             /** @description Plain text on one line; a new page has an empty title until one is set */
@@ -102,6 +124,40 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getPageWorkspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageId: components["parameters"]["PageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The workspace of the page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        workspaceId: string;
+                    };
+                };
+            };
+            /** @description The page does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     setPageMetadata: {
         parameters: {
             query?: never;

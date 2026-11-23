@@ -10,7 +10,7 @@
  */
 export interface BlockDeletedV1 {
   /**
-   * The PageId of the page whose tree held the block: the WorkspaceId of its page, followed for a sub-page by a dot and a UUID of its own.
+   * The PageId of the page whose tree held the block.
    */
   pageId: string;
   /**
@@ -32,7 +32,7 @@ export interface BlockDeletedV1 {
       counter: number;
     };
     /**
-     * The PageId of the sub-page the page block holds: the WorkspaceId, a dot and a UUID of its own.
+     * The PageId of the sub-page the page block holds.
      */
     subPage: string;
   }[];

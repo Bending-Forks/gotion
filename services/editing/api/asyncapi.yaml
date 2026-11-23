@@ -73,3 +73,4 @@ components:
         The aggregateId of the envelope, the PageId of the page, which also identifies its Page Block
         Tree
       type: string
+      format: uuid

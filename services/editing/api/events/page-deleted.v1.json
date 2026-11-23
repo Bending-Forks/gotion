@@ -6,9 +6,9 @@
   "required": ["pageId"],
   "properties": {
     "pageId": {
-      "description": "The PageId of the deleted page: the WorkspaceId of its page, followed for a sub-page by a dot and a UUID of its own.",
+      "description": "The PageId of the deleted page.",
       "type": "string",
-      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$"
+      "format": "uuid"
     }
   }
 }
