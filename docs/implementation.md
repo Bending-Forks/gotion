@@ -81,7 +81,7 @@ Editing uses Fastify and its plugins as its chassis ([ADR-07](design.html#adr-07
 
 | Adapter or concern | Library | Purpose |
 |---|---|---|
-| REST API | `fastify` | Set title, icon, cover |
+| REST API, Query API | `fastify` | Set title, icon, cover; the workspace of a page, for Discussion |
 | WebSocket, WebSocket sender | `@fastify/websocket` | One WebSocket per client and open page: the commands of the session in; the answer to Join session with the snapshot, the acks and refusals, the operations of the others and the presence out. The collaborator is the user in the `X-User-Id` header that the gateway sets on the upgrade |
 | Kafka consumer | `@confluentinc/kafka-javascript` | The events of Account and Membership; the anticorruption layer turns a role into *read* or *change* |
 | Kafka producer | `@confluentinc/kafka-javascript` | Page Deleted and Block Deleted, published directly |
