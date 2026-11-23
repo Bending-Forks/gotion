@@ -339,7 +339,7 @@ A document of a workspace, with its metadata and its place in the page tree (US-
 
 - **A page is either the root page of its workspace or a sub-page.** `RootPage` and `SubPage` are the two forms of the one root of the Page aggregate, and a page never turns from one into the other. Only a sub-page has a parent, and it always has one.
 - **Each workspace has exactly one root page.** It is created only by the policy on Workspace Created and deleted only by the policy on Workspace Deleted. Its `PageId` is derived from the `WorkspaceId`, so a second root page of the same workspace would have the same identity and cannot be stored: the rule holds without looking at the other pages.
-- **Every `PageId` holds the `WorkspaceId` of its page.** The root page's is the workspace alone, a sub-page's adds an identifier of its own. A page never changes workspace, so any context tells the workspace of a page from its identity, with no query to Editing.
+- **Every `PageId` holds the `WorkspaceId` of its page.** The root page's is the `WorkspaceId` alone; a sub-page's is the `WorkspaceId`, a dot and a UUID of its own (`<WorkspaceId>.<UUID>`), so it is not a UUID itself. A page never changes workspace, so any context tells the workspace of a page from its identity, with no query to Editing.
 - **A sub-page is created, moved and deleted only through its page block.** Inserting, moving or
   deleting the page block in the tree of the parent page fires the matching command on Page. Each
   sub-page therefore has exactly one page block, and nothing flows back from Page to the block,
