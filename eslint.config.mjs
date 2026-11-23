@@ -5,7 +5,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import tseslint from 'typescript-eslint'
 
 export default defineConfig(
-  // Generated from api/ and never edited by hand
+  // The output of Vite, and the types generated from api/, never edited by hand
   globalIgnores(['**/dist/', 'client/web/src/api/generated/', 'services/editing/src/adapters/events/']),
   {
     files: ['**/*.{ts,tsx}'],
