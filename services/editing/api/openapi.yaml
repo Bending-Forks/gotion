@@ -1,0 +1,131 @@
+openapi: 3.1.0
+info:
+  title: Editing
+  version: 1.0.0
+  description: >-
+    Pages and their content (US-04 to US-08). The content is edited over the WebSocket of each page,
+    whose protocol is in the CRDT package, shared with the client; this is the REST part of the
+    client API, forwarded by the API gateway, which sets X-User-Id from the sign-in token (ADR-09).
+    Editing answers no query: every PageId holds the WorkspaceId of its page. A page that does not
+    exist is answered as one in a workspace the user is not a member of (QA-06).
+tags:
+  - name: client
+    description: The client API, through the API gateway
+paths:
+  /v1/pages/{pageId}/metadata:
+    parameters:
+      - $ref: '#/components/parameters/XUserId'
+      - $ref: '#/components/parameters/PageId'
+    put:
+      tags: [client]
+      operationId: setPageMetadata
+      summary: Set title, icon, cover
+      description: >-
+        Replaces the metadata of the page; leaving out the icon or the cover removes it (US-05). Only
+        a role that may change the content: Editing reads its local copy of the roles, and asks
+        Membership only when the copy has no row for the user (ADR-03).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PageMetadata'
+      responses:
+        '204':
+          description: The page has the new metadata
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/ReadOnly'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+components:
+  parameters:
+    XUserId:
+      name: X-User-Id
+      in: header
+      required: true
+      description: The signed-in user, set by the API gateway from the sign-in token
+      schema:
+        type: string
+        format: uuid
+    PageId:
+      name: pageId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/PageId'
+  responses:
+    BadRequest:
+      description: The request does not match its schema
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ReadOnly:
+      description: The user is a member of the workspace, with a role that may only read the content
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: >-
+        The page does not exist or the user is not a member of its workspace; the two are answered
+        alike (QA-06)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unavailable:
+      description: >-
+        The local copy of the roles has no row for the user and Membership did not answer, so the
+        command is refused (fail closed)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    PageId:
+      description: >-
+        The identity of a page, which holds the WorkspaceId of its page: the WorkspaceId alone for
+        the root page of the workspace; for a sub-page, the WorkspaceId, a dot and a UUID of its own.
+        Lowercase.
+      type: string
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$'
+    PageMetadata:
+      type: object
+      required: [title]
+      properties:
+        title:
+          description: Plain text on one line; a new page has an empty title until one is set
+          type: string
+          maxLength: 200
+          pattern: '^[^\u0000-\u001F\u007F]*$'
+        icon:
+          description: The name of an icon of the Lucide set, which the client draws, so the page stores no image
+          type: string
+          maxLength: 64
+          pattern: '^[A-Z][A-Za-z0-9]*$'
+          examples: [FlaskConical]
+        cover:
+          description: A link to an image; no user story uploads files
+          type: string
+          format: uri
+          maxLength: 2048
+          pattern: '^https?://'
+    Problem:
+      description: An error, as in RFC 9457
+      type: object
+      required: [title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
