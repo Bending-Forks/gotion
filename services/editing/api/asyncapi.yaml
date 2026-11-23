@@ -1,0 +1,75 @@
+asyncapi: 3.0.0
+info:
+  title: Editing events
+  version: 1.0.0
+  description: >-
+    The events Editing publishes, in the envelope of api/envelope.schema.json at the root of the
+    repository, keyed on Kafka by the PageId of their page. Editing publishes them directly, with
+    no outbox, once the operation that causes them is in the session log and applied to the tree
+    (ADR-05).
+defaultContentType: application/json
+channels:
+  editing:
+    address: editing
+    description: >-
+      Every event of Editing. The Page and the Page Block Tree of a page are both identified by its
+      PageId, so the events of one page, of either aggregate, stay in order.
+    messages:
+      PageDeletedV1:
+        $ref: '#/components/messages/PageDeletedV1'
+      BlockDeletedV1:
+        $ref: '#/components/messages/BlockDeletedV1'
+operations:
+  publishEditingEvents:
+    action: send
+    channel:
+      $ref: '#/channels/editing'
+    messages:
+      - $ref: '#/channels/editing/messages/PageDeletedV1'
+      - $ref: '#/channels/editing/messages/BlockDeletedV1'
+components:
+  messages:
+    PageDeletedV1:
+      name: PageDeleted
+      title: Page Deleted
+      summary: Consumed by Discussion, to delete the threads anchored to the page and to its blocks.
+      bindings:
+        kafka:
+          key:
+            $ref: '#/components/schemas/PageKey'
+      payload:
+        allOf:
+          - $ref: '../../../api/envelope.schema.json'
+          - type: object
+            properties:
+              type:
+                const: PageDeleted
+              version:
+                const: 1
+              data:
+                $ref: './events/page-deleted.v1.json'
+    BlockDeletedV1:
+      name: BlockDeleted
+      title: Block Deleted
+      summary: Consumed by Discussion, to delete the threads anchored to the block.
+      bindings:
+        kafka:
+          key:
+            $ref: '#/components/schemas/PageKey'
+      payload:
+        allOf:
+          - $ref: '../../../api/envelope.schema.json'
+          - type: object
+            properties:
+              type:
+                const: BlockDeleted
+              version:
+                const: 1
+              data:
+                $ref: './events/block-deleted.v1.json'
+  schemas:
+    PageKey:
+      description: >-
+        The aggregateId of the envelope, the PageId of the page, which also identifies its Page Block
+        Tree
+      type: string

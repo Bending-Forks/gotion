@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PageDeletedV1",
+  "description": "A page has been deleted for good, with its content (US-04). Each of its sub-pages is deleted in turn and gets a Page Deleted of its own.",
+  "type": "object",
+  "required": ["pageId"],
+  "properties": {
+    "pageId": {
+      "description": "The PageId of the deleted page: the WorkspaceId of its page, followed for a sub-page by a dot and a UUID of its own.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$"
+    }
+  }
+}

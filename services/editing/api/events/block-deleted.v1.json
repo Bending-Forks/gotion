@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BlockDeletedV1",
+  "description": "A block has been deleted from the tree of a page. Every deleted block gets a Block Deleted of its own, the blocks nested in it included, so the threads anchored to each of them can be deleted.",
+  "type": "object",
+  "required": ["pageId", "blockId", "subPages"],
+  "properties": {
+    "pageId": {
+      "description": "The PageId of the page whose tree held the block: the WorkspaceId of its page, followed for a sub-page by a dot and a UUID of its own.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$"
+    },
+    "blockId": {
+      "description": "The BlockId of the deleted block, unique in its page: the replica that inserted it and the Lamport counter of that insertion, as in the protocol of the CRDT package.",
+      "type": "object",
+      "required": ["replica", "counter"],
+      "properties": {
+        "replica": { "type": "integer", "minimum": 1 },
+        "counter": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "subPages": {
+      "description": "The sub-pages of the page blocks deleted with this block, the block itself when it is a page block and every page block nested in it, so that each of those sub-pages is deleted too; empty when there is none.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      },
+      "uniqueItems": true
+    }
+  }
+}

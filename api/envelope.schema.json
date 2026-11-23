@@ -21,9 +21,9 @@
       "minimum": 1
     },
     "aggregateId": {
-      "description": "The identity of the aggregate the event happened to, also the Kafka key of the event, so the events of one aggregate stay in order.",
+      "description": "The identity of the aggregate the event happened to, also the Kafka key of the event, so the events of one aggregate stay in order. A UUID, except the PageId of a sub-page, which holds the WorkspaceId of its page and a UUID of its own.",
       "type": "string",
-      "format": "uuid"
+      "minLength": 1
     },
     "occurredAt": {
       "description": "When the event happened, in UTC.",
@@ -45,6 +45,16 @@
       "data": {
         "workspaceId": "8f14e45f-ceea-467a-9575-1b4f0c3a2d11",
         "creatorId": "c4ca4238-a0b9-4382-8dcc-509a6f75849b"
+      }
+    },
+    {
+      "eventId": "3e7d1f0a-9b2c-4d8e-a1f6-5c4b3a2d1e0f",
+      "type": "PageDeleted",
+      "version": 1,
+      "aggregateId": "8f14e45f-ceea-467a-9575-1b4f0c3a2d11.5d2f8e4a-1c3b-4e6f-8a9d-7b0c2e4f6a81",
+      "occurredAt": "2026-11-18T09:30:00Z",
+      "data": {
+        "pageId": "8f14e45f-ceea-467a-9575-1b4f0c3a2d11.5d2f8e4a-1c3b-4e6f-8a9d-7b0c2e4f6a81"
       }
     }
   ]
