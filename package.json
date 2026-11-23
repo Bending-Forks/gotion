@@ -14,5 +14,8 @@
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
     "husky": "9.1.7"
+  },
+  "allowScripts": {
+    "@confluentinc/kafka-javascript@1.11.0": true
   }
 }
