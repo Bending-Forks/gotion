@@ -68,6 +68,21 @@ jobs:
       - run: npm test -w services/editing -w packages/crdt -w client/web
       - run: npm run check:bundle -w client/web
 
+  compose:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      # The command of the README; kafka-topics starts once Kafka is healthy
+      - run: docker compose up -d --quiet-pull
+      # Exits with the code of the topic creation
+      - run: docker compose wait kafka-topics
+      # Every other container must become healthy: --wait on all of them would fail on the exited kafka-topics
+      - run: docker compose up -d --wait $(docker compose config --services | grep -vx kafka-topics)
+      - if: failure()
+        run: docker compose logs
+
   site:
     runs-on: ubuntu-latest
     steps:
@@ -93,7 +108,7 @@ jobs:
           done
 
   success:
-    needs: [test, go, node, site, commits]
+    needs: [test, go, node, compose, site, commits]
     if: always()
     runs-on: ubuntu-latest
     steps:
