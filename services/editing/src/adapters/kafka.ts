@@ -3,7 +3,9 @@ import type { FastifyBaseLogger } from 'fastify';
 
 // The producer of Editing, which publishes its events directly, with no outbox (ADR-05).
 export function createProducer(brokers: string[], log: FastifyBaseLogger) {
-  const producer = new confluent.KafkaJS.Kafka({ kafkaJS: { brokers, logger: kafkaLogger(log) } }).producer();
+  // The client gives up connecting after 5 retries by default, which would stop Editing while Kafka is down. As many retries as librdkafka takes keep it trying, the sends included, since Editing retries an event until Kafka acknowledges it.
+  const retry = { retries: 2147483647 };
+  const producer = new confluent.KafkaJS.Kafka({ kafkaJS: { brokers, retry, logger: kafkaLogger(log) } }).producer();
   const admin = producer.dependentAdmin();
   let closing = false;
   return {
