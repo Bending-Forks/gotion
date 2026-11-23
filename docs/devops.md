@@ -13,7 +13,7 @@ Gotion lives in one Git repository. Every service, the web client and every shar
 Inside each service, `internal/` (`src/` in Editing) holds the hexagon of [Hexagonal Architecture](design.html#hexagonal-architecture):
 
 - `domain/` holds the aggregates, value objects and rules of the bounded context. In the Go services it imports only the standard library; in Editing it imports only the CRDT of `packages/crdt`, which is the model of the document, and no `node:` module.
-- `app/` holds one application service per command, query or policy, and declares the ports as interfaces: a repository, the outbox, the query to another service.
+- `app/` holds one application service per command, query or policy, and declares the ports as interfaces: a repository, the outbox, the query to another service. In Editing it imports only `domain/` and the CRDT, with no library and no `node:` module.
 - `adapters/` implements the ports and calls the application services: the REST server, the Kafka consumers, the repositories on PostgreSQL, the clients of other services. The code generated from the specifications in `api/` and from SQL lives in the adapter that uses it. A consumer generates the types of an event from the `api/` of its producer, so no package of shared types exists.
 
 `api/` holds the OpenAPI and AsyncAPI specifications of the service, `api/events/` the JSON Schema of the body of each of its events, and `api/contracts/<consumer>/` the examples each consumer writes of what it reads from them, one folder per relation of the context map ([Contract tests](implementation.html#contract-tests)). The envelope shared by every event is in the `api/` folder at the root of the repository ([Contracts](design.html#contracts)).

@@ -1,2 +1,2 @@
-// Violates ADR-07: a node: module in the domain of Editing
-import 'node:crypto';
+// Violates ADR-07: a library in the domain of Editing
+import 'pg';
