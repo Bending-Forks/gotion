@@ -9,10 +9,16 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@gotion/crdt": "0.0.0"
+    "@confluentinc/kafka-javascript": "1.11.0",
+    "@gotion/crdt": "0.0.0",
+    "fastify": "5.12.8",
+    "fastify-metrics": "15.0.1",
+    "node-pg-migrate": "9.0.0",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
     "typescript": "5.9.3"
   }
 }
