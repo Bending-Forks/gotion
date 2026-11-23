@@ -31,14 +31,14 @@ export default {
     },
     {
       name: 'editing-domain-imports-only-crdt',
-      comment: 'ADR-07: the domain of Editing imports only itself and @gotion/crdt, the model of the document: no node: module, no library, no other layer',
+      comment: 'ADR-07 and the hexagon: the domain of Editing imports only itself and @gotion/crdt, the model of the document: no library (ADR-07), no node: module, no other layer',
       severity: 'error',
       from: { path: '^services/editing/src/domain/', pathNot: '\\.test\\.ts$' },
       to: { pathNot: '^(services/editing/src/domain|packages/crdt/src)/' },
     },
     {
       name: 'editing-app-imports-only-domain',
-      comment: 'ADR-07: the application services of Editing import only themselves, the domain and @gotion/crdt: no node: module, no library, no adapter',
+      comment: 'ADR-07 and the hexagon: the application services of Editing import only themselves, the domain and @gotion/crdt: no library (ADR-07), no node: module, no adapter',
       severity: 'error',
       from: { path: '^services/editing/src/app/', pathNot: '\\.test\\.ts$' },
       to: { pathNot: '^(services/editing/src/(app|domain)|packages/crdt/src)/' },
