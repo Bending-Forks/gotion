@@ -88,9 +88,11 @@ Editing uses Fastify and its plugins as its chassis ([ADR-07](design.html#adr-07
 | Roles adapter and its HTTP client | `pg`, the `fetch` of Node.js, `opossum`, `openapi-typescript` | The local copy of the roles, and the query to Membership when it has no row, with types generated from the OpenAPI specification of Membership ([ADR-03](design.html#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)) |
 | Database, Log store | `pg` | The pages and the copy of the roles; the session log and the snapshots, in the same PostgreSQL server ([ADR-06](design.html#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own)) |
 | Migrations | `node-pg-migrate` | The migrations of Editing, run at start |
-| Metrics | `fastify-metrics`, on `prom-client` | `/metrics`, with the time from an operation to its ack |
+| Metrics | `fastify-metrics`, on `@prometheus-io/client`, which replaced `prom-client` | `/metrics`, with the time from an operation to its ack |
 | Logs | pino, part of Fastify | JSON on the standard output |
 | Types of the events | `json-schema-to-typescript` | The TypeScript types of the events, generated from the JSON Schema of the AsyncAPI specifications ([ADR-08](design.html#adr-08-contracts-are-json-schema-with-no-schema-registry)) |
+
+**Start and readiness.** At start Editing runs the migrations it has not applied yet, connects the producer, and only then listens. node-pg-migrate holds a PostgreSQL advisory lock while it migrates. In its `wait` mode, an instance that starts while another one is migrating waits for the lock and then finds nothing left to run; in the default mode it would fail and be restarted ([ADR-06](design.html#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own)). `/health/ready` checks the database with `SELECT 1` and Kafka by listing the topics through the admin client of the producer, because the cluster id of the producer comes from its cache and stays known after Kafka stops. The replay of the session logs gets its own check when the session log is written. On SIGTERM, Fastify finishes the requests in flight, then closes the producer and the pool.
 
 **The append to the session log** is an `INSERT` of the operation with the next `seq` of its page, in a transaction that commits before the ack. A unique violation (`23505`) means another instance has extended the log of the page: Editing acknowledges nothing ([ADR-06](design.html#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own)).
 
