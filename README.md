@@ -32,7 +32,7 @@ npm test -w services/editing -w packages/crdt
 
 ## Development environment
 
-`compose.yaml` starts what the services run against during development and in the integration tests: Kafka in KRaft mode, with a topic for each upstream context (`account`, `membership`, `editing`, `discussion`), and one PostgreSQL server per service. The services themselves are not in it yet. From the root of the repository, with Docker, or Podman with Compose:
+`compose.yaml` starts what the services run against during development and in the integration tests: Kafka in KRaft mode, with a topic for each upstream context (`account`, `membership`, `editing`, `discussion`), and one PostgreSQL server per service. The services themselves are not in it yet. From the root of the repository, with Docker Compose:
 
 ```sh
 docker compose up -d
@@ -48,7 +48,9 @@ docker compose wait kafka-topics  # returns once the topics exist
 | Discussion | `postgres://discussion:discussion@localhost:5436/discussion` | `discussion-db:5432` |
 | Notification | `postgres://notification:notification@localhost:5437/notification` | `notification-db:5432` |
 
-Each user owns its server, so an integration test can create and drop its own databases there. The ports listen only on 127.0.0.1 and each password equals the user name, so use this setup only on a development machine. `docker compose down` stops the containers and keeps the data in named volumes; `docker compose down -v` deletes the data too.
+Each user owns its server, so an integration test can create and drop its own databases there. The ports listen only on 127.0.0.1 and each password equals the user name, so use this setup only on a development machine. `docker compose down` stops the containers and keeps the data in named volumes; `docker compose down -v` deletes the data too. The project is named `gotion`, so every checkout and worktree shares one instance: start it from any of them, and keep in mind that `down -v` empties it for all.
+
+On rootless Podman, a Compose that goes through the Podman socket does not work yet: its containers inherit `oom_score_adj` 200 from `podman.service`, every `exec` into them fails, healthchecks included, and Kafka never becomes healthy.
 
 ## Contributing
 
