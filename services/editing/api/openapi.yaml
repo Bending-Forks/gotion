@@ -102,7 +102,7 @@ components:
           description: Plain text on one line; a new page has an empty title until one is set
           type: string
           maxLength: 200
-          pattern: '^[^\u0000-\u001F\u007F]*$'
+          pattern: '^[^\u0000-\u001F\u007F-\u009F  ]*$'
         icon:
           description: The name of an icon of the Lucide set, which the client draws, so the page stores no image
           type: string
