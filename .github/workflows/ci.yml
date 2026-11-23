@@ -78,7 +78,7 @@ jobs:
       - run: docker compose up -d --quiet-pull
       # Exits with the code of the topic creation
       - run: docker compose wait kafka-topics
-      # Every other container must become healthy: --wait on all of them would fail on the exited kafka-topics
+      # Every other container must become healthy; kafka-topics is left out, since up would start it again and --wait only waits for it to run
       - run: docker compose up -d --wait $(docker compose config --services | grep -vx kafka-topics)
       - if: failure()
         run: docker compose logs

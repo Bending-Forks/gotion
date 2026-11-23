@@ -1,11 +1,13 @@
 # The infrastructure for development and for the integration tests: Kafka and one PostgreSQL server per service (ADR-06).
-# `docker compose up -d --wait` starts it, `docker compose down` stops it and keeps the data, `docker compose down -v` deletes the data too.
+# `docker compose up -d` starts it and `docker compose wait kafka-topics` returns once the topics exist; `docker compose down` stops it and
+# keeps the data, `docker compose down -v` deletes the data too.
 # Every port is bound to 127.0.0.1, so nothing is reachable from outside this host.
 
 x-postgres: &postgres
   image: postgres:18-alpine
   healthcheck:
-    test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+    # Over TCP like the clients: on the first start the entrypoint runs a temporary server on the Unix socket only, to create the database
+    test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
     interval: 2s
     retries: 15
 
