@@ -5,13 +5,20 @@ import type { FastifyBaseLogger } from 'fastify';
 export function createProducer(brokers: string[], log: FastifyBaseLogger) {
   const producer = new confluent.KafkaJS.Kafka({ kafkaJS: { brokers, logger: kafkaLogger(log) } }).producer();
   const admin = producer.dependentAdmin();
+  let closing = false;
   return {
     producer,
+    // The client retries until a broker answers; a stop in the meantime aborts the connection, which is then no error.
     async connect(): Promise<void> {
-      await producer.connect();
-      await admin.connect();
+      try {
+        await producer.connect();
+        await admin.connect();
+      } catch (err) {
+        if (!closing) throw err;
+      }
     },
     async disconnect(): Promise<void> {
+      closing = true;
       await admin.disconnect();
       await producer.disconnect();
     },

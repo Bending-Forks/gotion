@@ -16,9 +16,10 @@ app.addHook('onClose', async () => {
   await pool.end();
 });
 
-await migrate(config.databaseUrl, fileURLToPath(new URL('../migrations', import.meta.url)), app.log);
-await kafka.connect();
-await app.listen({ host: '0.0.0.0', port: config.port });
-
 // Kubernetes stops a pod with SIGTERM: Fastify finishes the requests in flight, then the hook above closes Kafka and the pool.
 for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => void app.close());
+
+await migrate(config.databaseUrl, fileURLToPath(new URL('../migrations', import.meta.url)), app.log);
+// Listening before Kafka is connected keeps liveness free of Kafka; readiness answers that Kafka is down until it is.
+await app.listen({ host: '0.0.0.0', port: config.port });
+await kafka.connect();
