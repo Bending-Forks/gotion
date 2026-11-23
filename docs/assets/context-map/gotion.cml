@@ -27,7 +27,7 @@ ContextMap Gotion {
 	/* Member Invited */
 	Membership [U,OHS,PL] -> [D,ACL] Notification
 
-	/* Page Deleted, Block Deleted */
+	/* Page Deleted, Block Deleted; the workspace of a page, asked on request */
 	Editing [U,OHS,PL] -> [D,CF] Discussion
 
 	/* Comment Posted, with its mentions */

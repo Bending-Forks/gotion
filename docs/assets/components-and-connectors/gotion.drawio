@@ -101,6 +101,9 @@
         <mxCell id="e-editing-membership" value="REST&#xa;role, on a miss" style="endArrow=block;endFill=1;html=0;strokeColor=#2d3748;labelBackgroundColor=#ffffff;fontSize=11;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="editing" target="membership">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
+        <mxCell id="e-discussion-editing" value="REST&#xa;workspace" style="endArrow=block;endFill=1;html=0;strokeColor=#2d3748;labelBackgroundColor=#ffffff;fontSize=11;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="discussion" target="editing">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="e-discussion-membership" value="REST: members" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;endFill=1;html=0;strokeColor=#2d3748;labelBackgroundColor=#ffffff;fontSize=11;exitX=0.15;exitY=1;entryX=0.6;entryY=1;" edge="1" parent="1" source="discussion" target="membership">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">

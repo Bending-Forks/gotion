@@ -48,8 +48,8 @@ export type IdRange = { readonly replica: ReplicaId; readonly counter: number; r
 export type BlockId = Id;
 
 /**
- * The identity of a page. It holds the `WorkspaceId` of its page (see the Page aggregate); its
- * format is checked by Editing, not here.
+ * The identity of a page, a UUID that does not tell its workspace: Editing keeps the workspace of
+ * each page (see the Page aggregate) and checks the format, not here.
  */
 export type PageId = string;
 

@@ -339,7 +339,7 @@ A document of a workspace, with its metadata and its place in the page tree (US-
 
 - **A page is either the root page of its workspace or a sub-page.** `RootPage` and `SubPage` are the two forms of the one root of the Page aggregate, and a page never turns from one into the other. Only a sub-page has a parent, and it always has one.
 - **Each workspace has exactly one root page.** It is created only by the policy on Workspace Created and deleted only by the policy on Workspace Deleted. Its `PageId` is derived from the `WorkspaceId`, so a second root page of the same workspace would have the same identity and cannot be stored: the rule holds without looking at the other pages.
-- **Every `PageId` holds the `WorkspaceId` of its page.** The root page's is the `WorkspaceId` alone; a sub-page's is the `WorkspaceId`, a dot and a UUID of its own (`<WorkspaceId>.<UUID>`), so it is not a UUID itself. A page never changes workspace, so any context tells the workspace of a page from its identity, with no query to Editing.
+- **Editing keeps the workspace of every page.** A `PageId` is a UUID and does not tell the workspace of its page: a sub-page's is a new UUID, and the sub-page gets the workspace of its parent. A page never changes workspace, so another context that needs it asks Editing once and keeps the answer, as Discussion does when it opens a thread.
 - **A sub-page is created, moved and deleted only through its page block.** Inserting, moving or
   deleting the page block in the tree of the parent page fires the matching command on Page. Each
   sub-page therefore has exactly one page block, and nothing flows back from Page to the block,
@@ -386,7 +386,7 @@ The rules fall into two groups, by how they can be broken.
 
 - The type of a block is the subtype of its `BlockContent`, and each subtype holds only the fields its type needs. The text is written out as Markdown (BR-03), so a heading also has its level, from 1 to 6 as in Markdown. A to-do has its checkbox, and a page block holds only its sub-page, so no other block can refer to one. A code block may name its language in one word, the one written after the opening fence of a Markdown code block (`python`). Editing refuses a field that the type does not have and a value out of its range, such as a heading of level 7.
 - The editor of the client works on styled text, not Markdown, so Editing refuses a style that Markdown cannot express, and the Markdown of BR-03 loses nothing (see [Editing client](implementation.html#editing-client)).
-- Update block can turn a block into another type by replacing its content. The block keeps its `BlockId`, its place in the tree and the comment threads anchored to it. Page blocks are the exception: no block becomes a page block and a page block becomes nothing else, because a sub-page is created and deleted only by inserting and deleting its page block. For the same reason, Editing refuses a page block inserted with the `PageId` of a page that already exists, and one whose `PageId` holds another workspace than the page of the tree, since a sub-page belongs to the workspace of its parent. A page block holds nothing but its sub-page, which never changes, so Editing also refuses any update of a page block.
+- Update block can turn a block into another type by replacing its content. The block keeps its `BlockId`, its place in the tree and the comment threads anchored to it. Page blocks are the exception: no block becomes a page block and a page block becomes nothing else, because a sub-page is created and deleted only by inserting and deleting its page block. For the same reason, Editing refuses a page block inserted with the `PageId` of a page that already exists. A page block holds nothing but its sub-page, which never changes, so Editing also refuses any update of a page block.
 - Join block removes the marker of the joined block and gives its characters to the block of the marker before. Editing therefore refuses joining a page block, or a block to a page block, and, until a later decision settles the join of blocks that are not neighbours in the sequence, which ADR-01 leaves open, joining a block whose marker is not the next one after the marker of the block before it in the tree. That includes joining a block to the one before after the block between them was deleted, since the marker of a deleted block stays.
 - Edit text deletes characters only: Editing refuses a deletion that covers a marker, or an identity that is not a character of the page.
 
@@ -443,6 +443,7 @@ classDiagram
       <<Aggregate Root>>
       id: ThreadId
       anchor: Anchor
+      workspace: WorkspaceId
       comments: Comment[1..*]
       resolved: Boolean
     }
@@ -474,11 +475,15 @@ classDiagram
   }
   class CommentThreadFactory {
     <<Factory>>
-    open(anchor, author, text, mentions) CommentThread
+    open(anchor, workspace, author, text, mentions) CommentThread
   }
   class MembershipLookupService {
     <<Domain Service>>
     areMembers(users, workspace) Boolean
+  }
+  class PageLookupService {
+    <<Domain Service>>
+    workspaceOf(page) WorkspaceId
   }
   CommentThread --> Anchor
   Anchor <|-- PageAnchor
@@ -494,7 +499,7 @@ classDiagram
 A conversation attached to a page or to one of its blocks (US-09).
 
 - The anchor is fixed when the thread opens and never changes. A page anchor holds a thread on the whole page, a block anchor a thread on one block. Both name the page, because a `BlockId` alone does not tell Discussion which page the block is on, and the threads of a page must be found when it is shown or deleted.
-- The workspace of a thread is the one held by the `PageId` of its anchor, never one stated by the client: a member of one workspace could otherwise open a thread on a page of another and pass the membership check (QA-06).
+- The workspace of a thread is the one Editing gives for the page of its anchor, never one stated by the client: a member of one workspace could otherwise open a thread on a page of another and pass the membership check (QA-06). Before the factory opens a thread, the `PageLookupService` asks Editing, the owner of the pages, for the workspace of the page; the thread keeps it, since a page never changes workspace, so the later comments and Resolve thread do not ask again.
 - A thread is never empty: the `CommentThreadFactory` opens it together with its first comment and the mentions in it.
 - A resolved thread accepts no new comments.
 - A mention names a member of the workspace. The members live in Membership, so before the thread or its factory is called, the `MembershipLookupService` is asked whether the author of a comment, every user it mentions and whoever resolves the thread are members, all in one query to Membership ([ADR-03](#adr-03-editing-keeps-a-local-copy-of-the-roles-account-and-discussion-ask-membership)).

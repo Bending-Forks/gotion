@@ -66,7 +66,7 @@ What each service offers and needs. The *client API* goes through the API gatewa
 |---|---|
 | Responsibility | Pages and their content (`Page`, `Page Block Tree`, `Real-time Editing Session`), US-04 to US-08; the one relay of the operations of a page (ADR-01) |
 | Client API | One WebSocket per open page: Join and Leave session, Submit edit, then the snapshot of the page in the answer to Join session, the ack or the refusal of each operation, the operations of the others, the presence and Session Closed. Over REST: Set title, icon, cover |
-| Answers | Nothing: no service asks Editing, since every `PageId` holds the `WorkspaceId` of its page |
+| Answers | Discussion: the workspace of a page, which a `PageId` does not tell |
 | Asks | Membership: the role of a user, only when the local copy of the roles has no row (ADR-03) |
 | Publishes | Page Deleted, Block Deleted, for Discussion |
 | Consumes | Workspace Created and Workspace Deleted, as a conformist, to create and delete the root page; Member Joined, Member Role Changed, Member Removed, Member Left and Workspace Membership Deleted, through an anticorruption layer that turns a role into *read* or *change* |
@@ -81,7 +81,7 @@ A page opens over its WebSocket, with the snapshot in the answer to Join session
 | Responsibility | Comment threads on pages and blocks (`Comment Thread`), US-09 |
 | Client API | Post comment, which opens a new thread with its first comment or adds one to an open thread, Resolve thread; the threads of a page |
 | Answers | Nothing |
-| Asks | Membership: whether the author, the users mentioned and whoever resolves are members, in one query per command |
+| Asks | Membership: whether the author, the users mentioned and whoever resolves are members, in one query per command; Editing: the workspace of the page, once, when a thread opens on it |
 | Publishes | Comment Posted, for Notification |
 | Consumes | Page Deleted and Block Deleted, as a conformist, to delete the threads anchored to them |
 | Owns | The comment threads, as current state |
@@ -100,7 +100,7 @@ A page opens over its WebSocket, with the snapshot in the answer to Join session
 
 ### Dependencies at run time
 
-A synchronous call couples the caller to the callee in time: the caller's command can only complete while the callee is up, so the availability of the command is at most the product of the availabilities of the two services. An event couples them only eventually: the producer does not wait, and a consumer that is down reads the event from Kafka when it is back. Gotion keeps the synchronous calls between services to the four that check data owned by another context before a command:
+A synchronous call couples the caller to the callee in time: the caller's command can only complete while the callee is up, so the availability of the command is at most the product of the availabilities of the two services. An event couples them only eventually: the producer does not wait, and a consumer that is down reads the event from Kafka when it is back. Gotion keeps the synchronous calls between services to the five that check data owned by another context before a command:
 
 | Caller | Callee | Query | Before | If the callee fails |
 |---|---|---|---|---|
@@ -108,9 +108,10 @@ A synchronous call couples the caller to the callee in time: the caller's comman
 | Membership | Account | `UserId` of an email address | Invite member | The command is refused |
 | Editing | Membership | Role of a user, only without a row in the local copy | Join session, Submit edit, Set title, icon, cover | The command is denied |
 | Discussion | Membership | Which users are members | Post comment, Resolve thread | The command is refused |
+| Discussion | Editing | The workspace of a page | Post comment that opens a thread | The command is refused |
 | API Gateway | Membership, then Account | The workspaces of a user with their roles; the names of those workspaces and the main workspace | Workspace directory | The request fails |
 
-Membership is the one service asked by three others and by the gateway, and no service calls Editing, Discussion or Notification. A crash of Membership therefore stops renaming and deleting workspaces, inviting, commenting and listing the workspaces of a user, but not the editing of the pages whose roles Editing already holds. Account and Membership call each other, so each one's availability depends on the other's, as ADR-03 records.
+Membership is the one service asked by three others and by the gateway. Editing is asked only by Discussion, for the workspace of a page, and no service calls Discussion or Notification. A crash of Membership therefore stops renaming and deleting workspaces, inviting, commenting and listing the workspaces of a user, but not the editing of the pages whose roles Editing already holds. A crash of Editing also stops opening threads, while comments on the threads already open go on. Account and Membership call each other, so each one's availability depends on the other's, as ADR-03 records.
 
 Every call is made by the adapter of a port, before the command reaches the aggregate (see [Building blocks](#building-blocks)), so the policy for a failure lives in that adapter, and the domain never waits on the network:
 
@@ -133,7 +134,7 @@ The gateway keeps no copy of this view and reads each service through its API. I
 
 ### State and scaling
 
-Account, Membership, Discussion and Notification keep their durable state in their databases; the first three also keep their pending outgoing events there. Each one runs as a Kubernetes Deployment, whose replicas are interchangeable behind a Service; a caller finds a service by the DNS name of its Service, and Kubernetes picks the replica (server-side discovery); Editing is reached instead by the stable name of each instance, as below. The consumers of a service share its Kafka partitions as one consumer group. Since every event is keyed by its aggregate, the events of one aggregate still reach one replica in order. Each publishing Go service runs its polling task in the same process; a database lock permits only one active publisher across its replicas, preserving the order of each aggregate's events (ADR-05). Notification publishes nothing and needs no outbox or publisher. The prototype runs one replica of each. Each service has one PostgreSQL server of its own, not replicated ([ADR-06](#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own)): the reference deployment is a single node, so replicating or partitioning the stores is out of scope.
+Account, Membership, Discussion and Notification keep their durable state in their databases; the first three also keep their pending outgoing events there. Each one runs as a Kubernetes Deployment, whose replicas are interchangeable behind a Service; a caller finds a service by the DNS name of its Service, and Kubernetes picks the replica (server-side discovery); Editing is reached instead by the stable name of each instance, as below, except for the query of Discussion, which any instance answers from its database, so it goes through a Service of Editing like the others. The consumers of a service share its Kafka partitions as one consumer group. Since every event is keyed by its aggregate, the events of one aggregate still reach one replica in order. Each publishing Go service runs its polling task in the same process; a database lock permits only one active publisher across its replicas, preserving the order of each aggregate's events (ADR-05). Notification publishes nothing and needs no outbox or publisher. The prototype runs one replica of each. Each service has one PostgreSQL server of its own, not replicated ([ADR-06](#adr-06-each-service-keeps-its-data-in-a-postgresql-server-of-its-own)): the reference deployment is a single node, so replicating or partitioning the stores is out of scope.
 
 Editing is different: it holds the session of every open page, with its collaborators and the replica of its tree, and it is the one relay of the operations of a page.
 
