@@ -338,7 +338,7 @@ classDiagram
 A document of a workspace, with its metadata and its place in the page tree (US-04, US-05).
 
 - **A page is either the root page of its workspace or a sub-page.** `RootPage` and `SubPage` are the two forms of the one root of the Page aggregate, and a page never turns from one into the other. Only a sub-page has a parent, and it always has one.
-- **Each workspace has exactly one root page.** It is created only by the policy on Workspace Created and deleted only by the policy on Workspace Deleted. Its `PageId` is derived from the `WorkspaceId`, so a second root page of the same workspace would have the same identity and cannot be stored: the rule holds without looking at the other pages.
+- **Each workspace has exactly one root page.** It is created only by the policy on Workspace Created and deleted only by the policy on Workspace Deleted. Its `PageId` is a new UUID like that of any other page, so the rule rests on the database of Editing: a unique constraint on the workspace of the root pages refuses a second root page of the same workspace, for instance when Workspace Created is delivered again.
 - **Editing keeps the workspace of every page.** A `PageId` is a UUID and does not tell the workspace of its page: a sub-page's is a new UUID, and the sub-page gets the workspace of its parent. A page never changes workspace, so another context that needs it asks Editing once and keeps the answer, as Discussion does when it opens a thread.
 - **A sub-page is created, moved and deleted only through its page block.** Inserting, moving or
   deleting the page block in the tree of the parent page fires the matching command on Page. Each
@@ -572,7 +572,7 @@ root page may not exist, and the read models must allow for it.
 | A new user has a first workspace | *Whenever a user registers, create their first workspace* | US-01, US-02 |
 | Losing the main workspace clears it; users may have no workspaces | *On Member Removed, Member Left or Workspace Membership Deleted, clear main if it is the lost workspace* | US-02, US-03 |
 | A workspace has an Admin from its creation | *Whenever a workspace is created, accept the creator as Admin* | US-03 |
-| A workspace has exactly one root page | *Whenever a workspace is created, create its root page*, plus the identity of the root page, derived from its workspace | US-04 |
+| A workspace has exactly one root page | *Whenever a workspace is created, create its root page*, plus a unique constraint on the workspace of the root pages in the database of Editing | US-04 |
 | Every page block has its sub-page, and every sub-page its page block | *Whenever a page block is inserted, moved or deleted…* | US-04 |
 | Deleting a workspace deletes everything in it | *Whenever a workspace is deleted, delete its root page*, then the cascade below; *whenever a workspace is deleted, delete its membership* | US-02, PP-05 |
 | Deleting a page deletes its content, sub-pages, session and threads | *Whenever a page is deleted, delete its block tree*, then *whenever a page block is deleted, delete the page as well* for each page block the tree held; *when a page is deleted, close its editing session*; *whenever a page is deleted, delete its comment threads* | US-04, US-09, PP-05 |
