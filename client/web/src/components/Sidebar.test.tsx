@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, within } from '@testing-library/react'
 import { createRoutesStub } from 'react-router'
 import { afterEach, expect, test } from 'vitest'
 import { Sidebar, type PageNode } from './Sidebar'
