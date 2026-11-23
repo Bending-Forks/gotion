@@ -9,10 +9,13 @@ export async function buildServer(options: { logLevel: string; ready: Record<str
   const app = Fastify({ logger: { level: options.logLevel } });
   await app.register(metrics.default, { endpoint: '/metrics' });
 
-  // Liveness checks no dependency: restarting Editing does not bring its database back.
-  app.get('/health/live', async () => ({ status: 'up' }));
+  // Kubernetes polls the checks every few seconds, so their requests are not logged, as fastify-metrics does for /metrics.
+  const quiet = { logLevel: 'warn' } as const;
 
-  app.get('/health/ready', async (_request, reply) => {
+  // Liveness checks no dependency: restarting Editing does not bring its database back.
+  app.get('/health/live', quiet, async () => ({ status: 'up' }));
+
+  app.get('/health/ready', quiet, async (_request, reply) => {
     const names = Object.keys(options.ready);
     const results = await Promise.allSettled(Object.values(options.ready).map((check) => check()));
     const status = Object.fromEntries(names.map((name, i) => [name, results[i]?.status === 'fulfilled' ? 'up' : 'down']));
