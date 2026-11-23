@@ -13,8 +13,9 @@ export function readConfig(env: NodeJS.ProcessEnv): Config {
     return value;
   };
   return {
-    port: Number(env.PORT ?? 8080),
-    logLevel: env.LOG_LEVEL ?? 'info',
+    // An empty variable counts as unset, as Compose leaves it when it substitutes one that is not set
+    port: Number(env.PORT || 8080),
+    logLevel: env.LOG_LEVEL || 'info',
     databaseUrl: required('DATABASE_URL'),
     kafkaBrokers: required('KAFKA_BROKERS').split(','),
   };
