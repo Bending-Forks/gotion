@@ -14,13 +14,13 @@ A fitness function is any mechanism that gives an objective verdict on an archit
 
 ## 2. Pick the cheapest mechanism that gives a clear verdict
 
-1. **A lint rule on imports**, when the rule says who may import what: the depguard rules of golangci-lint in Go, dependency-cruiser in TypeScript (ADR-07). One rule per forbidden dependency, scoped to the paths it governs.
+1. **A lint rule on imports**, when the rule says who may import what: the depguard rules of golangci-lint in Go, dependency-cruiser in TypeScript (ADR-07), whose rules are in `.dependency-cruiser.mjs` at the root. One rule per forbidden dependency, scoped to the paths it governs.
 2. **A test on the dependency graph**, when a linter can't express the rule (transitive dependencies, "depends on no event of"): in Go a `_test.go` that walks `go list -deps -json` of the packages concerned, in TypeScript a `node:test` that inspects their imports.
 3. **A metric with a threshold, or a test on the running system**, for runtime characteristics: those belong to the `observability` and `test-strategy` skills, not to lint.
 
 ## 3. Make it trustworthy
 
-- **Prove it fails.** Add one violation, such as a forbidden import in a scratch file, see the check fail and read its message, then remove the violation. A rule that never failed may be checking nothing.
+- **Prove it fails.** Add one violation, such as a forbidden import in a scratch file, see the check fail and read its message, then remove the violation. A rule that never failed may be checking nothing. For a rule of dependency-cruiser, keep the violation in `tests/fixtures/fitness/`, at the path it would have in the repository: `tests/fitness.test.mjs` fails until every rule fails on its fixture.
 - **Say why in the failure message**: the rule and its source, such as "ADR-07: domain/ imports no library".
 - **Run it in the CI**, inside an existing job or in a new one listed in the `needs` of `success`, which the ruleset of `main` requires.
 - **Close the loop**: name the check where the rule is stated, the *Compliance* of the ADR or the gate of the QA scenario in *CI/CD* (`docs/devops.md`), and describe a new tool under *Quality Assurance* in `docs/devops.md`.

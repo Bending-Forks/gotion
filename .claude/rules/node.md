@@ -15,3 +15,4 @@ paths:
 - Every workspace extends the TypeScript options of `tsconfig.base.json`.
 - Editing and the CRDT package: Node.js runs the sources with type stripping, so only erasable syntax (no `enum`, `namespace` or parameter properties) and relative imports ending in `.ts`; `tsc` only checks the types (`npm run build`); tests on `node:test`. Their rules have the details.
 - The web client builds with Vite and tests with Vitest.
+- Lint of the TypeScript packages: `npm run lint` from the root runs ESLint (`eslint.config.mjs`) on Editing, the CRDT package and the web client, then dependency-cruiser (`.dependency-cruiser.mjs`), whose rules are the fitness functions of ADR-01, ADR-03, ADR-04 and ADR-07 on who may import what. A new rule gets a violation of it in `tests/fixtures/fitness/`, next to those of the Go rules and at the path it would have in the repository, or `tests/fitness.test.mjs` fails.

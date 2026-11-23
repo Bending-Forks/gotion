@@ -84,6 +84,19 @@ jobs:
       - run: npm test -w services/editing -w packages/crdt -w client/web
       - run: npm run check:bundle -w client/web
 
+  # ESLint and the fitness functions of dependency-cruiser on the TypeScript packages; tests/fitness.test.mjs, in the test job, checks that each rule fails on a violation
+  lint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
   compose:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -163,7 +176,7 @@ jobs:
           done
 
   success:
-    needs: [test, go, node, compose, kubernetes, site, commits]
+    needs: [test, go, node, lint, compose, kubernetes, site, commits]
     if: always()
     runs-on: ubuntu-latest
     steps:
