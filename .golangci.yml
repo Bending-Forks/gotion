@@ -7,7 +7,7 @@ linters:
   settings:
     depguard:
       rules:
-        # ADR-07 and the hexagon: domain/ and app/ import only the domain of their service and the standard library, minus the packages ADR-07 gives to the chassis, so neither the chassis, nor a library, nor the code an adapter generates. A denied package wins over $gostd, its allow entry being no longer. Go's internal/ rule already keeps a service from importing the domain of another. A new service with a hexagon adds its domain below. The name is what a violation prints, lowercased by golangci-lint.
+        # ADR-07 and the hexagon: domain/ and app/ import only the domain of their service and the standard library, minus the packages ADR-07 gives to the chassis, so neither the chassis, nor a library, nor the code an adapter generates. $gostd allows each standard package by its exact path, so a deny entry beats it only on that exact package, not on its subpackages: each standard package of the ADR-07 table has an entry of its own. Go's internal/ rule already keeps a service from importing the domain of another. A new service with a hexagon adds its domain below. The name is what a violation prints, lowercased by golangci-lint.
         "adr-07: domain/ and app/ import no library":
           list-mode: strict
           files:
@@ -23,6 +23,8 @@ linters:
           deny:
             - pkg: net/http
               desc: "ADR-07: the HTTP server of the chassis, only in the adapters"
+            - pkg: net/http/httputil
+              desc: "ADR-07: the proxy of the gateway, only in the adapters"
             - pkg: log/slog
               desc: "ADR-07: the logs of the chassis; domain/ and app/ return errors and events"
             - pkg: os
