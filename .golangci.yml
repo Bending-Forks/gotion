@@ -1,0 +1,24 @@
+version: "2"
+
+linters:
+  # The standard linters of golangci-lint, plus the fitness functions on imports
+  enable:
+    - depguard
+  settings:
+    depguard:
+      rules:
+        # ADR-07 and the hexagon: no chassis, no library and no generated code in domain/ and app/,
+        # which import only the standard library and the domain of their service. Go's internal/
+        # rule already keeps a service from importing the domain of another.
+        "ADR-07: domain/ and app/ import only the standard library and domain/":
+          list-mode: strict
+          files:
+            - "**/internal/domain/**"
+            - "**/internal/app/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/Bending-Forks/gotion/services/account/internal/domain
+            - github.com/Bending-Forks/gotion/services/membership/internal/domain
+            - github.com/Bending-Forks/gotion/services/discussion/internal/domain
+            - github.com/Bending-Forks/gotion/services/notification/internal/domain
