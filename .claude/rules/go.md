@@ -13,7 +13,7 @@ These rules apply to every Go module: the services, the gateway and the chassis.
 - The `go` directive, 1.25, is the oldest Go we support: use what it offers (`slices`, `maps`, `cmp`, `min` and `max`, range over integers and over iterators, `errors.Join`, `sync.OnceValue`, `sync.WaitGroup.Go`, `t.Context()`, `testing/synctest`) and nothing newer. Raising it is a decision, not a cleanup.
 - The standard library first, then the libraries ADR-07 chose. Any other dependency, test-only ones included (`go.uber.org/goleak`, `golang.org/x/sync`), needs a reason in the PR; replacing a chosen one needs a decision.
 - A code generator is a tool of the module that runs it, added with `go get -tool`, so `go.mod` pins its version and Renovate updates it. The `//go:generate` line sits next to the adapter that uses the generated code; the output is committed and never edited by hand.
-- Before a commit, `gofmt -l`, `go vet` and `go test -race` pass on the module you changed (its path is in the rule of the package). The CI also runs golangci-lint with `.golangci.yml`, whose depguard rule lets `domain/` and `app/` import only the standard library and `domain/` (ADR-07): a new service with a hexagon adds its `internal/domain` to the allow list of the rule.
+- Before a commit, `gofmt -l`, `go vet` and `go test -race` pass on the module you changed (its path is in the rule of the package). The CI also runs golangci-lint with `.golangci.yml`, whose depguard rule lets `domain/` and `app/` import only `domain/` and the standard library, minus `net/http`, `log/slog` and `os`, which ADR-07 gives to the chassis: a new service with a hexagon adds its `internal/domain` to the allow list of the rule.
 
 ## Errors
 
