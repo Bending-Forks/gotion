@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { after, before, describe, test } from 'node:test';
 import { decodeOperation, PROTOCOL_VERSION, type Operation } from '@gotion/crdt';
-import { Pool } from 'pg';
+import { Client, Pool } from 'pg';
 import { LogExtendedError, type SessionLog } from '../app/session-log.ts';
 import { createSessionLog } from './log-store.ts';
 import { migrate } from './postgres.ts';
-import { createTestDatabase } from './test-database.ts';
+import { createTestDatabase } from './database-fixture.ts';
 
 // Integration test against a real PostgreSQL, with the migrations of Editing: TEST_DATABASE_URL names a server where the test may create and drop a database.
 const server = process.env.TEST_DATABASE_URL;
@@ -14,16 +14,16 @@ const server = process.env.TEST_DATABASE_URL;
 const edit = (counter: number): Operation => ({ type: 'insertText', version: 1, id: { replica: 3, counter }, at: { parent: null, side: 'right' }, text: 'ciao' });
 
 describe('the session log on PostgreSQL', { skip: !server && 'TEST_DATABASE_URL is not set' }, () => {
+  let url: string;
   let pool: Pool;
   let log: SessionLog;
   let drop: () => Promise<void>;
 
   before(async () => {
-    const db = await createTestDatabase(server!);
-    drop = db.drop;
+    ({ url, drop } = await createTestDatabase(server!));
     const silent = { debug() {}, info() {}, warn() {}, error() {} };
-    await migrate(db.url, fileURLToPath(new URL('../../migrations', import.meta.url)), silent);
-    pool = new Pool({ connectionString: db.url });
+    await migrate(url, fileURLToPath(new URL('../../migrations', import.meta.url)), silent);
+    pool = new Pool({ connectionString: url });
     log = createSessionLog(pool);
   });
   after(async () => {
@@ -46,8 +46,11 @@ describe('the session log on PostgreSQL', { skip: !server && 'TEST_DATABASE_URL 
     const page = crypto.randomUUID();
     await log.append(page, 1, edit(1));
 
-    // Another connection sees only committed rows.
-    const { rows } = await pool.query("SELECT operation->'version' AS version FROM session_log WHERE page_id = $1 AND seq = 1", [page]);
+    // A connection outside the pool sees only committed rows: the pool could hand back the very connection of the append.
+    const reader = new Client(url);
+    await reader.connect();
+    const { rows } = await reader.query("SELECT operation->'version' AS version FROM session_log WHERE page_id = $1 AND seq = 1", [page]);
+    await reader.end();
     assert.deepEqual(rows, [{ version: PROTOCOL_VERSION }]);
   });
 

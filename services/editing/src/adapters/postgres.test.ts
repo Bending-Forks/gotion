@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { Client } from 'pg';
 import { migrate } from './postgres.ts';
-import { createTestDatabase } from './test-database.ts';
+import { createTestDatabase } from './database-fixture.ts';
 
 // Integration test against a real PostgreSQL: TEST_DATABASE_URL names a server where the test may create and drop a database.
 const server = process.env.TEST_DATABASE_URL;
