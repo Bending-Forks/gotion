@@ -11,9 +11,7 @@ import (
 	"testing"
 )
 
-// ADR-03: Discussion asks Membership through its query and consumes none of its events. The types
-// of an event are generated in the consumer, so no import gives it away: the check looks for the
-// names of the events of Membership in the Go code of Discussion instead.
+// ADR-03: Discussion asks Membership through its query and consumes none of its events. The types of an event are generated in the consumer, so no import gives it away: the check looks for the names of the events of Membership in the Go code of Discussion instead.
 func TestDiscussionConsumesNoEventOfMembership(t *testing.T) {
 	t.Parallel()
 	names := membershipEventNames(t)
@@ -43,9 +41,7 @@ func TestDiscussionConsumesNoEventOfMembership(t *testing.T) {
 	})
 }
 
-// membershipEventNames returns what code that consumes an event of Membership names: the file of
-// its schema, from which its types are generated, and its type, as in the envelope and in the
-// title of the schema.
+// membershipEventNames returns what code that consumes an event of Membership names: the file of its schema, from which its types are generated, and its type, as in the envelope and in the title of the schema.
 func membershipEventNames(t *testing.T) []string {
 	t.Helper()
 	dir := filepath.Join("..", "membership", "api", "events")
@@ -78,8 +74,7 @@ func membershipEventNames(t *testing.T) []string {
 	return names
 }
 
-// goFilesNaming returns the Go files under root, tests and testdata left out, that contain one of
-// names.
+// goFilesNaming returns the Go files under root, tests and testdata left out, that contain one of names.
 func goFilesNaming(root string, names []string) ([]string, error) {
 	var found []string
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
