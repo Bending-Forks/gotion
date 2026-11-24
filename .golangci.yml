@@ -9,8 +9,9 @@ linters:
       rules:
         # ADR-07 and the hexagon: no chassis, no library and no generated code in domain/ and app/,
         # which import only the standard library and the domain of their service. Go's internal/
-        # rule already keeps a service from importing the domain of another.
-        "ADR-07: domain/ and app/ import only the standard library and domain/":
+        # rule already keeps a service from importing the domain of another. A new service with a
+        # hexagon adds its domain below. The name is what a violation prints, lowercased by golangci-lint.
+        "adr-07: domain/ and app/ import only the standard library and domain/":
           list-mode: strict
           files:
             - "**/internal/domain/**"

@@ -58,10 +58,11 @@ jobs:
             echo "::error::golangci-lint passes on the violations in tests/fixtures/fitness/"
             exit 1
           fi
-          echo "$out"
           for file in services/account/internal/domain/chassis.go services/account/internal/app/chassis.go; do
-            grep -q "$file:.*(depguard)" <<< "$out" || { echo "::error::depguard does not fail on $file"; exit 1; }
+            grep -q "$file:.*(depguard)" <<< "$out" || { echo "$out"; echo "::error::depguard does not fail on $file"; exit 1; }
           done
+          # The prefix keeps the Go problem matcher of setup-go from annotating the expected violations as errors
+          sed 's/^/expected: /' <<< "$out"
 
   node:
     if: github.event_name == 'pull_request'
