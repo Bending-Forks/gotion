@@ -1,0 +1,44 @@
+# The labels of a pull request, one per part of the repository it changes. notion.yml applies them on every change to the
+# pull request, removes those that no longer match, and copies them, with any added by hand, into the page of the pull
+# request on Notion. The type of change is no label: it is in the Conventional Commits title, and the page takes it there.
+account:
+  - changed-files:
+      - any-glob-to-any-file: services/account/**
+membership:
+  - changed-files:
+      - any-glob-to-any-file: services/membership/**
+editing:
+  - changed-files:
+      - any-glob-to-any-file: services/editing/**
+discussion:
+  - changed-files:
+      - any-glob-to-any-file: services/discussion/**
+notification:
+  - changed-files:
+      - any-glob-to-any-file: services/notification/**
+gateway:
+  - changed-files:
+      - any-glob-to-any-file: services/gateway/**
+crdt:
+  - changed-files:
+      - any-glob-to-any-file: packages/crdt/**
+chassis:
+  - changed-files:
+      - any-glob-to-any-file: packages/chassis/**
+web:
+  - changed-files:
+      - any-glob-to-any-file: client/web/**
+contracts:
+  - changed-files:
+      - any-glob-to-any-file: [api/**, services/*/api/**]
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: docs/**
+ci:
+  - changed-files:
+      - any-glob-to-any-file: .github/**
+infrastructure:
+  - changed-files:
+      - any-glob-to-any-file: [compose.yaml, '**/Dockerfile']
+dependencies:
+  - head-branch: ^renovate/

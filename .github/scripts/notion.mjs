@@ -1,6 +1,6 @@
 // Keeps the Pull Requests database on Notion in step with GitHub, for the notion.yml workflow:
-// - on every pull_request event the page of the pull request gets its title, state, author, branch and dates, and its
-//   Tasks relation becomes the tasks of the Tasks Tracker that the description links to;
+// - on every pull_request event the page of the pull request gets its title, state, author, branch, labels and dates,
+//   and its Tasks relation becomes the tasks of the Tasks Tracker that the description links to;
 // - when a pull request is merged, each of its tasks moves to Done once none of the task's pull requests is still open.
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +35,7 @@ export function properties(pr, tasks) {
     Opened: { date: { start: pr.created_at } },
     Merged: { date: pr.merged_at ? { start: pr.merged_at } : null },
     Tasks: { relation: tasks.map((id) => ({ id })) },
+    Labels: { multi_select: pr.labels.map(({ name }) => ({ name })) },
   };
 }
 
@@ -82,7 +83,9 @@ async function main() {
   if (!NOTION_API_TOKEN) return console.log('::notice::NOTION_API_TOKEN is not set: nothing to do');
   if (GITHUB_EVENT_NAME === 'pull_request') {
     const { pull_request } = JSON.parse(await readFile(GITHUB_EVENT_PATH, 'utf8'));
-    return sync(pull_request);
+    // The labeler step of notion.yml has just changed the labels, so those in the event are out of date
+    const labels = await call(`${pull_request.issue_url}/labels?per_page=100`, GH_TOKEN);
+    return sync({ ...pull_request, labels });
   }
   // scripts/ff-merge.sh moves main onto the head of the pull request, so the pushed commit is that head. GitHub may not
   // have marked the pull request merged yet, so the push itself says it is.

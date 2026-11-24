@@ -1,12 +1,12 @@
 name: Notion
 
-# Keeps the Pull Requests database on Notion in step with GitHub, related to the Tasks Tracker through the Notion links in
-# the description of each pull request, and moves to Done the tasks a merged pull request completes. The logic is in
-# .github/scripts/notion.mjs.
+# Labels each pull request by the parts of the repository it changes (.github/labeler.yml), keeps the Pull Requests
+# database on Notion in step with GitHub, related to the Tasks Tracker through the Notion links in the description of each
+# pull request, and moves to Done the tasks a merged pull request completes. The logic is in .github/scripts/notion.mjs.
 # Separate from the CI: it checks nothing, and a Notion outage must not turn `success` red.
 on:
   pull_request:
-    types: [opened, edited, reopened, closed, ready_for_review, converted_to_draft]
+    types: [opened, edited, synchronize, labeled, unlabeled, reopened, closed, ready_for_review, converted_to_draft]
   push:
     branches: [main]
 
@@ -21,10 +21,19 @@ concurrency:
 jobs:
   pull-requests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # the labeler
     steps:
       - uses: actions/checkout@v7
         with:
           sparse-checkout: .github/scripts
+      # Here and not in a workflow of its own: a label added with the GITHUB_TOKEN starts no workflow, so the page on
+      # Notion would never learn of it
+      - if: github.event_name == 'pull_request'
+        uses: actions/labeler@v7
+        with:
+          sync-labels: true
       - run: node .github/scripts/notion.mjs
         env:
           NOTION_API_TOKEN: ${{ secrets.NOTION_API_TOKEN }}

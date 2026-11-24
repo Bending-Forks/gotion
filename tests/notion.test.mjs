@@ -32,7 +32,8 @@ test('takes the Conventional Commits type of the title, with or without scope, b
 
 test('builds the properties of the page, with no merge date until the merge', () => {
   const pr = { number: 7, title: 'feat: "quoted"', html_url: 'https://github.com/x/y/pull/7', state: 'open', draft: false,
-    user: { login: 'someone' }, head: { ref: 'feat/x' }, created_at: '2026-11-19T09:00:00Z', merged_at: null };
+    user: { login: 'someone' }, head: { ref: 'feat/x' }, created_at: '2026-11-19T09:00:00Z', merged_at: null,
+    labels: [{ id: 1, name: 'editing', color: 'ededed' }, { id: 2, name: 'crdt', color: 'ededed' }] };
   const p = properties(pr, [id]);
   assert.equal(p.Title.title[0].text.content, '#7 feat: "quoted"');
   assert.equal(p.State.status.name, 'Open');
@@ -40,4 +41,6 @@ test('builds the properties of the page, with no merge date until the merge', ()
   assert.equal(properties({ ...pr, title: 'no type' }, []).Type.select, null);
   assert.equal(p.Merged.date, null);
   assert.deepEqual(p.Tasks.relation, [{ id }]);
+  assert.deepEqual(p.Labels.multi_select, [{ name: 'editing' }, { name: 'crdt' }]);
+  assert.deepEqual(properties({ ...pr, labels: [] }, []).Labels.multi_select, []);
 });
