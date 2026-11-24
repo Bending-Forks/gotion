@@ -55,7 +55,8 @@ jobs:
         run: |
           # The Go problem matcher of setup-go would annotate the expected violations as errors; this is the last step of the job
           echo "::remove-matcher owner=go::"
-          if out=$(golangci-lint run --config ../../../.golangci.yml ./... 2>&1); then
+          # mod: the fixtures have no go.sum, so Go resolves the dependencies the chassis will have
+          if out=$(golangci-lint run --config ../../../.golangci.yml --modules-download-mode=mod ./... 2>&1); then
             echo "$out"
             echo "::error::golangci-lint passes on the violations in tests/fixtures/fitness/"
             exit 1
