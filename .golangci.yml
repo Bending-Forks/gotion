@@ -4,6 +4,10 @@ linters:
   # The standard linters of golangci-lint, plus the fitness functions on imports
   enable:
     - depguard
+  # An unchecked Close, Flush or print, as in a deferred Close, is not reported: the default of golangci-lint v1
+  exclusions:
+    presets:
+      - std-error-handling
   settings:
     depguard:
       rules:
