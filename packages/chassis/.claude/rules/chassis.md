@@ -10,4 +10,4 @@
 
 ## State
 
-`server`, `health`, `config`, `logging`, `metrics` (Prometheus HTTP metrics) and `queryclient` are implemented, with a runnable example in `cmd/example`. `postgres`, `consumer`, `outbox` and `token` hold just their `doc.go`.
+`server`, `health`, `config`, `logging`, `metrics` (Prometheus HTTP metrics) and `queryclient` are implemented, with a runnable example in `cmd/example`. `token` signs and checks the sign-in token of ADR-09, and `config` reads its keys from `TOKEN_PRIVATE_KEY` and `TOKEN_PUBLIC_KEY`. `postgres`, `consumer` and `outbox` hold just their `doc.go`.
