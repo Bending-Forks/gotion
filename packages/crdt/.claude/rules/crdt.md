@@ -7,3 +7,7 @@
 - Every operation carries the version of the protocol, because the session log is read again after the protocol changes (ADR-02). The JSON of the stored operations and block contents is pinned in `codec.test.ts`: changing it means a new version and a way to read the older one.
 - `schema.ts` has the block schema, `protocol.ts` the operations, the messages and the close codes of the WebSocket, `codec.ts` their encoders and decoders. The decoders refuse any field a type does not have, and the encoders check a value with them before they write it. A new type of block is a member of `BlockContent` and a case of `decodeBlockContent`, never a new operation (QA-09).
 - The sequence follows Fugue, the tree the move of Kleppmann et al. with a position key among siblings, and Editing numbers each replica at join (ADR-01; the choices are in Implementation, CRDT package).
+
+## State
+
+The block schema, the identities and the protocol are implemented, with their JSON encoders and strict decoders. The CRDT itself, the sequence and the tree, not yet.

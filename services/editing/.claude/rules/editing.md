@@ -9,3 +9,7 @@
 - `npm run gen:events -w services/editing` writes the types of the events of `api/events/` into `src/adapters/events/`; run it after changing a schema there, and never edit those files by hand.
 - Page Deleted and Block Deleted are published straight to Kafka, with no outbox (ADR-05). The append to the session log commits before the ack (ADR-06).
 - The roles are a local copy kept from the events of Membership through an anticorruption layer; Membership is asked only when the copy has no row (ADR-03).
+
+## State
+
+The chassis is in `src/adapters/`, wired in `src/main.ts`: configuration from environment variables (`DATABASE_URL`, `KAFKA_BROKERS`, `PORT`, `LOG_LEVEL`), JSON logs by pino, the Kafka client logging through it too, `/health/live`, `/health/ready` (the database, and Kafka by listing the topics through the admin client of the producer) and `/metrics` with `fastify-metrics`, and the `node-pg-migrate` migrations at start under its advisory lock in `wait` mode. The test that two instances apply a migration once takes its PostgreSQL from `TEST_DATABASE_URL`, which the `node` job of the CI sets to the `editing-db` server of `compose.yaml`. `api/` has the OpenAPI specification, with Set title, icon, cover and one query, the workspace of a page, which Discussion asks when it opens a thread since a `PageId` does not tell its workspace, and the AsyncAPI specification, with Page Deleted and Block Deleted. No domain or application service yet.

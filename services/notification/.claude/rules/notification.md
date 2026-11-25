@@ -4,3 +4,7 @@
 - In-app notifications of invitations and mentions (US-10).
 - It publishes nothing, so it has no outbox (ADR-05), and it asks no other service.
 - Member Invited and Comment Posted are consumed through an anticorruption layer that turns them into its own `Subject`, an invitation or a mention.
+
+## State
+
+Only the skeleton; `main.go` is empty.
