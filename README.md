@@ -57,9 +57,13 @@ On rootless Podman, a Compose that goes through the Podman socket does not work 
 `deploy/kubernetes/` holds the Kubernetes manifests, built with Kustomize, which is part of `kubectl`. So far they run Kafka with its topics and the five PostgreSQL servers, each as a StatefulSet with its own volume, in the namespace `gotion` of a single-node cluster such as [kind](https://kind.sigs.k8s.io/). From the root of the repository, with `kubectl` pointing at the cluster:
 
 ```sh
-deploy/kubernetes/secrets.sh && kubectl apply -k deploy/kubernetes
+deploy/kubernetes/secrets.sh
+kubectl delete job kafka-topics --namespace gotion --ignore-not-found
+kubectl apply -k deploy/kubernetes
 kubectl wait --namespace gotion --for=condition=Complete job/kafka-topics --timeout=300s  # returns once the topics exist
 ```
+
+The same commands update an installation. They delete the Job `kafka-topics` first because Kubernetes refuses any change to the pod template of an existing Job, so an update that brings a new Kafka image would fail on the old one. The new Job finds the topics already there and leaves them as they are (`--if-not-exists`).
 
 `secrets.sh` creates the Secret of each database, `<service>-db`, with the name of the service as user and database and a random password, and keeps a Secret that already exists, since a server takes its password only on its first start. No credential is in the repository: `kubectl get secret account-db --namespace gotion -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d` prints one. Inside the cluster Kafka is at `kafka:9092` and each server at `<service>-db:5432`, the same names as in Compose, and nothing is reachable from outside it. A pod that is deleted or crashes comes back with its data, which stays on the volume of its StatefulSet; `kubectl delete namespace gotion` deletes the data too.
 

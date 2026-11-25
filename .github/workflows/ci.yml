@@ -108,12 +108,10 @@ jobs:
       # An empty single-node cluster
       - uses: helm/kind-action@v1.15.2
       # The commands of the README
-      - run: deploy/kubernetes/secrets.sh && kubectl apply -k deploy/kubernetes
-      # A second run must keep the passwords the servers already took
       - run: |
-          before=$(kubectl get secret account-db --namespace gotion -o jsonpath='{.data.POSTGRES_PASSWORD}')
           deploy/kubernetes/secrets.sh
-          [ "$before" = "$(kubectl get secret account-db --namespace gotion -o jsonpath='{.data.POSTGRES_PASSWORD}')" ]
+          kubectl delete job kafka-topics --namespace gotion --ignore-not-found
+          kubectl apply -k deploy/kubernetes
       - run: kubectl wait --namespace gotion --for=condition=Complete job/kafka-topics --timeout=300s
       - run: kubectl wait --namespace gotion --for=condition=Ready pods --selector=app.kubernetes.io/name --timeout=300s
       # The data must outlive the pod: write a message and a row with the credentials of the Secret, delete the pods, read both back from their replacements. One PostgreSQL stands for the five, which share their manifest.
@@ -127,6 +125,14 @@ jobs:
           [ "$message" = survived ]
           row=$(kubectl exec account-db-0 --namespace gotion -- sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT n FROM restart"')
           [ "$row" = 42 ]
+      # The same commands again, as for an update: they must keep the passwords the servers already took, and the Job, deleted and created again, must complete with the topics already there
+      - run: |
+          before=$(kubectl get secret account-db --namespace gotion -o jsonpath='{.data.POSTGRES_PASSWORD}')
+          deploy/kubernetes/secrets.sh
+          kubectl delete job kafka-topics --namespace gotion --ignore-not-found
+          kubectl apply -k deploy/kubernetes
+          [ "$before" = "$(kubectl get secret account-db --namespace gotion -o jsonpath='{.data.POSTGRES_PASSWORD}')" ]
+          kubectl wait --namespace gotion --for=condition=Complete job/kafka-topics --timeout=300s
       - if: failure()
         run: |
           kubectl get pods,pvc --namespace gotion

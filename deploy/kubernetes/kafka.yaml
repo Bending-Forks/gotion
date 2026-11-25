@@ -74,7 +74,7 @@ spec:
           requests:
             storage: 2Gi
 ---
-# Creates one topic per upstream context, named after it (Contracts), as kafka-topics does in compose.yaml. Notification publishes nothing, so it has no topic. --if-not-exists makes a second run harmless.
+# Creates one topic per upstream context, named after it (Contracts), as kafka-topics does in compose.yaml. Notification publishes nothing, so it has no topic. --if-not-exists makes a second run harmless. Kubernetes refuses any change to the pod template of an existing Job, so the commands of the README delete this one before every apply.
 apiVersion: batch/v1
 kind: Job
 metadata:
