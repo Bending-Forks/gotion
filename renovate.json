@@ -15,6 +15,11 @@
   "packageRules": [
     { "matchManagers": ["github-actions"], "semanticCommitType": "ci" },
     { "matchDatasources": ["npm"], "minimumReleaseAge": "3 days" },
+    {
+      "description": "Propose only the releases that run on our runtimes: the go directive of go.mod, the engines of package.json",
+      "matchManagers": ["gomod", "npm"],
+      "constraintsFiltering": "strict"
+    },
     { "matchUpdateTypes": ["major"], "dependencyDashboardApproval": true },
     {
       "description": "Node.js 24: the Kafka client of Editing has prebuilt binaries only up to it",
