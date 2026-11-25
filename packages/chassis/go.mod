@@ -3,6 +3,7 @@ module github.com/Bending-Forks/gotion/packages/chassis
 go 1.25.0
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/prometheus/client_golang v1.24.1
 	github.com/sony/gobreaker/v2 v2.4.0
 )
