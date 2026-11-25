@@ -7,7 +7,7 @@ paths:
 
 Each of these services is one bounded context. Its hexagon is in `internal/` (`src/` in Editing):
 
-- `domain/` holds the aggregates, value objects and rules of the bounded context. In Go it imports only the standard library; in Editing only `@gotion/crdt`, the model of the document, and no `node:` module. No chassis, no generated code, no I/O.
+- `domain/` holds the aggregates, value objects and rules of the bounded context. In Go it imports only the standard library; in Editing only `@gotion/crdt`, the model of the document, which imports nothing outside itself, and no `node:` module. No chassis, no generated code, no I/O.
 - `app/` holds one application service per command, query or policy. It declares the ports it needs as interfaces (a repository, the outbox, the query to another service) and imports only `domain/`; in Editing only the domain sees `@gotion/crdt`, and re-exports what `app/` needs of it.
 - `adapters/` implements the ports and calls the application services: the REST server, the Kafka consumers, the repositories on PostgreSQL, the clients of other services. Libraries and the chassis are imported only here and in `main.go` (`src/main.ts`).
 - `main.go` (`src/main.ts`) reads the configuration, builds the adapters and connects them to the ports, with no logic of its own.

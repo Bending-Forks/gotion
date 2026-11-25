@@ -30,6 +30,13 @@ export default {
       to: { path: '(^|node_modules/)(yjs|y-[^/]+|@y/[^/]+|automerge|@automerge/[^/]+|loro-crdt)(/|$)|node_modules/@blocknote/core/(dist/y(js)?\\.js|types/src/y(js)?/)' },
     },
     {
+      name: 'crdt-imports-only-itself',
+      comment: 'ADR-01 and the hexagon: the CRDT, the model of the document that the domain of Editing imports, imports only itself: no library and no node: module, so the domain of Editing stays free of them too',
+      severity: 'error',
+      from: { path: '^packages/crdt/src/', pathNot: '\\.test\\.ts$' },
+      to: { pathNot: '^packages/crdt/src/' },
+    },
+    {
       name: 'editing-domain-imports-only-crdt',
       comment: 'ADR-07 and the hexagon: the domain of Editing imports only itself and @gotion/crdt, the model of the document: no library (ADR-07), no node: module, no other layer',
       severity: 'error',
