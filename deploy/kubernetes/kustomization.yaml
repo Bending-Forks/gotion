@@ -1,6 +1,6 @@
 # The manifests of Gotion on a single-node cluster (kind or Minikube), all in the namespace gotion. The credentials of the
 # databases are not here: secrets.sh creates them in the cluster. From the root of the repository:
-#   kubectl apply -k deploy/kubernetes && deploy/kubernetes/secrets.sh
+#   deploy/kubernetes/secrets.sh && kubectl apply -k deploy/kubernetes
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: gotion

@@ -39,6 +39,6 @@ ci:
       - any-glob-to-any-file: .github/**
 infrastructure:
   - changed-files:
-      - any-glob-to-any-file: [compose.yaml, '**/Dockerfile']
+      - any-glob-to-any-file: [compose.yaml, '**/Dockerfile', deploy/**]
 dependencies:
   - head-branch: ^renovate/

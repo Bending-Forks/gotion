@@ -99,6 +99,40 @@ jobs:
       - if: failure()
         run: docker compose logs
 
+  kubernetes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      # An empty single-node cluster
+      - uses: helm/kind-action@v1.15.2
+      # The commands of the README
+      - run: deploy/kubernetes/secrets.sh && kubectl apply -k deploy/kubernetes
+      # A second run must keep the passwords the servers already took
+      - run: |
+          before=$(kubectl get secret account-db --namespace gotion -o jsonpath='{.data.POSTGRES_PASSWORD}')
+          deploy/kubernetes/secrets.sh
+          [ "$before" = "$(kubectl get secret account-db --namespace gotion -o jsonpath='{.data.POSTGRES_PASSWORD}')" ]
+      - run: kubectl wait --namespace gotion --for=condition=Complete job/kafka-topics --timeout=300s
+      - run: kubectl wait --namespace gotion --for=condition=Ready pods --selector=app.kubernetes.io/name --timeout=300s
+      # The data must outlive the pod: write a message and a row with the credentials of the Secret, delete the pods, read both
+      # back from their replacements. One PostgreSQL stands for the five, which share their manifest.
+      - run: |
+          echo survived | kubectl exec --stdin kafka-0 --namespace gotion -- /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic account
+          kubectl exec account-db-0 --namespace gotion -- sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "CREATE TABLE restart (n int); INSERT INTO restart VALUES (42)"'
+          kubectl delete pod kafka-0 account-db-0 --namespace gotion
+          kubectl rollout status statefulset/kafka --namespace gotion --timeout=300s
+          kubectl rollout status statefulset/account-db --namespace gotion --timeout=300s
+          message=$(kubectl exec kafka-0 --namespace gotion -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic account --from-beginning --max-messages 1 --timeout-ms 60000)
+          [ "$message" = survived ]
+          row=$(kubectl exec account-db-0 --namespace gotion -- sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT n FROM restart"')
+          [ "$row" = 42 ]
+      - if: failure()
+        run: |
+          kubectl get pods,pvc --namespace gotion
+          for pod in $(kubectl get pods --namespace gotion -o name); do kubectl logs "$pod" --namespace gotion --all-containers --prefix; done
+
   site:
     runs-on: ubuntu-latest
     steps:
@@ -124,7 +158,7 @@ jobs:
           done
 
   success:
-    needs: [test, go, node, compose, site, commits]
+    needs: [test, go, node, compose, kubernetes, site, commits]
     if: always()
     runs-on: ubuntu-latest
     steps:
