@@ -252,8 +252,7 @@ On the bad side:
   the bound of QA-06.
 - The SLI of QA-01 is measured with the table of the roles in place, so a call to Membership on
   the path of an edit shows up as a slower ack.
-- A fitness function checks that only the adapter of `AccessLookupService` in Editing consumes
-  the events of Membership, and that Discussion consumes none of them.
+- A fitness function checks that in Editing only the Kafka consumer of the events of Membership names them, so they reach the copy of the roles behind `AccessLookupService` only through its anticorruption layer, and that Discussion consumes none of them.
 
 ### ADR-04: Editing runs on Node.js with the CRDT of the client, the other services on Go
 

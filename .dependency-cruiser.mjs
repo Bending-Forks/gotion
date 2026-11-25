@@ -44,10 +44,10 @@ export default {
       to: { pathNot: '^(services/editing/src/(app|domain)|packages/crdt/src)/' },
     },
     {
-      name: 'membership-events-only-in-roles-adapter',
-      comment: 'ADR-03: only the adapter of AccessLookupService in Editing, services/editing/src/adapters/roles/, consumes the events of Membership: the handler of the Kafka consumer for them lives there, and its anticorruption layer feeds the table of the roles and makes a removed member leave the sessions',
+      name: 'membership-events-only-in-their-consumer',
+      comment: 'ADR-03: in Editing only the Kafka consumer of the events of Membership, services/editing/src/adapters/membership-events/, names them: its anticorruption layer turns them into the calls to the application services that keep the copy of the roles and make a removed member leave the sessions',
       severity: 'error',
-      from: { path: '^services/editing/src/', pathNot: '^services/editing/src/adapters/roles/' },
+      from: { path: '^services/editing/src/', pathNot: '^services/editing/src/adapters/membership-events/' },
       to: { path: `/(${membershipEvents})\\.ts$` },
     },
   ],
