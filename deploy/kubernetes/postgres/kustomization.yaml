@@ -1,0 +1,6 @@
+# The PostgreSQL server of one service, as in compose.yaml. Each <service>-db/ next to this folder makes an instance of it
+# named after the service, with its own labels, volume and Secret.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - postgres.yaml

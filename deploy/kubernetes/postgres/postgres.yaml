@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  # Headless, the governing Service of the StatefulSet: <service>-db resolves to the pod once it is ready
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+    - name: postgres
+      port: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db
+spec:
+  serviceName: db
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:18-alpine
+          # POSTGRES_USER, POSTGRES_PASSWORD and POSTGRES_DB, from the Secret that secrets.sh creates; each instance sets its name
+          envFrom:
+            - secretRef:
+                name: db
+          ports:
+            - name: postgres
+              containerPort: 5432
+          # Over TCP like the clients: on the first start the entrypoint runs a temporary server on the Unix socket only, to create
+          # the database. No liveness probe: a server that fails exits, and the kubelet restarts it.
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 1Gi
