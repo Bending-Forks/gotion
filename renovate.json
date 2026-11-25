@@ -12,6 +12,7 @@
   "automergeStrategy": "squash",
   "platformAutomerge": false,
   "lockFileMaintenance": { "enabled": true },
+  "postUpdateOptions": ["npmDedupe"],
   "kubernetes": { "managerFilePatterns": ["/^deploy/kubernetes/.+\\.ya?ml$/"] },
   "packageRules": [
     { "matchManagers": ["github-actions"], "semanticCommitType": "ci" },

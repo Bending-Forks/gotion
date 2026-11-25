@@ -84,7 +84,7 @@ jobs:
       - run: npm test -w services/editing -w packages/crdt -w client/web
       - run: npm run check:bundle -w client/web
 
-  # ESLint and the fitness functions of dependency-cruiser on the TypeScript packages; tests/fitness.test.mjs, in the test job, checks that each rule fails on a violation
+  # ESLint and the fitness functions of dependency-cruiser on the TypeScript packages; tests/fitness.test.mjs, in the test job, checks that each rule fails on a violation. Then the duplicates in package-lock.json
   lint:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -96,6 +96,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      # npm find-dupes prints what npm dedupe would add, change or remove in package-lock.json, and exits 0 even then; out= makes a failed npm fail the step
+      - run: |
+          out=$(npm find-dupes --no-audit --no-fund)
+          if grep -E '^(add|change|remove) ' <<< "$out"; then
+            echo "::error::npm dedupe would merge these versions in package-lock.json: run npm dedupe and commit the lockfile"
+            exit 1
+          fi
 
   compose:
     if: github.event_name == 'pull_request'
