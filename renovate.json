@@ -1,12 +1,25 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":semanticCommits", ":semanticCommitTypeAll(chore)"],
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
+    "group:allNonMajor",
+    "schedule:weekly"
+  ],
+  "timezone": "Europe/Rome",
   "automerge": true,
   "automergeStrategy": "squash",
   "platformAutomerge": false,
   "lockFileMaintenance": { "enabled": true },
   "packageRules": [
     { "matchManagers": ["github-actions"], "semanticCommitType": "ci" },
-    { "matchDatasources": ["npm"], "minimumReleaseAge": "3 days" }
+    { "matchDatasources": ["npm"], "minimumReleaseAge": "3 days" },
+    { "matchUpdateTypes": ["major"], "dependencyDashboardApproval": true },
+    {
+      "description": "Node.js 24: the Kafka client of Editing has prebuilt binaries only up to it",
+      "matchPackageNames": ["node", "@types/node"],
+      "allowedVersions": "24.x"
+    }
   ]
 }
