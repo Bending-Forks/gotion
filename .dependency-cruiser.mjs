@@ -38,10 +38,10 @@ export default {
     },
     {
       name: 'editing-app-imports-only-domain',
-      comment: 'ADR-07 and the hexagon: the application services of Editing import only themselves, the domain and @gotion/crdt: no library (ADR-07), no node: module, no adapter',
+      comment: 'ADR-07 and the hexagon: the application services of Editing import only themselves and the domain, which alone sees the CRDT: no library (ADR-07), no node: module, no adapter',
       severity: 'error',
       from: { path: '^services/editing/src/app/', pathNot: '\\.test\\.ts$' },
-      to: { pathNot: '^(services/editing/src/(app|domain)|packages/crdt/src)/' },
+      to: { pathNot: '^services/editing/src/(app|domain)/' },
     },
     {
       name: 'membership-events-only-in-their-consumer',
