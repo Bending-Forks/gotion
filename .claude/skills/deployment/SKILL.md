@@ -1,6 +1,6 @@
 ---
 name: deployment
-description: Package and run the system - the Dockerfile of a service, the gateway or the client, Docker Compose for development and for the whole system, the Kubernetes manifests (Deployment, StatefulSet, Service, ConfigMap, Secret, Ingress, probes, resources) and the one-command installation of QA-08. Use it for any task on images, Compose, Kubernetes or kind.
+description: Package and run the system - the Dockerfile of a service, the gateway or the client, Docker Compose for development and for the whole system, the Kubernetes manifests (Deployment, StatefulSet, Service, ConfigMap, Secret, Ingress, probes, resources) and the one-command installation of QA-08. Use it for any task on images, Compose, Kubernetes or kind, and before starting, stopping or resetting the Compose instance shared by the worktrees.
 ---
 
 # Deployment
@@ -23,6 +23,14 @@ The target is in *Deployment* (`docs/devops.md`, with its picture) and in *State
 - Every stateful container has a healthcheck that is cheap and changes nothing (`pg_isready`, a metadata request to Kafka), and a service waits for its dependencies with `depends_on` and `condition: service_healthy`.
 - Data lives in named volumes: `docker compose down` keeps them, `down -v` deletes them.
 - Each service runs its migrations at start (ADR-06), so no manual database step is ever needed (QA-08).
+
+### Shared instance
+
+The project of `compose.yaml` is named `gotion`, so every checkout and worktree shares one instance, and it may belong to another session.
+
+- Before you start, stop or reset it, check whether other agent sessions are open (`ListAgents`, `git worktree list`) and what is running (`docker compose ls`).
+- Never stop, recreate or `down` the containers of an instance another session may be using: an `up` from a branch that changes `compose.yaml` recreates them too.
+- When you need an instance of your own, for such a branch or for data you will reset, start a second one with its own name and ports, `COMPOSE_PROJECT_NAME=gotion-<task> GOTION_PORT_PREFIX=<1 to 5> docker compose up -d`, after checking that the name is not in `docker compose ls` and the ports are free (`ss -ltn`); then stop only that one, with the same variables.
 
 ## Kubernetes
 

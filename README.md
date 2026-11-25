@@ -55,3 +55,12 @@ On rootless Podman, a Compose that goes through the Podman socket does not work 
 ## Contributing
 
 Run `npm install` once after cloning: it installs the dependencies of the npm workspaces and the git hooks (through [husky](https://typicode.github.io/husky/)) that check every commit title against [Conventional Commits](https://www.conventionalcommits.org/) and refuse to delete a remote branch with open pull requests into or out of it.
+
+With Claude Code, the project settings (`.claude/settings.json`) turn on two plugins. Install Superpowers once for your user and disable it there, so that it runs in every checkout and worktree of Gotion and nowhere else:
+
+```sh
+claude plugin install superpowers@claude-plugins-official
+claude plugin disable superpowers@claude-plugins-official --scope user
+```
+
+An install with `--scope project` is bound to the path of one folder, so it stops working when the worktree moves and never reaches the others. The `humanizer` plugin comes from its own marketplace: Claude Code offers to install it when you trust the folder, or install it for your user with `claude plugin marketplace add blader/humanizer && claude plugin install humanizer@humanizer`.

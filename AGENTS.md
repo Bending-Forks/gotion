@@ -6,14 +6,14 @@ When the checkout is in the SAPSPENOTION workspace and `../CLAUDE.md` exists, re
 
 Before editing or reviewing files, read the rules for every affected path, including when the session starts at the repository root.
 
-- For `**/*.go` and `**/go.mod`, read `.claude/rules/go.md`.
+- For `**/*.go`, `**/go.mod` and `.golangci.yml`, read `.claude/rules/go.md`.
+- For `**/*.ts`, `**/*.tsx`, `**/*.mjs`, `**/package.json`, `**/tsconfig*.json` and `.nvmrc`, read `.claude/rules/node.md`.
+- For `docs/**`, read `.claude/rules/report.md`.
+- For `**/*.md`, read `.claude/rules/markdown.md`.
+- For `CLAUDE.md`, `AGENTS.md`, `**/.claude/**` and `.agents/**`, read `.claude/rules/agent-instructions.md`.
 - For `services/{account,membership,discussion,notification,editing}/**`, read `.claude/rules/hexagon.md`.
-- For files under a service or package, read the applicable Markdown rules in that service or package's `.claude/rules/` directory when it exists. For example, work in `services/editing/` uses `services/editing/.claude/rules/editing.md`.
+- For files under a service, a package or the web client, read the Markdown rules in its `.claude/rules/` directory when it exists, State included. For example, work in `services/editing/` uses `services/editing/.claude/rules/editing.md`, work in `client/web/` uses `client/web/.claude/rules/web.md`.
 
 ## Skills
 
 Use the repository skills in `.agents/skills/` according to their descriptions. Each link points to the shared skill folder, including any scripts and references.
-
-## Writing Markdown
-
-Don't hard-wrap prose in Markdown files: each paragraph, list item or table row is one line in the source, however long. Break lines only where Markdown needs it (a new paragraph, list item, heading, table row or code block), never at a fixed column; the renderer wraps the text. When editing a paragraph, keep it on its one line.
