@@ -48,17 +48,17 @@ jobs:
           install-only: true
       # .golangci.yml: the standard linters, and the depguard rule that is the fitness function of ADR-07
       - run: golangci-lint run $(go list -m -f '{{.Dir}}/...')
-      # The rule must fail on each of its violations in tests/fixtures/fitness/, a module outside go.work
-      - working-directory: tests/fixtures/fitness
+      # The rule must fail on each of its violations in tests/fixtures/fitness/go/, a module outside go.work
+      - working-directory: tests/fixtures/fitness/go
         env:
           GOWORK: "off"
         run: |
           # The Go problem matcher of setup-go would annotate the expected violations as errors; this is the last step of the job
           echo "::remove-matcher owner=go::"
           # mod: the fixtures have no go.sum, so Go resolves the dependencies the chassis will have
-          if out=$(golangci-lint run --config ../../../.golangci.yml --modules-download-mode=mod ./... 2>&1); then
+          if out=$(golangci-lint run --config ../../../../.golangci.yml --modules-download-mode=mod ./... 2>&1); then
             echo "$out"
-            echo "::error::golangci-lint passes on the violations in tests/fixtures/fitness/"
+            echo "::error::golangci-lint passes on the violations in tests/fixtures/fitness/go/"
             exit 1
           fi
           for file in $(find services -name '*.go'); do
