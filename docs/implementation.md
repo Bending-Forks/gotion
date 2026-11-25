@@ -69,7 +69,7 @@ The API gateway and Account, Membership, Discussion and Notification share one G
 - the Kafka publisher, which keys each event by its aggregate;
 - the router of the consumers, which records the identifier of each applied event in the same transaction as its change and skips a repeated one ([Contracts](design.html#contracts));
 - the outbox, with the Forwarder, the task that deletes the old rows and the metrics of the pending rows and of the age of the oldest one;
-- the client of the queries, with a timeout, one retry and a circuit breaker, which refuses the command whenever the call fails ([Dependencies at run time](design.html#dependencies-at-run-time)).
+- the client of the queries, with a timeout, one retry and a circuit breaker, which refuses the command whenever the call fails ([Dependencies at run time](design.html#dependencies-at-run-time)). A 4xx is an answer of the callee and goes back to the adapter; a connection error, the end of the timeout, a 5xx or an open circuit counts as a failure. Until the services are measured, the circuit keeps the defaults of gobreaker: it opens after six consecutive failed calls and lets a trial call through after 60 s.
 
 Run the chassis example from the repository root with `go run ./packages/chassis/cmd/example`. It reads `PORT` at startup (default `8080`), writes JSON logs to standard output and serves both health checks and `/metrics`. A request to `GET /` populates `http_requests_total` by adapter and status code and `http_request_duration_seconds` by adapter. On SIGTERM, the server stops accepting connections and gives in-flight HTTP requests up to ten seconds to finish.
 
