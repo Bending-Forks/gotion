@@ -29,8 +29,12 @@ jobs:
   go:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    # The integration tests of the chassis create and drop their own databases on account-db, a server of compose.yaml
+    env:
+      TEST_DATABASE_URL: postgres://account:account@localhost:5433/account
     steps:
       - uses: actions/checkout@v7
+      - run: docker compose up -d --wait --quiet-pull account-db
       # The go directive of go.work is the oldest Go we support
       - uses: actions/setup-go@v7
         with:
