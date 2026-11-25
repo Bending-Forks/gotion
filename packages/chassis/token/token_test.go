@@ -100,6 +100,11 @@ func decodePart(t *testing.T, part string, v any) {
 	}
 }
 
+// renamedEdDSA signs and verifies like EdDSA but calls itself Ed25519, the name RFC 9864 gives the algorithm.
+type renamedEdDSA struct{ *jwt.SigningMethodEd25519 }
+
+func (renamedEdDSA) Alg() string { return "Ed25519" }
+
 // The Compliance of ADR-09: the gateway accepts only a token that Account signed with EdDSA and that expires.
 func TestVerifyRefuses(t *testing.T) {
 	t.Parallel()
@@ -127,6 +132,9 @@ func TestVerifyRefuses(t *testing.T) {
 	good := signWith(privPEM, now)
 	parts := strings.Split(good, ".")
 	forged := base64.RawURLEncoding.EncodeToString([]byte(`{"sub":"user-2","iat":1,"exp":9999999999}`))
+	// The same Ed25519 signature under another alg name: golang-jwt refuses none and HS256 by the type of the key alone, so only this case fails if the verifier stops accepting EdDSA alone.
+	renamed := renamedEdDSA{jwt.SigningMethodEdDSA}
+	jwt.RegisterSigningMethod(renamed.Alg(), func() jwt.SigningMethod { return renamed })
 
 	for _, tt := range []struct {
 		name  string
@@ -134,6 +142,7 @@ func TestVerifyRefuses(t *testing.T) {
 	}{
 		{"a token with no signature (alg none)", sign(jwt.SigningMethodNone, valid, jwt.UnsafeAllowNoneSignatureType)},
 		{"a token signed with HS256 and the public key as secret", sign(jwt.SigningMethodHS256, valid, pubPEM)},
+		{"a token signed with the key of Account under another alg name", sign(renamed, valid, priv)},
 		{"a token signed with another key", signWith(otherPrivPEM, now)},
 		{"an expired token", signWith(privPEM, now.Add(-8*time.Hour-time.Second))},
 		{"a token without exp", sign(jwt.SigningMethodEdDSA, jwt.MapClaims{"sub": "user-1", "iat": now.Unix()}, priv)},
