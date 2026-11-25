@@ -2,6 +2,7 @@ package queryclient
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -211,6 +212,28 @@ func TestCircuitBreaker(t *testing.T) {
 		resp.Body.Close()
 		if state := client.breaker.State(); state != gobreaker.StateClosed {
 			t.Errorf("after a successful trial call the circuit is %v, want closed", state)
+		}
+	})
+}
+
+func TestCallsCanceledByTheCallerKeepTheCircuitClosed(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		client := newClient(&callee{answers: []func(*http.Request) (*http.Response, error){hang}})
+
+		for range 10 {
+			ctx, cancel := context.WithCancel(t.Context())
+			time.AfterFunc(timeout/2, cancel)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://membership/internal/v1/roles", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := client.Do(req); !errors.Is(err, context.Canceled) {
+				t.Fatalf("Do returned %v, want %v", err, context.Canceled)
+			}
+		}
+		if state := client.breaker.State(); state != gobreaker.StateClosed {
+			t.Errorf("after calls canceled by the caller the circuit is %v, want closed", state)
 		}
 	})
 }

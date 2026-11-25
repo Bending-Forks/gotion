@@ -3,6 +3,7 @@ package queryclient
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,8 +19,12 @@ type Client struct {
 	breaker *gobreaker.CircuitBreaker[*http.Response]
 }
 
-// New returns a Client whose calls each take at most timeout, retry included, behind a circuit breaker with the given settings; a zero field keeps the default of gobreaker.
+// New returns a Client whose calls each take at most timeout, retry included, behind a circuit breaker with the given settings; a zero field keeps the default of gobreaker, except that a call canceled by the caller counts neither as a failure nor as a success.
 func New(timeout time.Duration, breaker gobreaker.Settings) *Client {
+	if breaker.IsExcluded == nil {
+		// Only the caller cancels: the timeout of the call ends in context.DeadlineExceeded, a failure of the callee.
+		breaker.IsExcluded = func(err error) bool { return errors.Is(err, context.Canceled) }
+	}
 	return &Client{http: &http.Client{}, timeout: timeout, breaker: gobreaker.NewCircuitBreaker[*http.Response](breaker)}
 }
 
