@@ -36,8 +36,7 @@ spec:
           ports:
             - name: postgres
               containerPort: 5432
-          # Over TCP like the clients: on the first start the entrypoint runs a temporary server on the Unix socket only, to create
-          # the database. No liveness probe: a server that fails exits, and the kubelet restarts it.
+          # Over TCP like the clients: on the first start the entrypoint runs a temporary server on the Unix socket only, to create the database. No liveness probe: a server that fails exits, and the kubelet restarts it.
           readinessProbe:
             exec:
               command: ["sh", "-c", 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"']

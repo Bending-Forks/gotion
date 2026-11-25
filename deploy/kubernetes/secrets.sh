@@ -1,7 +1,5 @@
 #!/bin/sh
-# Creates in the cluster the Secret of each PostgreSQL server, <service>-db, with the user and database named after the service
-# and a random password, so no credential is ever in the repository. A Secret that already exists is kept: PostgreSQL takes the
-# password only when it creates its data directory, so a new one would lock the services out of their data.
+# Creates in the cluster the Secret of each PostgreSQL server, <service>-db, with the user and database named after the service and a random password, so no credential is ever in the repository. A Secret that already exists is kept: PostgreSQL takes the password only when it creates its data directory, so a new one would lock the services out of their data.
 set -eu
 
 kubectl apply -f "$(dirname "$0")/namespace.yaml"

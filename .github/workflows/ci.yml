@@ -116,8 +116,7 @@ jobs:
           [ "$before" = "$(kubectl get secret account-db --namespace gotion -o jsonpath='{.data.POSTGRES_PASSWORD}')" ]
       - run: kubectl wait --namespace gotion --for=condition=Complete job/kafka-topics --timeout=300s
       - run: kubectl wait --namespace gotion --for=condition=Ready pods --selector=app.kubernetes.io/name --timeout=300s
-      # The data must outlive the pod: write a message and a row with the credentials of the Secret, delete the pods, read both
-      # back from their replacements. One PostgreSQL stands for the five, which share their manifest.
+      # The data must outlive the pod: write a message and a row with the credentials of the Secret, delete the pods, read both back from their replacements. One PostgreSQL stands for the five, which share their manifest.
       - run: |
           echo survived | kubectl exec --stdin kafka-0 --namespace gotion -- /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic account
           kubectl exec account-db-0 --namespace gotion -- sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "CREATE TABLE restart (n int); INSERT INTO restart VALUES (42)"'

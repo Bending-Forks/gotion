@@ -1,5 +1,4 @@
-# Kafka as in compose.yaml: one node that is both broker and controller (KRaft), its log on a volume of its own. The services
-# reach it at kafka:9092, the same address they use in Compose.
+# Kafka as in compose.yaml: one node that is both broker and controller (KRaft), its log on a volume of its own. The services reach it at kafka:9092, the same address they use in Compose.
 apiVersion: v1
 kind: Service
 metadata:
@@ -55,8 +54,7 @@ spec:
           ports:
             - name: kafka
               containerPort: 9092
-          # An open port, not a request through the Kafka tools as in Compose: each of those starts a JVM inside the memory limit.
-          # No liveness probe: a broker that fails exits, and the kubelet restarts it.
+          # An open port, not a request through the Kafka tools as in Compose: each of those starts a JVM inside the memory limit. No liveness probe: a broker that fails exits, and the kubelet restarts it.
           readinessProbe:
             tcpSocket:
               port: kafka
@@ -76,8 +74,7 @@ spec:
           requests:
             storage: 2Gi
 ---
-# Creates one topic per upstream context, named after it (Contracts), as kafka-topics does in compose.yaml. Notification publishes
-# nothing, so it has no topic. --if-not-exists makes a second run harmless.
+# Creates one topic per upstream context, named after it (Contracts), as kafka-topics does in compose.yaml. Notification publishes nothing, so it has no topic. --if-not-exists makes a second run harmless.
 apiVersion: batch/v1
 kind: Job
 metadata:
