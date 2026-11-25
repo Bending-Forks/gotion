@@ -52,6 +52,17 @@ Each user owns its server, so an integration test can create and drop its own da
 
 On rootless Podman, a Compose that goes through the Podman socket does not work yet: its containers inherit `oom_score_adj` 200 from `podman.service`, every `exec` into them fails, healthchecks included, and Kafka never becomes healthy.
 
+## Kubernetes
+
+`deploy/kubernetes/` holds the Kubernetes manifests, built with Kustomize, which is part of `kubectl`. So far they run Kafka with its topics and the five PostgreSQL servers, each as a StatefulSet with its own volume, in the namespace `gotion` of a single-node cluster such as [kind](https://kind.sigs.k8s.io/). From the root of the repository, with `kubectl` pointing at the cluster:
+
+```sh
+deploy/kubernetes/secrets.sh && kubectl apply -k deploy/kubernetes
+kubectl wait --namespace gotion --for=condition=Complete job/kafka-topics --timeout=300s  # returns once the topics exist
+```
+
+`secrets.sh` creates the Secret of each database, `<service>-db`, with the name of the service as user and database and a random password, and keeps a Secret that already exists, since a server takes its password only on its first start. No credential is in the repository: `kubectl get secret account-db --namespace gotion -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d` prints one. Inside the cluster Kafka is at `kafka:9092` and each server at `<service>-db:5432`, the same names as in Compose, and nothing is reachable from outside it. A pod that is deleted or crashes comes back with its data, which stays on the volume of its StatefulSet; `kubectl delete namespace gotion` deletes the data too.
+
 ## Contributing
 
 Run `npm install` once after cloning: it installs the dependencies of the npm workspaces and the git hooks (through [husky](https://typicode.github.io/husky/)) that check every commit title against [Conventional Commits](https://www.conventionalcommits.org/) and refuse to delete a remote branch with open pull requests into or out of it.

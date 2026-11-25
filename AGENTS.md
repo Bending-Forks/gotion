@@ -12,7 +12,7 @@ Before editing or reviewing files, read the rules for every affected path, inclu
 - For `**/*.md`, read `.claude/rules/markdown.md`.
 - For `CLAUDE.md`, `AGENTS.md`, `**/.claude/**` and `.agents/**`, read `.claude/rules/agent-instructions.md`.
 - For `services/{account,membership,discussion,notification,editing}/**`, read `.claude/rules/hexagon.md`.
-- For files under a service, a package or the web client, read the Markdown rules in its `.claude/rules/` directory when it exists, State included. For example, work in `services/editing/` uses `services/editing/.claude/rules/editing.md`, work in `client/web/` uses `client/web/.claude/rules/web.md`.
+- For files under a service, a package, the web client or `deploy/kubernetes/`, read the Markdown rules in its `.claude/rules/` directory when it exists, State included. For example, work in `services/editing/` uses `services/editing/.claude/rules/editing.md`, work in `client/web/` uses `client/web/.claude/rules/web.md`.
 
 ## Skills
 

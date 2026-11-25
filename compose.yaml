@@ -60,8 +60,7 @@ services:
           /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$$topic" --partitions 3 --replication-factor 1
         done
 
-  # TODO: every user and password is the name of its service, which is safe only on a development machine. The Compose of the whole
-  # system and the Kubernetes manifests must take the credentials from a secret, never from a file in the repository.
+  # TODO: every user and password is the name of its service, which is safe only on a development machine. The Compose of the whole system must take the credentials from a secret, never from a file in the repository, as the Kubernetes manifests do (deploy/kubernetes/secrets.sh).
   account-db:
     <<: *postgres
     environment: { POSTGRES_USER: account, POSTGRES_PASSWORD: account, POSTGRES_DB: account }

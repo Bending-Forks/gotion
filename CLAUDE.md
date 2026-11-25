@@ -14,6 +14,7 @@ Development: the design is written in the report, and the services are being bui
 - `services/`: one service per bounded context (`account`, `membership`, `editing`, `discussion`, `notification`) and the API `gateway`; `packages/`: the Go `chassis` and the `crdt` package shared by Editing and the client; `client/web`: the React client.
 - `api/`: the event envelope shared by every service; each service has its specifications in its own `api/`.
 - `compose.yaml`: Kafka and a PostgreSQL server per service, for development and the integration tests (README).
+- `deploy/kubernetes/`: the Kubernetes manifests, built with Kustomize (README).
 - `tests/`: Node tests of the report's scripts, of `.github/scripts/`, of the envelope and of the validity of every `services/*/api/` specification (Redocly); `npm ci` first.
 - `scripts/` (`ff-merge.sh`, `new-worktree.sh`, `remove-worktree.sh`), `.github/`, `.husky/`, and the files that join the code: `go.work`, the `workspaces` of `package.json`, `tsconfig.base.json`.
 - The instructions for Claude Code: rules in `.claude/rules/` and in `<package>/.claude/rules/`, skills in the `.claude/skills/` folders, organized as `.claude/rules/agent-instructions.md` says.
