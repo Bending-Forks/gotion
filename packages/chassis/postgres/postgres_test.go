@@ -6,44 +6,78 @@ import (
 	"net/url"
 	"os"
 	"slices"
-	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pressly/goose/v3/lock"
 
 	"github.com/Bending-Forks/gotion/packages/chassis/postgres"
 )
 
 // Integration test against a real PostgreSQL: TEST_DATABASE_URL names a server where the test may create and drop a database.
-func TestOpenAppliesEachMigrationOnceWhenTwoInstancesStartTogether(t *testing.T) {
+// A session of the test holds the migration lock, as an instance still migrating would: Open must try the lock, wait without migrating, and migrate once the lock is free.
+func TestOpenMigratesOnlyUnderTheLock(t *testing.T) {
 	server := os.Getenv("TEST_DATABASE_URL")
 	if server == "" {
 		t.Skip("TEST_DATABASE_URL is not set")
 	}
 	ctx := t.Context()
 	dbURL := emptyDatabase(t, server)
+	migrations := fstest.MapFS{"00001_first.sql": {Data: []byte("-- +goose Up\nCREATE TABLE first (id int);\n")}}
 
-	// A migration that fails if it runs twice, and a pause longer than the 1 s goose waits before it retries creating its version table, so that the second instance arrives while the first is migrating.
-	migrations := fstest.MapFS{"00001_first.sql": {Data: []byte("-- +goose Up\nSELECT pg_sleep(2);\nCREATE TABLE first (id int);\n")}}
-
-	var wg sync.WaitGroup
-	pools := make([]*pgxpool.Pool, 2)
-	errs := make([]error, 2)
-	for i := range 2 {
-		wg.Go(func() { pools[i], errs[i] = postgres.Open(ctx, dbURL, migrations) })
+	holder, err := pgx.Connect(ctx, dbURL)
+	if err != nil {
+		t.Fatal(err)
 	}
-	wg.Wait()
-	for i := range 2 {
-		if errs[i] != nil {
-			t.Fatalf("instance %d: Open: %v", i, errs[i])
+	t.Cleanup(func() { _ = holder.Close(context.WithoutCancel(ctx)) })
+	// Open takes goose's default lock, which is scoped to the database.
+	if _, err := holder.Exec(ctx, "SELECT pg_advisory_lock($1)", lock.DefaultLockID); err != nil {
+		t.Fatal(err)
+	}
+
+	type opened struct {
+		pool *pgxpool.Pool
+		err  error
+	}
+	done := make(chan opened, 1)
+	go func() {
+		pool, err := postgres.Open(ctx, dbURL, migrations)
+		done <- opened{pool, err}
+	}()
+
+	// Wait until another session of the database has asked for the lock: goose tries it once a second.
+	for tried := false; !tried; {
+		select {
+		case o := <-done:
+			t.Fatalf("Open returned while another session held the migration lock (err: %v)", o.err)
+		case <-time.After(100 * time.Millisecond):
 		}
-		t.Cleanup(pools[i].Close)
+		err := holder.QueryRow(ctx, "SELECT EXISTS (SELECT FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid() AND query LIKE 'SELECT pg_try_advisory_lock%')").Scan(&tried)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	var pending bool
+	if err := holder.QueryRow(ctx, "SELECT to_regclass('first') IS NULL").Scan(&pending); err != nil {
+		t.Fatal(err)
+	}
+	if !pending {
+		t.Fatal("Open migrated while another session held the migration lock")
 	}
 
-	rows, err := pools[0].Query(ctx, "SELECT version_id FROM goose_db_version WHERE version_id > 0 ORDER BY id")
+	if _, err := holder.Exec(ctx, "SELECT pg_advisory_unlock($1)", lock.DefaultLockID); err != nil {
+		t.Fatal(err)
+	}
+	o := <-done
+	if o.err != nil {
+		t.Fatalf("Open: %v", o.err)
+	}
+	t.Cleanup(o.pool.Close)
+
+	rows, err := o.pool.Query(ctx, "SELECT version_id FROM goose_db_version WHERE version_id > 0 ORDER BY id")
 	if err != nil {
 		t.Fatal(err)
 	}
