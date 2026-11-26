@@ -1,6 +1,6 @@
-# Gotion project instructions for Codex
+# Gotion project instructions for Codex and agy
 
-When the checkout is in the SAPSPENOTION workspace and `../CLAUDE.md` exists, read it first for the shared course context. Read `CLAUDE.md` at the checkout root for Gotion's conventions and workflow. Apply its Git and worktree instructions to Codex sessions. Use Codex's own tools and skill discovery for procedures described there for Claude Code.
+When the checkout is in the SAPSPENOTION workspace and `../CLAUDE.md` exists, read it first for the shared course context. Read `CLAUDE.md` at the checkout root for Gotion's conventions and workflow. Apply its Git and worktree instructions to your sessions. Use your own tools and skill discovery for procedures described there for Claude Code.
 
 ## Rules by path
 
@@ -17,3 +17,5 @@ Before editing or reviewing files, read the rules for every affected path, inclu
 ## Skills
 
 Use the repository skills in `.agents/skills/` according to their descriptions. Each link points to the shared skill folder, including any scripts and references.
+
+The `task-batch` skill has each round of review done by a new reviewer. In Claude Code it is the subagent `.claude/agents/reviewer.md`; Codex and agy have no such subagent, so they launch the reviewer with `.claude/skills/task-batch/scripts/task-batch.sh review`, as the skill says.
