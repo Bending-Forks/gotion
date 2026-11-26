@@ -44,6 +44,33 @@ func Topic(t *testing.T, brokers []string) string {
 	return name
 }
 
+// Produce sends value to topic with key and no header, as the producer of Editing does, and waits for Kafka's acknowledgement.
+func Produce(t *testing.T, brokers []string, topic, key string, value []byte) {
+	t.Helper()
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+	producer, err := sarama.NewSyncProducer(brokers, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = producer.Close() }()
+	if _, _, err := producer.SendMessage(&sarama.ProducerMessage{Topic: topic, Key: sarama.StringEncoder(key), Value: sarama.ByteEncoder(value)}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Eventually polls check until it returns true, and fails the test after timeout.
+func Eventually(t *testing.T, timeout time.Duration, what string, check func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for !check() {
+		if time.Now().After(deadline) {
+			t.Fatalf("%s: not within %s", what, timeout)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
 // Record is a message read from Kafka, with its key and partition.
 type Record struct {
 	Key       string
