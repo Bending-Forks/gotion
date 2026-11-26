@@ -1,6 +1,6 @@
 # Gotion project instructions for Codex and agy
 
-When the checkout is in the SAPSPENOTION workspace and `../CLAUDE.md` exists, read it first for the shared course context. Read `CLAUDE.md` at the checkout root for Gotion's conventions and workflow. Apply its Git and worktree instructions to your sessions. Use your own tools and skill discovery for procedures described there for Claude Code.
+When the checkout is in the SAPSPENOTION workspace and `../CLAUDE.md` exists, read it first for the shared course context. Read `CLAUDE.md` at the checkout root for Gotion's conventions and workflow, then `CLAUDE.local.md` next to it if it exists: the private instructions of whoever works in this checkout, kept out of git, which only Claude Code loads by itself. Apply its Git and worktree instructions to your sessions. Use your own tools and skill discovery for procedures described there for Claude Code.
 
 ## Rules by path
 
