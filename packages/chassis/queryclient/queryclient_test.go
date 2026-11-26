@@ -196,6 +196,56 @@ func TestRetryResendsTheBody(t *testing.T) {
 	})
 }
 
+// closingBody is a request body that records its Close, as a file opened by the caller would need.
+type closingBody struct {
+	io.Reader
+	closed bool
+}
+
+func (b *closingBody) Close() error {
+	b.closed = true
+	return nil
+}
+
+func TestRequestBodiesAreClosed(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		c := &callee{answers: []func(*http.Request) (*http.Response, error){reply(http.StatusOK, "{}")}}
+		client := newClient(c)
+		post := func(rewind bool) (*closingBody, error) {
+			body := &closingBody{Reader: strings.NewReader("{}")}
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://account/internal/v1/workspaces", body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rewind {
+				req.GetBody = func() (io.ReadCloser, error) { return io.NopCloser(strings.NewReader("{}")), nil }
+			}
+			resp, err := client.Do(req)
+			if err == nil {
+				resp.Body.Close()
+			}
+			return body, err
+		}
+
+		// Each attempt sends a copy from GetBody, so the transport never gets the body of the caller to close.
+		if body, err := post(true); err != nil || !body.closed {
+			t.Errorf("a body copied by GetBody: Do returned %v, body closed %v; want an answer and the body closed", err, body.closed)
+		}
+
+		c.answers = []func(*http.Request) (*http.Response, error){refuse}
+		for range 6 {
+			if resp, err := get(t, client); err == nil {
+				resp.Body.Close()
+				t.Fatal("a failed call was answered")
+			}
+		}
+		if body, err := post(false); !errors.Is(err, gobreaker.ErrOpenState) || !body.closed {
+			t.Errorf("a body refused by the open circuit: Do returned %v, body closed %v; want %v and the body closed", err, body.closed, gobreaker.ErrOpenState)
+		}
+	})
+}
+
 func TestCircuitBreaker(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {

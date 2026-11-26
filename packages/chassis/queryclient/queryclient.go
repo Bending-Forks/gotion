@@ -34,7 +34,9 @@ func New(timeout time.Duration, breaker gobreaker.Settings) *Client {
 func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	ctx, cancel := context.WithTimeout(req.Context(), c.timeout)
 	defer cancel()
+	attempted := false
 	resp, err := c.breaker.Execute(func() (*http.Response, error) {
+		attempted = true
 		resp, err := c.send(ctx, req)
 		// The queries only read, so one retry is safe; a body that cannot be read again is not resent.
 		if err != nil && ctx.Err() == nil && (req.Body == nil || req.GetBody != nil) {
@@ -46,6 +48,10 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 		}
 		return resp, err
 	})
+	// The transport closes the body of the caller only if an attempt sends it: not when the circuit refuses the call, nor when each attempt sends a copy from GetBody.
+	if req.Body != nil && (!attempted || req.GetBody != nil) {
+		req.Body.Close()
+	}
 	if err != nil {
 		return nil, fmt.Errorf("query %s: %w", c.breaker.Name(), err)
 	}
