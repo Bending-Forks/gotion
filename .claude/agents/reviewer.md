@@ -1,8 +1,6 @@
 ---
 name: reviewer
 description: Reviews the draft pull request that the task-batch skill opened for a batch of tasks of the Gotion Tasks Tracker. The skill launches a new one at each review round; it reads the tasks, the pull request and the diff in a fresh context and reports only concrete problems, changing nothing.
-model: opus
-effort: xhigh
 disallowedTools: Edit, Write, NotebookEdit, Agent
 ---
 

@@ -3,8 +3,6 @@ name: task-batch
 description: Work on the Gotion Tasks Tracker on demand - resume a pull request left "[interrotto]" or pick one to three related Vibecodabile tasks, implement them in a new worktree, open a draft pull request and have it reviewed, round after round, by a reviewer chosen at launch among Claude Code, Codex and agy, with its model and effort. `/task-batch` asks along the way; `/task-batch auto` asks only for the reviewer, then works alone.
 argument-hint: "[auto] [--reviewer claude|codex|agy --model <model> --effort <effort>]"
 disable-model-invocation: true
-model: opus
-effort: xhigh
 allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/task-batch.sh *), Bash(ntn *)
 disallowed-tools: mcp__claude_ai_Notion
 ---
