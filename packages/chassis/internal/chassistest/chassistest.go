@@ -79,6 +79,33 @@ func Produce(t *testing.T, brokers []string, topic, key string, value []byte) {
 	}
 }
 
+// Count returns the number of records in topic.
+func Count(t *testing.T, brokers []string, topic string) int64 {
+	t.Helper()
+	client, err := sarama.NewClient(brokers, sarama.NewConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = client.Close() }()
+	partitions, err := client.Partitions(topic)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var n int64
+	for _, p := range partitions {
+		newest, err := client.GetOffset(topic, p, sarama.OffsetNewest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		oldest, err := client.GetOffset(topic, p, sarama.OffsetOldest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		n += newest - oldest
+	}
+	return n
+}
+
 // Committed returns the highest offset that group committed on the partitions of topic, -1 when it committed none.
 func Committed(t *testing.T, brokers []string, group, topic string) int64 {
 	t.Helper()

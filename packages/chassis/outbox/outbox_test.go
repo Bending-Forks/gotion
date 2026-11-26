@@ -105,19 +105,12 @@ func (f fixture) kafka(t *testing.T) func() (message.Publisher, error) {
 	return func() (message.Publisher, error) { return event.NewPublisher(f.brokers, slog.New(slog.DiscardHandler)) }
 }
 
-// read reads the topic until every event in want has arrived, and returns the envelopes read in the order of their partition.
+// read reads the topic until every event in want has arrived, and returns the envelopes read, in the order of their partition.
 func (f fixture) read(t *testing.T, want ...event.EventEnvelope) []received {
 	t.Helper()
 	var got []received
 	chassistest.Read(t, f.brokers, f.topic, 60*time.Second, func(records []chassistest.Record) bool {
-		got = got[:0]
-		for _, r := range records {
-			var e event.EventEnvelope
-			if err := json.Unmarshal(r.Value, &e); err != nil {
-				t.Fatal(err)
-			}
-			got = append(got, received{e, r.Key})
-		}
+		got = decode(t, records)
 		for _, w := range want {
 			if !slices.ContainsFunc(got, func(r received) bool { return r.EventId == w.EventId }) {
 				return false
@@ -126,6 +119,32 @@ func (f fixture) read(t *testing.T, want ...event.EventEnvelope) []received {
 		return true
 	})
 	return got
+}
+
+func decode(t *testing.T, records []chassistest.Record) []received {
+	t.Helper()
+	got := make([]received, 0, len(records))
+	for _, r := range records {
+		var e event.EventEnvelope
+		if err := json.Unmarshal(r.Value, &e); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, received{e, r.Key})
+	}
+	return got
+}
+
+// unique keeps the first copy of each event.
+func unique(rs []received) []received {
+	seen := map[string]bool{}
+	var first []received
+	for _, r := range rs {
+		if !seen[r.EventId] {
+			seen[r.EventId] = true
+			first = append(first, r)
+		}
+	}
+	return first
 }
 
 type received struct {
