@@ -1,4 +1,4 @@
-import type { Operation, PageId, ReplicaId, Seq, ServerMessage } from '@gotion/crdt';
+import type { Id, Operation, PageId, Seq } from '../domain/document.ts';
 
 /**
  * The session log of the pages (ADR-02): for each page, the operations Editing accepted, in order,
@@ -26,9 +26,10 @@ export class LogExtendedError extends Error {
   }
 }
 
-/** The replicas that have a page open, which Editing sends the messages of the session to. */
+/** The replicas that have a page open. */
 export interface Collaborators {
-  send(page: PageId, replica: ReplicaId, message: ServerMessage): void;
+  /** Tells the replica of `id`, in the session of `page`, that its operation is in the log at `seq` (ADR-02). */
+  ack(page: PageId, id: Id, seq: Seq): void;
 }
 
 /**
@@ -69,7 +70,7 @@ export class PageLog {
     const seq = this.#seq + 1;
     await this.#log.append(this.page, seq, operation);
     this.#seq = seq;
-    this.#collaborators.send(this.page, operation.id.replica, { type: 'ack', id: operation.id, seq });
+    this.#collaborators.ack(this.page, operation.id, seq);
     return seq;
   }
 }
