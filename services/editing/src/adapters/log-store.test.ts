@@ -31,7 +31,7 @@ describe('the session log on PostgreSQL', { skip: !server && 'TEST_DATABASE_URL 
     await drop();
   });
 
-  test('a second operation with the same seq of a page is refused (ADR-06)', async () => {
+  test('a second operation with the same seq of a page is refused', async () => {
     const page = crypto.randomUUID();
     await log.append(page, 1, edit(1));
 

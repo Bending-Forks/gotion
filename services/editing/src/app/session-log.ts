@@ -1,7 +1,7 @@
 import type { Id, Operation, PageId, Seq } from '../domain/document.ts';
 
 /**
- * The session log of the pages (ADR-02): for each page, the operations Editing accepted, in order,
+ * The session log of the pages: for each page, the operations Editing accepted, in order,
  * each at its `seq`, from 1. It is the Event Sourcing of Editing.
  */
 export interface SessionLog {
@@ -9,15 +9,15 @@ export interface SessionLog {
   lastSeq(page: PageId): Promise<Seq>;
   /**
    * Appends `operation` to the log of `page` at `seq`, and resolves only once the append is
-   * committed. Rejects with {@link LogExtendedError} if the log already has `seq` (ADR-06).
+   * committed. Rejects with {@link LogExtendedError} if the log already has `seq`.
    */
   append(page: PageId, seq: Seq, operation: Operation): Promise<void>;
 }
 
 /**
  * The log of a page already has the `seq` of an append: another instance of Editing extended it,
- * so this one holds a stale page and may acknowledge nothing more of it (ADR-02, ADR-06). Its
- * session cannot go on here: the replicas join again later.
+ * so this one holds a stale page and may acknowledge nothing more of it. Its session cannot go on
+ * here: the replicas join again later.
  */
 export class LogExtendedError extends Error {
   constructor(page: PageId, seq: Seq) {
@@ -28,7 +28,7 @@ export class LogExtendedError extends Error {
 
 /** The replicas that have a page open. */
 export interface Collaborators {
-  /** Tells the replica of `id`, in the session of `page`, that its operation is in the log at `seq` (ADR-02). */
+  /** Tells the replica of `id`, in the session of `page`, that its operation is in the log at `seq`. */
   ack(page: PageId, id: Id, seq: Seq): void;
 }
 
@@ -60,7 +60,7 @@ export class PageLog {
 
   /**
    * Appends an operation the Page Block Tree accepted at the next `seq` of the page and, once the
-   * append is committed, acknowledges it to the replica of its id (ADR-02). Returns that `seq`.
+   * append is committed, acknowledges it to the replica of its id. Returns that `seq`.
    * The caller appends the operations of a page one at a time.
    *
    * If another instance extended the log, it rejects with {@link LogExtendedError} and sends no

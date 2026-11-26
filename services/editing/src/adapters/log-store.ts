@@ -2,7 +2,7 @@ import { encodeOperation } from '@gotion/crdt';
 import type { Pool } from 'pg';
 import { LogExtendedError, type SessionLog } from '../app/session-log.ts';
 
-// The Log store: the session log of ADR-02 in the table `session_log` of the database of Editing (ADR-06).
+// The Log store: the session log in the table `session_log` of the database of Editing.
 export function createSessionLog(pool: Pool): SessionLog {
   return {
     async lastSeq(page) {
