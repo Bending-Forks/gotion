@@ -99,7 +99,7 @@ If there is none, go to step 2.
 4. Don't pick or add a task that needs decisions belonging to a task In progress of another person, such as the folder structure of the services while someone builds the skeleton of the repository. You may read the pages of the tasks In progress.
 5. Read the body of the page of every task you consider, with its closing criteria and links, and its comments. In `auto`, confirm that it can be done without a person answering: a doubt that the documentation in `docs/` settles is no obstacle. If a task can't be done, drop it and move to the next one of the timeline.
 6. `task-batch.sh batch <dir> <id>...`, with the ids in the order you will work on them: keep only the tasks it returns.
-7. In interactive mode show the batch, with titles, points and why the tasks belong together, and have it confirmed or changed.
+7. In interactive mode show the batch, with titles, points and why the tasks belong together, and have it confirmed or changed. If the user names a task that is not among the candidates, or that `batch` rejects, say what keeps it out (not Vibecodabile, not Not started, someone else's, open blockers, another target) and take it only if they confirm.
 8. Choose the name of the branch: `<type>/<slug>`, with the type among feat, fix, docs, ci, build, test, refactor and chore as in Conventional Commits, and a short English slug, lowercase, with hyphens.
 9. Set every task In progress and assign it to `NOTION_USER_ID`, then write `selection.json`:
 
