@@ -105,7 +105,7 @@ type renamedEdDSA struct{ *jwt.SigningMethodEd25519 }
 
 func (renamedEdDSA) Alg() string { return "Ed25519" }
 
-// The Compliance of ADR-09: the gateway accepts only a token that Account signed with EdDSA and that expires.
+// The gateway accepts only a token that Account signed with EdDSA and that expires.
 func TestVerifyRefuses(t *testing.T) {
 	t.Parallel()
 	privPEM, pubPEM, priv := keyPair(t)
