@@ -55,6 +55,20 @@ func hang(req *http.Request) (*http.Response, error) {
 	return nil, req.Context().Err()
 }
 
+// stall answers with status at once, then sends no byte of the body until the context of the request ends.
+func stall(status int) func(*http.Request) (*http.Response, error) {
+	return func(req *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: status, Status: http.StatusText(status), Header: http.Header{}, Body: io.NopCloser(stalledBody{req.Context()})}, nil
+	}
+}
+
+type stalledBody struct{ ctx context.Context }
+
+func (b stalledBody) Read([]byte) (int, error) {
+	<-b.ctx.Done()
+	return 0, b.ctx.Err()
+}
+
 func newClient(c *callee) *Client {
 	client := New(timeout, gobreaker.Settings{Name: "membership"})
 	client.http.Transport = c
@@ -120,6 +134,7 @@ func TestAnswersAreReturned(t *testing.T) {
 		{name: "an answer is returned with its body", answers: []func(*http.Request) (*http.Response, error){reply(http.StatusOK, `{"role":"Editor"}`)}, want: http.StatusOK, wantCalls: 1},
 		{name: "a client error is an answer of the callee, not retried", answers: []func(*http.Request) (*http.Response, error){reply(http.StatusNotFound, `{"role":"Editor"}`)}, want: http.StatusNotFound, wantCalls: 1},
 		{name: "a call that fails once is answered by its retry", answers: []func(*http.Request) (*http.Response, error){reply(http.StatusBadGateway, ""), reply(http.StatusOK, `{"role":"Editor"}`)}, want: http.StatusOK, wantCalls: 2},
+		{name: "the slow body of a server error leaves its time to the retry", answers: []func(*http.Request) (*http.Response, error){stall(http.StatusServiceUnavailable), reply(http.StatusOK, `{"role":"Editor"}`)}, want: http.StatusOK, wantCalls: 2},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()

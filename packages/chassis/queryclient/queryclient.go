@@ -67,12 +67,13 @@ func (c *Client) send(ctx context.Context, req *http.Request) (*http.Response, e
 		return nil, err
 	}
 	defer resp.Body.Close()
+	// Checked before the body is read, so that a slow body of a 5xx does not take the time of the retry.
+	if resp.StatusCode >= http.StatusInternalServerError {
+		return nil, fmt.Errorf("%s %s answered %s", req.Method, req.URL, resp.Status)
+	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
-	}
-	if resp.StatusCode >= http.StatusInternalServerError {
-		return nil, fmt.Errorf("%s %s answered %s", req.Method, req.URL, resp.Status)
 	}
 	resp.Body = io.NopCloser(bytes.NewReader(body))
 	return resp, nil
