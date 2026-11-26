@@ -35,6 +35,11 @@ export type ReplicaId = number;
  */
 export type Id = { readonly replica: ReplicaId; readonly counter: number };
 
+/** Orders two ids as {@link Id} says: by `counter`, then by `replica`. */
+export function compareIds(a: Id, b: Id): number {
+  return a.counter - b.counter || a.replica - b.replica;
+}
+
 /**
  * The `length` consecutive ids of one replica, from `counter` to `counter + length - 1`: the
  * characters of one insertion, or a part of them.

@@ -48,6 +48,7 @@ export {
   type TreePlace,
   type UpdateBlock,
 } from './protocol.ts';
+export { Sequence, type BlockText } from './sequence.ts';
 export {
   characterCount,
   decodeClientMessage,
