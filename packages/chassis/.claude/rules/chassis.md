@@ -1,6 +1,6 @@
 # Go chassis
 
-- Check and test from the root of the repository: `go vet ./packages/chassis/... && go test ./packages/chassis/...`. The test of `postgres` needs a PostgreSQL in `TEST_DATABASE_URL` (README), and is skipped without one.
+- Check and test from the root of the repository: `go vet ./packages/chassis/... && go test ./packages/chassis/...`. The integration tests need a PostgreSQL in `TEST_DATABASE_URL` and a Kafka in `TEST_KAFKA_BROKERS` (README), and each is skipped without the one it needs; `internal/chassistest` gives each test its own database and topic.
 - One package per concern (`server`, `health`, `metrics`, `config`, `logging`, `postgres`, `consumer`, `outbox`, `queryclient`, `token`); a service imports only the ones it needs, and each package has its own tests.
 - It never imports a service and holds no rule of any bounded context.
 - It is a thin chassis assembled from the libraries ADR-07 chose, one per concern, not a framework and not written from scratch: `server` on `net/http` (the handlers are the strict server `oapi-codegen` generates in each service), `health`, `config` and `logging` on the standard library (`os.Getenv`, `log/slog`), `metrics` on `prometheus/client_golang`, `postgres` on `jackc/pgx/v5` with `pressly/goose`, `consumer` on Watermill with `watermill-kafka`, `outbox` on `watermill-sql` and the Forwarder of Watermill, `queryclient` on `context` and `sony/gobreaker/v2`, `token` on `golang-jwt/jwt/v5` and `crypto/ed25519`. Each `doc.go` names its library.
