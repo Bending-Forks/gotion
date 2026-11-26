@@ -7,5 +7,17 @@
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true,
     "humanizer@humanizer": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$(git -C \"$CLAUDE_PROJECT_DIR\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/../.agents/local.env\"; if [ -f \"$f\" ] && [ -n \"$CLAUDE_ENV_FILE\" ]; then echo \"set -a; . '$f'; set +a\" >> \"$CLAUDE_ENV_FILE\"; fi"
+          }
+        ]
+      }
+    ]
   }
 }

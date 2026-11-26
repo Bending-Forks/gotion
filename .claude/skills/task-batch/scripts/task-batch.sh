@@ -24,7 +24,7 @@ TRACKER=30cf720c-4b16-8292-af30-07ac9991dc17
 SCHEMA=$(cd "$(dirname "$0")" && pwd -P)/review-schema.json
 EFFORTS='low medium high xhigh max ultra' # every effort, in order
 
-need() { [[ -n ${!1:-} ]] || { echo "missing $1: export it in your shell profile (Prerequisites in SKILL.md)" >&2; exit 1; }; }
+need() { [[ -n ${!1:-} ]] || { echo "missing $1: put it in .agents/local.env of the main checkout (Prerequisites in SKILL.md)" >&2; exit 1; }; }
 
 # Rows of the tracker → the Not started Vibecodabile tasks that are free or assigned to $me, in timeline order (Due
 # date, then Priority), with the titles of the blockers not yet Done.

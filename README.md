@@ -79,3 +79,5 @@ claude plugin disable superpowers@claude-plugins-official --scope user
 ```
 
 An install with `--scope project` is bound to the path of one folder, so it stops working when the worktree moves and never reaches the others. The `humanizer` plugin comes from its own marketplace: Claude Code offers to install it when you trust the folder, or install it for your user with `claude plugin marketplace add blader/humanizer && claude plugin install humanizer@humanizer`.
+
+The agent sessions take their private variables, such as the Notion token and user that the `task-batch` skill needs, from `.agents/local.env` in the main checkout, which git ignores: copy `.agents/local.env.example` there and fill it in. A hook in `.claude/settings.json` loads it at the start of every Claude Code session in the checkout or in one of its worktrees, and nowhere else. Codex and agy have no such hook: start them from a shell that loaded the file, with `set -a; . <main checkout>/.agents/local.env; set +a`.

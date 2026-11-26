@@ -24,7 +24,7 @@ Ask with the question tool of your agent: `AskUserQuestion` in Claude Code, `req
 
 Check them first; if one is missing, say which and stop.
 
-- `ntn`, the Notion CLI (`curl -fsSL https://ntn.dev | bash`), with the token of a Notion integration connected to the Tasks Tracker in `NOTION_API_TOKEN` and your Notion user in `NOTION_USER_ID` (`ntn api v1/users </dev/null` lists the users): export both in your shell profile. Notion is read and written only through `ntn`, never through a Notion connector, so the changes carry the name of the integration.
+- `ntn`, the Notion CLI (`curl -fsSL https://ntn.dev | bash`), with the token of a Notion integration connected to the Tasks Tracker in `NOTION_API_TOKEN` and your Notion user in `NOTION_USER_ID` (`ntn api v1/users </dev/null` lists the users). Both go in `.agents/local.env` of the main checkout, copied from `.agents/local.env.example`: a hook of Claude Code loads it at the start of the session, while Codex and agy get them from the shell that started them (README, Contributing). Notion is read and written only through `ntn`, never through a Notion connector, so the changes carry the name of the integration.
 - `gh` logged in, `git` with signed commits, `jq` 1.6 or later.
 - For the review, at least one of `claude`, `codex` and `agy`, logged in.
 - In Codex: `request_user_input` outside Plan mode (`features.default_mode_request_user_input = true` in `~/.codex/config.toml`, or `--enable default_mode_request_user_input`) and the network in the sandbox (`sandbox_workspace_write.network_access = true`), which `gh`, `ntn` and the reviewers need.

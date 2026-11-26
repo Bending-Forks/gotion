@@ -1,6 +1,8 @@
 # Gotion project instructions for Codex and agy
 
-When the checkout is in the SAPSPENOTION workspace and `../CLAUDE.md` exists, read it first for the shared course context. Read `CLAUDE.md` at the checkout root for Gotion's conventions and workflow, then `CLAUDE.local.md` next to it if it exists: the private instructions of whoever works in this checkout, kept out of git, which only Claude Code loads by itself. Apply its Git and worktree instructions to your sessions. Use your own tools and skill discovery for procedures described there for Claude Code.
+When the checkout is in the SAPSPENOTION workspace and `../CLAUDE.md` exists, read it first for the shared course context. Read `CLAUDE.md` at the checkout root for Gotion's conventions and workflow, then `CLAUDE.local.md` next to it if it exists: the private instructions of whoever works in this checkout, kept out of git, which only Claude Code loads by itself.
+
+The private variables of the sessions, such as `NOTION_API_TOKEN` and `NOTION_USER_ID`, are in `.agents/local.env` of the main checkout, which git ignores. Claude Code loads it with a hook; you have them only if the shell that started you loaded it. If a command misses one, say so and ask to be started again after `set -a; . <main checkout>/.agents/local.env; set +a`. Apply its Git and worktree instructions to your sessions. Use your own tools and skill discovery for procedures described there for Claude Code.
 
 ## Rules by path
 
