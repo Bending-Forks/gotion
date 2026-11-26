@@ -19,11 +19,13 @@ type Client struct {
 	breaker *gobreaker.CircuitBreaker[*http.Response]
 }
 
-// New returns a Client whose calls each take at most timeout, retry included, behind a circuit breaker with the given settings; a zero field keeps the default of gobreaker, except that a call canceled by the caller counts neither as a failure nor as a success.
+// errCallerGaveUp marks a call that ended because its caller canceled it or reached its own deadline, not because of the callee.
+var errCallerGaveUp = errors.New("the caller gave up")
+
+// New returns a Client whose calls each take at most timeout, retry included, behind a circuit breaker with the given settings; a zero field keeps the default of gobreaker, except that a call the caller gives up on, canceled or past its own deadline, counts neither as a failure nor as a success.
 func New(timeout time.Duration, breaker gobreaker.Settings) *Client {
 	if breaker.IsExcluded == nil {
-		// Only the caller cancels: the timeout of the call ends in context.DeadlineExceeded, a failure of the callee.
-		breaker.IsExcluded = func(err error) bool { return errors.Is(err, context.Canceled) }
+		breaker.IsExcluded = func(err error) bool { return errors.Is(err, errCallerGaveUp) }
 	}
 	return &Client{http: &http.Client{}, timeout: timeout, breaker: gobreaker.NewCircuitBreaker[*http.Response](breaker)}
 }
@@ -37,6 +39,10 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 		// The queries only read, so one retry is safe; a body that cannot be read again is not resent.
 		if err != nil && ctx.Err() == nil && (req.Body == nil || req.GetBody != nil) {
 			resp, err = c.send(ctx, req)
+		}
+		// Only the timeout of the client, not the context of the caller, says that the callee is too slow.
+		if err != nil && req.Context().Err() != nil {
+			err = fmt.Errorf("%w: %w", errCallerGaveUp, err)
 		}
 		return resp, err
 	})

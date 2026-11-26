@@ -216,26 +216,49 @@ func TestCircuitBreaker(t *testing.T) {
 	})
 }
 
-func TestCallsCanceledByTheCallerKeepTheCircuitClosed(t *testing.T) {
+func TestCallsTheCallerGivesUpKeepTheCircuitClosed(t *testing.T) {
 	t.Parallel()
-	synctest.Test(t, func(t *testing.T) {
-		client := newClient(&callee{answers: []func(*http.Request) (*http.Response, error){hang}})
 
-		for range 10 {
-			ctx, cancel := context.WithCancel(t.Context())
-			time.AfterFunc(timeout/2, cancel)
-			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://membership/internal/v1/roles", nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err := client.Do(req); !errors.Is(err, context.Canceled) {
-				t.Fatalf("Do returned %v, want %v", err, context.Canceled)
-			}
-		}
-		if state := client.breaker.State(); state != gobreaker.StateClosed {
-			t.Errorf("after calls canceled by the caller the circuit is %v, want closed", state)
-		}
-	})
+	for _, tt := range []struct {
+		name   string
+		giveUp func(context.Context) (context.Context, context.CancelFunc)
+		want   error
+	}{
+		{name: "canceled by the caller", giveUp: func(ctx context.Context) (context.Context, context.CancelFunc) {
+			ctx, cancel := context.WithCancel(ctx)
+			time.AfterFunc(timeout/4, cancel)
+			return ctx, cancel
+		}, want: context.Canceled},
+		{name: "past the deadline of the caller", giveUp: func(ctx context.Context) (context.Context, context.CancelFunc) {
+			return context.WithTimeout(ctx, timeout/4)
+		}, want: context.DeadlineExceeded},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			synctest.Test(t, func(t *testing.T) {
+				// The callee answers within the timeout of the client, but after the caller has given up.
+				client := newClient(&callee{answers: []func(*http.Request) (*http.Response, error){after(timeout/2, reply(http.StatusOK, "{}"))}})
+
+				for range 10 {
+					ctx, cancel := tt.giveUp(t.Context())
+					req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://membership/internal/v1/roles", nil)
+					if err != nil {
+						t.Fatal(err)
+					}
+					_, err = client.Do(req)
+					cancel()
+					if !errors.Is(err, tt.want) {
+						t.Fatalf("Do returned %v, want %v", err, tt.want)
+					}
+				}
+				resp, err := get(t, client)
+				if err != nil {
+					t.Fatalf("after calls %s, a call with the whole timeout was refused: %v", tt.name, err)
+				}
+				resp.Body.Close()
+			})
+		})
+	}
 }
 
 func TestClientErrorsKeepTheCircuitClosed(t *testing.T) {
