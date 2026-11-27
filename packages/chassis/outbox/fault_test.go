@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -37,21 +38,29 @@ func (p publisherFunc) Close() error { return nil }
 func TestPendingEventArrivesWhenKafkaComesBackAfterTheServiceRestarted(t *testing.T) {
 	f := newFixture(t)
 	var up atomic.Bool
+	var failed atomic.Int32
 	connect := func() (message.Publisher, error) {
 		if up.Load() {
 			return event.NewPublisher(f.brokers, slog.New(slog.DiscardHandler))
 		}
-		return event.NewPublisher(unreachable, slog.New(slog.DiscardHandler))
+		publisher, err := event.NewPublisher(unreachable, slog.New(slog.DiscardHandler))
+		if err != nil {
+			failed.Add(1)
+		}
+		return publisher, err
 	}
 	_, stop := f.run(t, connect)
+	chassistest.Eventually(t, time.Minute, "the Forwarder fails to reach Kafka", func() bool { return failed.Load() >= 1 })
 	e := something(watermill.NewUUID())
 	if err := f.command(t.Context(), e.AggregateId, false, e); err != nil {
 		t.Fatalf("a command failed while Kafka was down: %v", err)
 	}
 	stop()
 
-	// The service starts again while Kafka is still down: the event waits in the outbox.
+	// The service starts again while Kafka is still down, and fails to reach it in turn: the event waits in the outbox.
+	before := failed.Load()
 	fwd, _ := f.run(t, connect)
+	chassistest.Eventually(t, time.Minute, "the restarted Forwarder fails to reach Kafka", func() bool { return failed.Load() > before })
 	if err := fwd.measure(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -115,26 +124,30 @@ func TestDuplicateAfterAnAckNotYetMarkedChangesNothingInTheConsumer(t *testing.T
 	if err := f.command(t.Context(), aggregate, false, last); err != nil {
 		t.Fatal(err)
 	}
-	f.read(t, e, last)
-	if n := chassistest.Count(t, f.brokers, f.topic); n != 3 {
-		t.Fatalf("the topic has %d records, want the event twice and the last one", n)
+	// The partition of the aggregate holds the event twice, with the same identifier, then the last one.
+	var ids []string
+	for _, r := range f.read(t, e, last) {
+		ids = append(ids, r.EventId)
+	}
+	if want := []string{e.EventId, e.EventId, last.EventId}; !slices.Equal(ids, want) {
+		t.Fatalf("the topic holds the events %v, want %v", ids, want)
 	}
 
-	applied := consume(t, f, func(ctx context.Context, tx pgx.Tx, e event.EventEnvelope) error {
+	applied, total := consume(t, f, func(ctx context.Context, tx pgx.Tx, e event.EventEnvelope) error {
 		_, err := tx.Exec(ctx, "INSERT INTO applied (event_id) VALUES ($1)", e.EventId)
 		return err
 	})
 	// The events of the aggregate are read in order, so once the last one is applied both copies have been read.
 	chassistest.Eventually(t, 30*time.Second, "the last event is applied", func() bool { return applied(last.EventId) == 1 })
-	if n := applied(e.EventId); n != 1 {
-		t.Fatalf("the event published twice was applied %d times, want 1", n)
+	if n, all := applied(e.EventId), total(); n != 1 || all != 2 {
+		t.Fatalf("the event published twice was applied %d times, and %d changes were applied in all; want 1 and 2", n, all)
 	}
 }
 
 func TestEventsOfAnAggregateKeepTheOrderOfTheirTransactionsWithCompetingPublishers(t *testing.T) {
 	f := newFixture(t)
-	f.run(t, f.kafka(t))
-	f.run(t, f.kafka(t))
+	_, stopFirst := f.run(t, f.kafka(t))
+	_, stopSecond := f.run(t, f.kafka(t))
 	aggregates := []string{watermill.NewUUID(), watermill.NewUUID()}
 	const writers, commandsEach = 8, 10
 
@@ -152,10 +165,15 @@ func TestEventsOfAnAggregateKeepTheOrderOfTheirTransactionsWithCompetingPublishe
 			errs <- nil
 		}()
 	}
+	// Every writer ends before the test can fail, since they use the fixture.
+	var failed error
 	for range writers {
-		if err := <-errs; err != nil {
-			t.Fatal(err)
+		if err := <-errs; err != nil && failed == nil {
+			failed = err
 		}
+	}
+	if failed != nil {
+		t.Fatal(failed)
 	}
 
 	total := writers * commandsEach
@@ -164,6 +182,12 @@ func TestEventsOfAnAggregateKeepTheOrderOfTheirTransactionsWithCompetingPublishe
 		got = decode(t, records)
 		return len(unique(got)) == total
 	})
+	// The replicas share one lock, so with no failure each event is sent once.
+	stopFirst()
+	stopSecond()
+	if n := chassistest.Count(t, f.brokers, f.topic); n != int64(total) {
+		t.Fatalf("the topic has %d records for %d events: both replicas sent some of them", n, total)
+	}
 	versions := map[string][]float64{}
 	for _, r := range unique(got) {
 		v, ok := r.Data["version"].(float64)
@@ -206,7 +230,15 @@ func TestAnotherReplicaTakesOverWhenTheActivePublisherStops(t *testing.T) {
 		t.Fatal("the first replica did not start publishing")
 	}
 	f.run(t, f.kafka(t))
-	time.Sleep(2 * time.Second)
+	chassistest.Eventually(t, 30*time.Second, "the second replica waits for the lock of the first one", func() bool {
+		var waiting bool
+		err := f.pool.QueryRow(t.Context(), `SELECT EXISTS (SELECT FROM pg_stat_activity
+			WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%')`).Scan(&waiting)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return waiting
+	})
 	if n := chassistest.Count(t, f.brokers, f.topic); n != 0 {
 		t.Fatalf("the second replica published %d events while the first one held the lock", n)
 	}
@@ -230,8 +262,8 @@ func (f fixture) versioned(ctx context.Context, aggregate string) error {
 	})
 }
 
-// consume runs a consumer of the topic on a database of its own, whose handler records the events it applies, and returns how many times an event was applied.
-func consume(t *testing.T, f fixture, handler consumer.Handler) (applied func(eventID string) int) {
+// consume runs a consumer of the topic on a database of its own, whose handler records the events it applies, and returns how many times an event was applied and how many changes were applied in all.
+func consume(t *testing.T, f fixture, handler consumer.Handler) (applied func(eventID string) int, total func() int) {
 	t.Helper()
 	pool, err := pgxpool.New(t.Context(), chassistest.Database(t, consumer.Schema+"CREATE TABLE applied (event_id text NOT NULL);"))
 	if err != nil {
@@ -249,11 +281,12 @@ func consume(t *testing.T, f fixture, handler consumer.Handler) (applied func(ev
 			t.Errorf("Run: %v", err)
 		}
 	})
-	return func(eventID string) int {
+	count := func(where string, args ...any) int {
 		var n int
-		if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM applied WHERE event_id = $1", eventID).Scan(&n); err != nil {
+		if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM applied "+where, args...).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		return n
 	}
+	return func(eventID string) int { return count("WHERE event_id = $1", eventID) }, func() int { return count("") }
 }
