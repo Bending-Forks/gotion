@@ -90,7 +90,7 @@ func Read(t *testing.T, brokers []string, topic string, timeout time.Duration, d
 	if err != nil {
 		t.Fatal(err)
 	}
-	records := make(chan Record)
+	records, stop := make(chan Record), make(chan struct{})
 	for _, p := range partitions {
 		pc, err := consumer.ConsumePartition(topic, p, sarama.OffsetOldest)
 		if err != nil {
@@ -99,10 +99,16 @@ func Read(t *testing.T, brokers []string, topic string, timeout time.Duration, d
 		defer func() { _ = pc.Close() }()
 		go func() {
 			for m := range pc.Messages() {
-				records <- Record{Key: string(m.Key), Value: m.Value, Partition: m.Partition}
+				select {
+				case records <- Record{Key: string(m.Key), Value: m.Value, Partition: m.Partition}:
+				case <-stop:
+					return
+				}
 			}
 		}()
 	}
+	// Deferred last, so it runs first: the goroutines stop sending before their partitions close.
+	defer close(stop)
 	var read []Record
 	deadline := time.After(timeout)
 	for !done(read) {
