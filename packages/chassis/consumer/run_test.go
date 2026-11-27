@@ -27,7 +27,7 @@ func TestRunWaitsForKafkaThenReadsTheEvents(t *testing.T) {
 	t.Cleanup(pool.Close)
 	topic := chassistest.Topic(t, brokers)
 
-	router := NewRouter(brokers, "test", pool, slog.New(slog.DiscardHandler))
+	router := NewRouter(brokers, topic+"-test", pool, slog.New(slog.DiscardHandler))
 	var up atomic.Bool
 	var attempts atomic.Int32
 	reach := router.reach

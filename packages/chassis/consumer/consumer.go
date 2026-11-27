@@ -33,8 +33,12 @@ type kind struct {
 	version   int
 }
 
-// retryReach is the wait before trying again to reach a Kafka that did not answer.
-const retryReach = 5 * time.Second
+const (
+	// retryReach is the wait before trying again to reach a Kafka that did not answer.
+	retryReach = 5 * time.Second
+	// reachTimeout bounds each step of an attempt to reach Kafka.
+	reachTimeout = 3 * time.Second
+)
 
 // errAppliedMeanwhile rolls back a transaction whose event another delivery applied first.
 var errAppliedMeanwhile = errors.New("the event was applied meanwhile")
@@ -53,7 +57,11 @@ type Router struct {
 // NewRouter returns a router of the consumer group that records the applied events in the database of pool.
 func NewRouter(brokers []string, group string, pool *pgxpool.Pool, logger *slog.Logger) *Router {
 	return &Router{brokers: brokers, group: group, pool: pool, logger: logger, handlers: map[string]map[kind]Handler{}, reach: func() error {
-		client, err := sarama.NewClient(brokers, sarama.NewConfig())
+		config := sarama.NewConfig()
+		// Short, so that a Kafka that accepts connections and never answers does not hold up the stop of the service.
+		config.Net.DialTimeout, config.Net.ReadTimeout, config.Net.WriteTimeout = reachTimeout, reachTimeout, reachTimeout
+		config.Metadata.Retry.Max = 0
+		client, err := sarama.NewClient(brokers, config)
 		if err != nil {
 			return err
 		}
@@ -76,6 +84,9 @@ func (r *Router) Run(ctx context.Context) error {
 		return errors.New("a router needs a consumer group, or each replica would read every event")
 	}
 	for {
+		if ctx.Err() != nil {
+			return nil
+		}
 		err := r.reach()
 		if err == nil {
 			break

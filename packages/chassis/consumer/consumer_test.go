@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"net"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -54,7 +55,7 @@ func (f fixture) produce(t *testing.T, e event.EventEnvelope) {
 // run starts a router of group with handler on the events SomethingHappened v1 of the topic, and stops it at the end of the test.
 func (f fixture) run(t *testing.T, group string, handler consumer.Handler) (stop func()) {
 	t.Helper()
-	router := consumer.NewRouter(f.brokers, group, f.pool, slog.New(slog.DiscardHandler))
+	router := consumer.NewRouter(f.brokers, f.group(group), f.pool, slog.New(slog.DiscardHandler))
 	router.Handle(f.topic, "SomethingHappened", 1, handler)
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
@@ -72,6 +73,11 @@ func (f fixture) run(t *testing.T, group string, handler consumer.Handler) (stop
 	}
 	t.Cleanup(stop)
 	return stop
+}
+
+// group names a consumer group of this test only: groups are shared by the whole cluster, and the tests of other packages run at the same time.
+func (f fixture) group(name string) string {
+	return f.topic + "-" + name
 }
 
 func (f fixture) applied(t *testing.T, id string) int {
@@ -126,7 +132,7 @@ func TestRouterSkipsAnEventAppliedBeforeARestart(t *testing.T) {
 	stop := f.run(t, "test", record)
 	chassistest.Eventually(t, 30*time.Second, "the event is applied", func() bool { return f.applied(t, first.EventId) == 1 })
 	stop()
-	chassistest.ForgetOffsets(t, f.brokers, "test", f.topic)
+	chassistest.ForgetOffsets(t, f.brokers, f.group("test"), f.topic)
 
 	next := something(aggregate)
 	f.produce(t, next)
@@ -160,12 +166,12 @@ func TestRouterCommitsTheOffsetOnlyAfterTheTransaction(t *testing.T) {
 	}
 	// Sarama commits the marked offsets every second: two seconds give it the chance to commit too early.
 	time.Sleep(2 * time.Second)
-	if offset := chassistest.Committed(t, f.brokers, "test", f.topic); offset != -1 {
+	if offset := chassistest.Committed(t, f.brokers, f.group("test"), f.topic); offset != -1 {
 		t.Fatalf("the group committed offset %d while the transaction of the event was open", offset)
 	}
 	release()
 
-	chassistest.Eventually(t, 30*time.Second, "the offset is committed after the transaction", func() bool { return chassistest.Committed(t, f.brokers, "test", f.topic) == 1 })
+	chassistest.Eventually(t, 30*time.Second, "the offset is committed after the transaction", func() bool { return chassistest.Committed(t, f.brokers, f.group("test"), f.topic) == 1 })
 	if n := f.applied(t, e.EventId); n != 1 {
 		t.Fatalf("the event was applied %d times, want 1", n)
 	}
@@ -219,7 +225,7 @@ func TestRouterAppliesOnceAnEventHandledTwiceAtTheSameTime(t *testing.T) {
 	chassistest.Eventually(t, 30*time.Second, "both handlers run", func() bool { return calls.Load() == 2 })
 	// Both groups commit their offset only after their transaction has ended, committed or rolled back.
 	chassistest.Eventually(t, 30*time.Second, "both groups are done with the event", func() bool {
-		return chassistest.Committed(t, f.brokers, "first", f.topic) == 1 && chassistest.Committed(t, f.brokers, "second", f.topic) == 1
+		return chassistest.Committed(t, f.brokers, f.group("first"), f.topic) == 1 && chassistest.Committed(t, f.brokers, f.group("second"), f.topic) == 1
 	})
 	var markers int
 	if err := f.pool.QueryRow(t.Context(), "SELECT count(*) FROM applied_events WHERE event_id = $1", e.EventId).Scan(&markers); err != nil {
@@ -280,12 +286,53 @@ func TestRouterSkipsTheEventsItDoesNotHandle(t *testing.T) {
 // A router stopped while it starts, as a service is when it shuts down at once, returns no error.
 func TestRunStoppedAtOnceReturnsNoError(t *testing.T) {
 	f := newFixture(t)
-	router := consumer.NewRouter(f.brokers, "test", f.pool, slog.New(slog.DiscardHandler))
+	router := consumer.NewRouter(f.brokers, f.group("test"), f.pool, slog.New(slog.DiscardHandler))
 	router.Handle(f.topic, "SomethingHappened", 1, record)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	if err := router.Run(ctx); err != nil {
 		t.Fatalf("Run stopped at once: %v", err)
+	}
+}
+
+// A Kafka that accepts connections and never answers does not hold up the stop of the router.
+func TestRunStopsWhileKafkaDoesNotAnswer(t *testing.T) {
+	silent, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var held sync.WaitGroup
+	t.Cleanup(func() {
+		_ = silent.Close()
+		held.Wait()
+	})
+	held.Go(func() {
+		var conns []net.Conn
+		defer func() {
+			for _, c := range conns {
+				_ = c.Close()
+			}
+		}()
+		for {
+			c, err := silent.Accept()
+			if err != nil {
+				return
+			}
+			conns = append(conns, c)
+		}
+	})
+	router := consumer.NewRouter([]string{silent.Addr().String()}, "test", nil, slog.New(slog.DiscardHandler))
+	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- router.Run(ctx) }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("Run did not stop within 15 s of its cancellation while Kafka did not answer")
 	}
 }
 
