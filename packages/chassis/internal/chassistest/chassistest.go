@@ -3,6 +3,7 @@ package chassistest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -36,7 +37,8 @@ func Topic(t *testing.T, brokers []string) string {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := admin.DeleteTopic(name); err != nil {
+		// A retried request can find the topic already deleted by the first one.
+		if err := admin.DeleteTopic(name); err != nil && !errors.Is(err, sarama.ErrUnknownTopicOrPartition) {
 			t.Error(err)
 		}
 		_ = admin.Close()
