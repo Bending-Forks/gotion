@@ -257,14 +257,18 @@ func TestAnotherReplicaTakesOverWhenTheActivePublisherStops(t *testing.T) {
 	f.read(t, e)
 }
 
-// gatedPublisher publishes to Kafka once its gate is open.
+// gatedPublisher publishes to Kafka once its gate is open, or gives up when its message is cancelled.
 type gatedPublisher struct {
 	message.Publisher
 	gate <-chan struct{}
 }
 
 func (p gatedPublisher) Publish(topic string, messages ...*message.Message) error {
-	<-p.gate
+	select {
+	case <-p.gate:
+	case <-messages[0].Context().Done():
+		return messages[0].Context().Err()
+	}
 	return p.Publisher.Publish(topic, messages...)
 }
 
@@ -308,7 +312,8 @@ func consume(t *testing.T, f fixture, handler consumer.Handler) (applied func(ev
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
-	router := consumer.NewRouter(f.brokers, "test", pool, slog.New(slog.DiscardHandler))
+	// Consumer groups are shared by the whole cluster: the group of this test is named after its topic, so the tests of other packages do not join it.
+	router := consumer.NewRouter(f.brokers, f.topic, pool, slog.New(slog.DiscardHandler))
 	router.Handle(f.topic, "SomethingHappened", 1, handler)
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
