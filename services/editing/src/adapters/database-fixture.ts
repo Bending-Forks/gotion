@@ -9,8 +9,9 @@ export async function createTestDatabase(server: string): Promise<{ url: string;
   await admin.query(`CREATE DATABASE ${name}`);
   const url = new URL(server);
   url.pathname = `/${name}`;
+  // Without FORCE, which would kill the sessions a pool is still closing (pool.end() resolves before they are gone): PostgreSQL waits up to 5 s for them to exit.
   const drop = async () => {
-    await admin.query(`DROP DATABASE ${name} WITH (FORCE)`);
+    await admin.query(`DROP DATABASE ${name}`);
     await admin.end();
   };
   return { url: url.href, drop };
