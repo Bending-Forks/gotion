@@ -296,6 +296,24 @@ func TestRunStoppedAtOnceReturnsNoError(t *testing.T) {
 	}
 }
 
+// A Forwarder whose metrics cannot all be registered leaves none of them behind, since nothing would update them.
+func TestNewForwarderLeavesNoMetricWhenOneCannotBeRegistered(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(prometheus.NewGauge(prometheus.GaugeOpts{Name: "outbox_oldest_pending_event_age_seconds", Help: "Registered by someone else."}))
+	if _, err := newForwarder(nil, nil, slog.New(slog.DiscardHandler), registry); err == nil {
+		t.Fatal("newForwarder succeeded with a metric already registered")
+	}
+	families, err := registry.Gather()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range families {
+		if f.GetName() == "outbox_pending_events" {
+			t.Fatal("outbox_pending_events stayed registered")
+		}
+	}
+}
+
 // Schema must create the tables that watermill-sql creates for itself, which a new release of the library could change.
 func TestSchemaIsTheStandardSchemaOfWatermill(t *testing.T) {
 	ours, err := pgx.Connect(t.Context(), chassistest.Database(t, Schema))
@@ -326,7 +344,7 @@ func columns(t *testing.T, db interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }) []string {
 	t.Helper()
-	rows, err := db.Query(t.Context(), `SELECT table_name || '.' || column_name || ' ' || data_type || ' ' || is_nullable || ' ' || coalesce(column_default, '')
+	rows, err := db.Query(t.Context(), `SELECT table_name || '.' || column_name || ' ' || data_type || coalesce('(' || character_maximum_length || ')', '') || ' ' || is_nullable || ' ' || coalesce(column_default, '')
 		FROM information_schema.columns WHERE table_schema = 'public'
 		UNION ALL SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' ORDER BY 1`)
 	if err != nil {

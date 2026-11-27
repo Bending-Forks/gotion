@@ -59,9 +59,13 @@ var schemaAdapter = sql.DefaultPostgreSQLSchema{}
 var kafkaTopic = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,249}$`)
 
 func subscriberConfig() sql.SubscriberConfig {
+	// No deadline: the replica that sends keeps the lock until Kafka answers, however long it takes, so no other replica sends the same rows meanwhile.
+	// The price is a transaction that stays open through a Kafka outage.
+	noDeadline := time.Duration(0)
 	return sql.SubscriberConfig{
 		ConsumerGroup:  group,
 		PollInterval:   pollInterval,
+		AckDeadline:    &noDeadline,
 		SchemaAdapter:  schemaAdapter,
 		OffsetsAdapter: sql.DefaultPostgreSQLOffsetsAdapter{},
 	}
@@ -122,10 +126,16 @@ func newForwarder(pool *pgxpool.Pool, connect func() (message.Publisher, error),
 			Help: "Age of the oldest event in the outbox not yet sent to Kafka, 0 when none is pending.",
 		}),
 	}
+	var registered []prometheus.Collector
 	for _, c := range []prometheus.Collector{f.pending, f.oldest} {
 		if err := registry.Register(c); err != nil {
+			// Nothing would update the ones already registered.
+			for _, r := range registered {
+				registry.Unregister(r)
+			}
 			return nil, fmt.Errorf("register the metrics of the outbox: %w", err)
 		}
+		registered = append(registered, c)
 	}
 	return f, nil
 }
