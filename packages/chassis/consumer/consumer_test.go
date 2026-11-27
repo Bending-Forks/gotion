@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -115,23 +116,114 @@ func TestRouterAppliesAnEventDeliveredTwiceOnce(t *testing.T) {
 	}
 }
 
-// A consumer that restarts before committing its offset reads again the events it had applied. A new consumer group reads them again from the oldest offset in the same way.
+// A consumer that restarts after the transaction of an event and before committing its offset reads the event again.
+// The test forgets the offsets of the group, as if the commit had never happened, and restarts the same group.
 func TestRouterSkipsAnEventAppliedBeforeARestart(t *testing.T) {
 	f := newFixture(t)
 	aggregate := watermill.NewUUID()
 	first := something(aggregate)
 	f.produce(t, first)
-	stop := f.run(t, "before-restart", record)
+	stop := f.run(t, "test", record)
 	chassistest.Eventually(t, 30*time.Second, "the event is applied", func() bool { return f.applied(t, first.EventId) == 1 })
 	stop()
+	chassistest.ForgetOffsets(t, f.brokers, "test", f.topic)
 
 	next := something(aggregate)
 	f.produce(t, next)
-	f.run(t, "after-restart", record)
+	f.run(t, "test", record)
 
 	chassistest.Eventually(t, 30*time.Second, "the next event is applied", func() bool { return f.applied(t, next.EventId) == 1 })
 	if n := f.applied(t, first.EventId); n != 1 {
 		t.Fatalf("the event read again after the restart was applied %d times, want 1", n)
+	}
+}
+
+// While the transaction of an event is open, the group commits no offset for it, so a crash at that moment delivers the event again.
+func TestRouterCommitsTheOffsetOnlyAfterTheTransaction(t *testing.T) {
+	f := newFixture(t)
+	e := something(watermill.NewUUID())
+	f.produce(t, e)
+	inside, released := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	release := func() { once.Do(func() { close(released) }) }
+	f.run(t, "test", func(ctx context.Context, tx pgx.Tx, e event.EventEnvelope) error {
+		close(inside)
+		<-released
+		return record(ctx, tx, e)
+	})
+	// Runs before the router stops, so a failing test does not leave the handler waiting.
+	t.Cleanup(release)
+	select {
+	case <-inside:
+	case <-time.After(30 * time.Second):
+		t.Fatal("the handler was not called")
+	}
+	// Sarama commits the marked offsets every second: two seconds give it the chance to commit too early.
+	time.Sleep(2 * time.Second)
+	if offset := chassistest.Committed(t, f.brokers, "test", f.topic); offset != -1 {
+		t.Fatalf("the group committed offset %d while the transaction of the event was open", offset)
+	}
+	release()
+
+	chassistest.Eventually(t, 30*time.Second, "the offset is committed after the transaction", func() bool { return chassistest.Committed(t, f.brokers, "test", f.topic) == 1 })
+	if n := f.applied(t, e.EventId); n != 1 {
+		t.Fatalf("the event was applied %d times, want 1", n)
+	}
+}
+
+// The handler locks its aggregate with its first write, and the outbox orders the events by the transaction that wrote them: the router must not write before the handler, or a transaction id taken early could put the events of the handler before those of a command that changed the aggregate first.
+func TestRouterLetsTheHandlerWriteFirst(t *testing.T) {
+	f := newFixture(t)
+	e := something(watermill.NewUUID())
+	f.produce(t, e)
+	var first atomic.Bool
+	f.run(t, "test", func(ctx context.Context, tx pgx.Tx, e event.EventEnvelope) error {
+		var noWrite bool
+		if err := tx.QueryRow(ctx, "SELECT pg_current_xact_id_if_assigned() IS NULL").Scan(&noWrite); err != nil {
+			return err
+		}
+		first.Store(noWrite)
+		return record(ctx, tx, e)
+	})
+
+	chassistest.Eventually(t, 30*time.Second, "the event is applied", func() bool { return f.applied(t, e.EventId) == 1 })
+	if !first.Load() {
+		t.Fatal("the transaction had written before the handler")
+	}
+}
+
+// Two deliveries of one event can run at the same time, for instance on two replicas during a rebalance: both handlers run, and only one of their transactions commits.
+func TestRouterAppliesOnceAnEventHandledTwiceAtTheSameTime(t *testing.T) {
+	f := newFixture(t)
+	e := something(watermill.NewUUID())
+	f.produce(t, e)
+	var calls atomic.Int32
+	both := make(chan struct{})
+	handler := func(ctx context.Context, tx pgx.Tx, e event.EventEnvelope) error {
+		if err := record(ctx, tx, e); err != nil {
+			return err
+		}
+		if calls.Add(1) == 2 {
+			close(both)
+		}
+		select {
+		case <-both:
+		case <-time.After(10 * time.Second):
+		}
+		return nil
+	}
+	// Two groups read the same event, as two replicas would after a rebalance.
+	f.run(t, "first", handler)
+	f.run(t, "second", handler)
+
+	chassistest.Eventually(t, 30*time.Second, "both handlers run", func() bool { return calls.Load() == 2 })
+	chassistest.Eventually(t, 30*time.Second, "the event is applied", func() bool { return f.applied(t, e.EventId) == 1 })
+	var markers int
+	if err := f.pool.QueryRow(t.Context(), "SELECT count(*) FROM applied_events WHERE event_id = $1", e.EventId).Scan(&markers); err != nil {
+		t.Fatal(err)
+	}
+	if n := f.applied(t, e.EventId); n != 1 || markers != 1 {
+		t.Fatalf("the event was applied %d times and recorded %d times, want 1 and 1", n, markers)
 	}
 }
 
@@ -157,7 +249,7 @@ func TestRouterAppliesAgainAnEventWhoseHandlerFailed(t *testing.T) {
 	}
 }
 
-// An event of another type or version and a record that is not an envelope do not stop the events after them.
+// An event of another type or version, a record that is not an envelope and an envelope without an identifier do not stop the events after them.
 func TestRouterSkipsTheEventsItDoesNotHandle(t *testing.T) {
 	f := newFixture(t)
 	aggregate := watermill.NewUUID()
@@ -165,6 +257,9 @@ func TestRouterSkipsTheEventsItDoesNotHandle(t *testing.T) {
 	otherType.Type = "SomethingElseHappened"
 	otherVersion.Version = 2
 	chassistest.Produce(t, f.brokers, f.topic, aggregate, []byte(`{"not": "an envelope"}`))
+	noID := something(aggregate)
+	noID.EventId = ""
+	f.produce(t, noID)
 	f.produce(t, otherType)
 	f.produce(t, otherVersion)
 	f.produce(t, last)
@@ -172,9 +267,16 @@ func TestRouterSkipsTheEventsItDoesNotHandle(t *testing.T) {
 	f.run(t, "test", record)
 
 	chassistest.Eventually(t, 30*time.Second, "the last event is applied", func() bool { return f.applied(t, last.EventId) == 1 })
-	for _, skipped := range []event.EventEnvelope{otherType, otherVersion} {
+	for _, skipped := range []event.EventEnvelope{otherType, otherVersion, noID} {
 		if n := f.applied(t, skipped.EventId); n != 0 {
 			t.Errorf("event %s %d was applied %d times, want 0", skipped.Type, skipped.Version, n)
 		}
+	}
+}
+
+func TestRunRefusesAnEmptyConsumerGroup(t *testing.T) {
+	router := consumer.NewRouter([]string{"localhost:9092"}, "", nil, slog.New(slog.DiscardHandler))
+	if err := router.Run(t.Context()); err == nil {
+		t.Fatal("Run started without a consumer group, so its replicas would each read every event")
 	}
 }

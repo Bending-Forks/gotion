@@ -2,7 +2,7 @@ package consumer
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -33,6 +33,12 @@ type kind struct {
 	version   int
 }
 
+// retryReach is the wait before trying again to reach a Kafka that did not answer.
+const retryReach = 5 * time.Second
+
+// errAppliedMeanwhile rolls back a transaction whose event another delivery applied first.
+var errAppliedMeanwhile = errors.New("the event was applied meanwhile")
+
 // Router reads the topics of the service in its consumer group and has each event applied once.
 type Router struct {
 	brokers  []string
@@ -40,11 +46,19 @@ type Router struct {
 	pool     *pgxpool.Pool
 	logger   *slog.Logger
 	handlers map[string]map[kind]Handler
+	// reach returns nil once Kafka answers.
+	reach func() error
 }
 
 // NewRouter returns a router of the consumer group that records the applied events in the database of pool.
 func NewRouter(brokers []string, group string, pool *pgxpool.Pool, logger *slog.Logger) *Router {
-	return &Router{brokers: brokers, group: group, pool: pool, logger: logger, handlers: map[string]map[kind]Handler{}}
+	return &Router{brokers: brokers, group: group, pool: pool, logger: logger, handlers: map[string]map[kind]Handler{}, reach: func() error {
+		client, err := sarama.NewClient(brokers, sarama.NewConfig())
+		if err != nil {
+			return err
+		}
+		return client.Close()
+	}}
 }
 
 // Handle has h apply the events of type eventType and version that arrive on topic; the router skips the other events. Call it before Run.
@@ -56,7 +70,23 @@ func (r *Router) Handle(topic, eventType string, version int, h Handler) {
 }
 
 // Run reads the topics until ctx is cancelled. The offset of an event is committed only after its transaction.
+// While Kafka does not answer at start, Run waits for it; once reading, Watermill reconnects by itself.
 func (r *Router) Run(ctx context.Context) error {
+	if r.group == "" {
+		return errors.New("a router needs a consumer group, or each replica would read every event")
+	}
+	for {
+		err := r.reach()
+		if err == nil {
+			break
+		}
+		r.logger.WarnContext(ctx, "Kafka does not answer, the consumers wait for it", "err", err)
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(retryReach):
+		}
+	}
 	logger := watermill.NewSlogLogger(r.logger)
 	config := kafka.DefaultSaramaSubscriberConfig()
 	// A new consumer group starts from the oldest event, so a service also reads the events published before its first start.
@@ -88,8 +118,8 @@ func (r *Router) Run(ctx context.Context) error {
 func (r *Router) apply(topic string, handlers map[kind]Handler) message.NoPublishHandlerFunc {
 	return func(msg *message.Message) error {
 		ctx := msg.Context()
-		var e event.EventEnvelope
-		if err := json.Unmarshal(msg.Payload, &e); err != nil {
+		e, err := event.Decode(msg.Payload)
+		if err != nil {
 			// Delivered again, it would fail the same way and hold up every event after it in its partition.
 			partition, _ := kafka.MessagePartitionFromCtx(ctx)
 			offset, _ := kafka.MessagePartitionOffsetFromCtx(ctx)
@@ -100,18 +130,31 @@ func (r *Router) apply(topic string, handlers map[kind]Handler) message.NoPublis
 		if !ok {
 			return nil
 		}
-		return pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
-			tag, err := tx.Exec(ctx, "INSERT INTO applied_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING", e.EventId)
-			if err != nil {
-				return fmt.Errorf("record event %s as applied: %w", e.EventId, err)
+		err = pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
+			// Only read before the handler: a write would give the transaction its id before the handler locks its aggregate, and the outbox orders the events by that id.
+			var applied bool
+			if err := tx.QueryRow(ctx, "SELECT EXISTS (SELECT FROM applied_events WHERE event_id = $1)", e.EventId).Scan(&applied); err != nil {
+				return fmt.Errorf("check whether event %s was applied: %w", e.EventId, err)
 			}
-			if tag.RowsAffected() == 0 {
+			if applied {
 				return nil
 			}
 			if err := h(ctx, tx, e); err != nil {
 				return fmt.Errorf("apply event %s %s: %w", e.Type, e.EventId, err)
 			}
+			// A concurrent delivery of the same event waits here for the other transaction, and gives up if it committed.
+			tag, err := tx.Exec(ctx, "INSERT INTO applied_events (event_id) VALUES ($1) ON CONFLICT DO NOTHING", e.EventId)
+			if err != nil {
+				return fmt.Errorf("record event %s as applied: %w", e.EventId, err)
+			}
+			if tag.RowsAffected() == 0 {
+				return errAppliedMeanwhile
+			}
 			return nil
 		})
+		if errors.Is(err, errAppliedMeanwhile) {
+			return nil
+		}
+		return err
 	}
 }

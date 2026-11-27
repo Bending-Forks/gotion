@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -61,6 +62,60 @@ func Produce(t *testing.T, brokers []string, topic, key string, value []byte) {
 	}
 }
 
+// Committed returns the highest offset that group committed on the partitions of topic, -1 when it committed none.
+func Committed(t *testing.T, brokers []string, group, topic string) int64 {
+	t.Helper()
+	admin, err := sarama.NewClusterAdmin(brokers, sarama.NewConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = admin.Close() }()
+	partitions := []int32{0, 1, 2}
+	offsets, err := admin.ListConsumerGroupOffsets(group, map[string][]int32{topic: partitions})
+	if err != nil {
+		t.Fatal(err)
+	}
+	highest := int64(-1)
+	for _, p := range partitions {
+		if b := offsets.GetBlock(topic, p); b != nil {
+			highest = max(highest, b.Offset)
+		}
+	}
+	return highest
+}
+
+// ForgetOffsets deletes the offsets that group committed on topic, as if it had never committed them; the group must have stopped.
+func ForgetOffsets(t *testing.T, brokers []string, group, topic string) {
+	t.Helper()
+	config := sarama.NewConfig()
+	// Deleting the offsets of a group needs the protocol of Kafka 2.4 or later.
+	config.Version = sarama.V2_4_0_0
+	admin, err := sarama.NewClusterAdmin(brokers, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = admin.Close() }()
+	partitions := []int32{0, 1, 2}
+	// The broker refuses while the group still has members, until it notices they left.
+	Eventually(t, 30*time.Second, "the offsets of "+group+" are deleted", func() bool {
+		for _, p := range partitions {
+			if err := admin.DeleteConsumerGroupOffset(group, topic, p); err != nil && !errors.Is(err, sarama.ErrUnknownTopicOrPartition) {
+				return false
+			}
+		}
+		return true
+	})
+	offsets, err := admin.ListConsumerGroupOffsets(group, map[string][]int32{topic: partitions})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range partitions {
+		if b := offsets.GetBlock(topic, p); b != nil && b.Offset != -1 {
+			t.Fatalf("group %s still has offset %d on partition %d", group, b.Offset, p)
+		}
+	}
+}
+
 // Eventually polls check until it returns true, and fails the test after timeout.
 func Eventually(t *testing.T, timeout time.Duration, what string, check func() bool) {
 	t.Helper()
@@ -93,24 +148,31 @@ func Read(t *testing.T, brokers []string, topic string, timeout time.Duration, d
 		t.Fatal(err)
 	}
 	records, stop := make(chan Record), make(chan struct{})
+	var readers sync.WaitGroup
+	var opened []sarama.PartitionConsumer
+	defer func() {
+		// The readers stop forwarding, then end when their partition closes.
+		close(stop)
+		for _, pc := range opened {
+			_ = pc.Close()
+		}
+		readers.Wait()
+	}()
 	for _, p := range partitions {
 		pc, err := consumer.ConsumePartition(topic, p, sarama.OffsetOldest)
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer func() { _ = pc.Close() }()
-		go func() {
+		opened = append(opened, pc)
+		readers.Go(func() {
 			for m := range pc.Messages() {
 				select {
 				case records <- Record{Key: string(m.Key), Value: m.Value, Partition: m.Partition}:
 				case <-stop:
-					return
 				}
 			}
-		}()
+		})
 	}
-	// Deferred last, so it runs first: the goroutines stop sending before their partitions close.
-	defer close(stop)
 	var read []Record
 	deadline := time.After(timeout)
 	for !done(read) {
