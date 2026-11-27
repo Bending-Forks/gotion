@@ -60,7 +60,10 @@ func (f fixture) command(ctx context.Context, aggregate string, fail bool, event
 		return err
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
-	// The aggregate is locked before any other write, so the transactions of one aggregate are serialized.
+	// The aggregate is locked before any write, so the transactions of one aggregate get their ids in the order of their changes.
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", aggregate); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx, "INSERT INTO aggregates (id, version) VALUES ($1, 1) ON CONFLICT (id) DO UPDATE SET version = aggregates.version + 1", aggregate); err != nil {
 		return err
 	}
@@ -266,6 +269,33 @@ func TestMetricsCountThePendingEventsAndTheAgeOfTheOldest(t *testing.T) {
 	}
 }
 
+// A topic name that Kafka would refuse would hold up every event after it, so the command fails instead.
+func TestPublishRefusesATopicKafkaWouldRefuse(t *testing.T) {
+	f := newFixture(t)
+	e := something(watermill.NewUUID())
+	f.topic = "account/events"
+	if err := f.command(t.Context(), e.AggregateId, false, e); err == nil {
+		t.Fatal("the command committed an event for a topic Kafka would refuse")
+	}
+	if n := f.rows(t); n != 0 {
+		t.Fatalf("the outbox has %d rows, want none", n)
+	}
+}
+
+// A Forwarder stopped while it starts, as a service is when it shuts down at once, returns no error.
+func TestRunStoppedAtOnceReturnsNoError(t *testing.T) {
+	f := newFixture(t)
+	fwd, err := newForwarder(f.pool, f.kafka(t), slog.New(slog.DiscardHandler), prometheus.NewRegistry())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := fwd.Run(ctx); err != nil {
+		t.Fatalf("Run stopped at once: %v", err)
+	}
+}
+
 // Schema must create the tables that watermill-sql creates for itself, which a new release of the library could change.
 func TestSchemaIsTheStandardSchemaOfWatermill(t *testing.T) {
 	ours, err := pgx.Connect(t.Context(), chassistest.Database(t, Schema))
@@ -291,13 +321,14 @@ func TestSchemaIsTheStandardSchemaOfWatermill(t *testing.T) {
 	}
 }
 
-// columns describes each column of the tables of db.
+// columns describes each column and each index, the primary keys included, of the tables of db.
 func columns(t *testing.T, db interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 }) []string {
 	t.Helper()
 	rows, err := db.Query(t.Context(), `SELECT table_name || '.' || column_name || ' ' || data_type || ' ' || is_nullable || ' ' || coalesce(column_default, '')
-		FROM information_schema.columns WHERE table_schema = 'public' ORDER BY 1`)
+		FROM information_schema.columns WHERE table_schema = 'public'
+		UNION ALL SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' ORDER BY 1`)
 	if err != nil {
 		t.Fatal(err)
 	}

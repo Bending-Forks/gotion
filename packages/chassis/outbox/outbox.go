@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"sync"
 	"time"
 
@@ -54,6 +55,9 @@ const (
 
 var schemaAdapter = sql.DefaultPostgreSQLSchema{}
 
+// kafkaTopic is a name that Kafka accepts for a topic.
+var kafkaTopic = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,249}$`)
+
 func subscriberConfig() sql.SubscriberConfig {
 	return sql.SubscriberConfig{
 		ConsumerGroup:  group,
@@ -67,6 +71,10 @@ func subscriberConfig() sql.SubscriberConfig {
 func Publish(ctx context.Context, tx pgx.Tx, topic string, events ...event.EventEnvelope) error {
 	if len(events) == 0 {
 		return nil
+	}
+	// A row Kafka refuses would hold up every row after it.
+	if !kafkaTopic.MatchString(topic) || topic == "." || topic == ".." {
+		return fmt.Errorf("%q is not a name Kafka accepts for a topic", topic)
 	}
 	messages := make([]*message.Message, 0, len(events))
 	for _, e := range events {
@@ -159,7 +167,8 @@ func (f *Forwarder) forward(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("create the Forwarder of the outbox: %w", err)
 	}
-	if err := fwd.Run(ctx); err != nil {
+	// Stopped while it subscribes, the router fails on the cancelled context: that is a stop, not an error.
+	if err := fwd.Run(ctx); err != nil && ctx.Err() == nil {
 		return fmt.Errorf("run the Forwarder of the outbox: %w", err)
 	}
 	return nil
