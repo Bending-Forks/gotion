@@ -13,10 +13,15 @@ import (
 )
 
 // NewMessage turns an envelope into the Watermill message that carries it, with the identifier of the event as its UUID.
+// It refuses an envelope the schema refuses, which the publisher could never send: in the outbox it would hold up every event after it.
 func NewMessage(ctx context.Context, e EventEnvelope) (*message.Message, error) {
 	payload, err := json.Marshal(e)
 	if err != nil {
 		return nil, fmt.Errorf("encode event %s: %w", e.EventId, err)
+	}
+	// The generated UnmarshalJSON is where the schema is checked.
+	if err := json.Unmarshal(payload, &EventEnvelope{}); err != nil {
+		return nil, fmt.Errorf("check event %s against the envelope schema: %w", e.EventId, err)
 	}
 	msg := message.NewMessage(e.EventId, payload)
 	msg.SetContext(ctx)
