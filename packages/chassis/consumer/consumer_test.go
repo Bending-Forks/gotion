@@ -171,7 +171,7 @@ func TestRouterCommitsTheOffsetOnlyAfterTheTransaction(t *testing.T) {
 	}
 }
 
-// The handler locks its aggregate with its first write, and the outbox orders the events by the transaction that wrote them: the router must not write before the handler, or a transaction id taken early could put the events of the handler before those of a command that changed the aggregate first.
+// The handler takes the lock of its aggregate before any write, and the outbox orders the events by the transaction that wrote them: the router must not write before the handler, or a transaction id taken early could put the events of the handler before those of a command that changed the aggregate first.
 func TestRouterLetsTheHandlerWriteFirst(t *testing.T) {
 	f := newFixture(t)
 	e := something(watermill.NewUUID())
@@ -217,7 +217,10 @@ func TestRouterAppliesOnceAnEventHandledTwiceAtTheSameTime(t *testing.T) {
 	f.run(t, "second", handler)
 
 	chassistest.Eventually(t, 30*time.Second, "both handlers run", func() bool { return calls.Load() == 2 })
-	chassistest.Eventually(t, 30*time.Second, "the event is applied", func() bool { return f.applied(t, e.EventId) == 1 })
+	// Both groups commit their offset only after their transaction has ended, committed or rolled back.
+	chassistest.Eventually(t, 30*time.Second, "both groups are done with the event", func() bool {
+		return chassistest.Committed(t, f.brokers, "first", f.topic) == 1 && chassistest.Committed(t, f.brokers, "second", f.topic) == 1
+	})
 	var markers int
 	if err := f.pool.QueryRow(t.Context(), "SELECT count(*) FROM applied_events WHERE event_id = $1", e.EventId).Scan(&markers); err != nil {
 		t.Fatal(err)
@@ -271,6 +274,18 @@ func TestRouterSkipsTheEventsItDoesNotHandle(t *testing.T) {
 		if n := f.applied(t, skipped.EventId); n != 0 {
 			t.Errorf("event %s %d was applied %d times, want 0", skipped.Type, skipped.Version, n)
 		}
+	}
+}
+
+// A router stopped while it starts, as a service is when it shuts down at once, returns no error.
+func TestRunStoppedAtOnceReturnsNoError(t *testing.T) {
+	f := newFixture(t)
+	router := consumer.NewRouter(f.brokers, "test", f.pool, slog.New(slog.DiscardHandler))
+	router.Handle(f.topic, "SomethingHappened", 1, record)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := router.Run(ctx); err != nil {
+		t.Fatalf("Run stopped at once: %v", err)
 	}
 }
 

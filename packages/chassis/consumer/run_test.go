@@ -55,6 +55,8 @@ func TestRunWaitsForKafkaThenReadsTheEvents(t *testing.T) {
 	chassistest.Eventually(t, 30*time.Second, "the router tries to reach Kafka twice", func() bool { return attempts.Load() >= 2 })
 	select {
 	case err := <-done:
+		// Put the result back for the cleanup, which waits for it.
+		done <- err
 		t.Fatalf("Run returned while Kafka was down: %v", err)
 	default:
 	}
