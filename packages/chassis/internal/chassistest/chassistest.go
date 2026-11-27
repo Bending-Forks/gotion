@@ -37,6 +37,23 @@ func Topic(t *testing.T, brokers []string) string {
 	if err := admin.CreateTopic(name, &sarama.TopicDetail{NumPartitions: 3, ReplicationFactor: 1}, false); err != nil {
 		t.Fatal(err)
 	}
+	// A new topic has no leader for a moment, and reading or writing it would fail.
+	client, err := sarama.NewClient(brokers, sarama.NewConfig())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = client.Close() }()
+	Eventually(t, 30*time.Second, "every partition of "+name+" has a leader", func() bool {
+		if err := client.RefreshMetadata(name); err != nil {
+			return false
+		}
+		for p := range int32(3) {
+			if _, err := client.Leader(name, p); err != nil {
+				return false
+			}
+		}
+		return true
+	})
 	t.Cleanup(func() {
 		// A retried request can find the topic already deleted by the first one.
 		if err := admin.DeleteTopic(name); err != nil && !errors.Is(err, sarama.ErrUnknownTopicOrPartition) {
