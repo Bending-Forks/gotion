@@ -18,7 +18,7 @@ const maxEventBytes = 512 << 10
 
 var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
-// Decode reads an envelope and checks it against api/envelope.schema.json, including the UUID format of its identifiers, which the generated type does not check.
+// Decode reads an envelope and checks it against api/envelope.schema.json, including what the generated type does not check: the UUID format of the identifiers, and a body and a time that are not null.
 func Decode(payload []byte) (EventEnvelope, error) {
 	var e EventEnvelope
 	if err := json.Unmarshal(payload, &e); err != nil {
@@ -26,6 +26,9 @@ func Decode(payload []byte) (EventEnvelope, error) {
 	}
 	if !uuidPattern.MatchString(e.EventId) || !uuidPattern.MatchString(e.AggregateId) {
 		return EventEnvelope{}, fmt.Errorf("event %q of aggregate %q: the identifiers must be UUIDs", e.EventId, e.AggregateId)
+	}
+	if e.Data == nil || e.OccurredAt.IsZero() {
+		return EventEnvelope{}, fmt.Errorf("event %s has no body or no time", e.EventId)
 	}
 	return e, nil
 }
@@ -65,6 +68,9 @@ func NewPublisher(brokers []string, logger *slog.Logger) (*kafka.Publisher, erro
 }
 
 func aggregateKey(_ string, msg *message.Message) (string, error) {
+	if len(msg.Payload) > maxEventBytes {
+		return "", fmt.Errorf("message %s has %d bytes, more than the %d an event may have", msg.UUID, len(msg.Payload), maxEventBytes)
+	}
 	e, err := Decode(msg.Payload)
 	if err != nil {
 		return "", fmt.Errorf("message %s: %w", msg.UUID, err)

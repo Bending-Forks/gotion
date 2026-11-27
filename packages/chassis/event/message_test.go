@@ -20,6 +20,7 @@ func TestNewMessageRefusesAnEnvelopeTheSchemaRefuses(t *testing.T) {
 		{"empty event identifier", func(e *event.EventEnvelope) { e.EventId = "" }},
 		{"aggregate that is not a UUID", func(e *event.EventEnvelope) { e.AggregateId = "workspace-1" }},
 		{"body too large for Kafka", func(e *event.EventEnvelope) { e.Data["text"] = strings.Repeat("x", 1<<20) }},
+		{"no body", func(e *event.EventEnvelope) { e.Data = nil }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			e := envelope(watermill.NewUUID(), 0)
@@ -37,6 +38,8 @@ func TestDecodeRefusesAnEnvelopeWithMalformedIdentifiers(t *testing.T) {
 	for _, tt := range []struct{ name, payload string }{
 		{"null event identifier", `{"eventId":null,"aggregateId":"8f14e45f-ceea-467a-9575-1b4f0c3a2d11",` + valid + `}`},
 		{"empty aggregate", `{"eventId":"0b9a6c1e-6f0d-4c7a-9a43-2f1d5e8b7c10","aggregateId":"",` + valid + `}`},
+		{"null body", `{"eventId":"0b9a6c1e-6f0d-4c7a-9a43-2f1d5e8b7c10","aggregateId":"8f14e45f-ceea-467a-9575-1b4f0c3a2d11","type":"SomethingHappened","version":1,"occurredAt":"2026-11-27T10:00:00Z","data":null}`},
+		{"null time", `{"eventId":"0b9a6c1e-6f0d-4c7a-9a43-2f1d5e8b7c10","aggregateId":"8f14e45f-ceea-467a-9575-1b4f0c3a2d11","type":"SomethingHappened","version":1,"occurredAt":null,"data":{}}`},
 		{"not JSON", `not an envelope`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

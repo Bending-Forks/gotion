@@ -3,10 +3,12 @@ package event_test
 import (
 	"encoding/json"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
 
 	"github.com/Bending-Forks/gotion/packages/chassis/event"
 	"github.com/Bending-Forks/gotion/packages/chassis/internal/chassistest"
@@ -70,6 +72,27 @@ func TestPublisherRefusesAMessageThatIsNotAnEnvelope(t *testing.T) {
 	msg.Payload = []byte(`{"type":"WorkspaceCreated"}`)
 	if err := publisher.Publish(topic, msg); err == nil {
 		t.Fatal("Publish accepted a message without an aggregate")
+	}
+}
+
+// A message built without NewMessage is checked as well: Kafka could refuse it, or the next one in its outbox.
+func TestPublisherRefusesAnEventTooLargeForKafka(t *testing.T) {
+	brokers := chassistest.Brokers(t)
+	topic := chassistest.Topic(t, brokers)
+	publisher, err := event.NewPublisher(brokers, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = publisher.Close() })
+
+	e := envelope(watermill.NewUUID(), 0)
+	e.Data["text"] = strings.Repeat("x", 600<<10)
+	payload, err := json.Marshal(e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := publisher.Publish(topic, message.NewMessage(e.EventId, payload)); err == nil {
+		t.Fatal("Publish accepted an event of more than 512 KiB")
 	}
 }
 
