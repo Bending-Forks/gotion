@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: postgres:18-alpine
+          image: postgres:19-alpine
           # POSTGRES_USER, POSTGRES_PASSWORD and POSTGRES_DB, from the Secret that secrets.sh creates; each instance sets its name
           envFrom:
             - secretRef:
