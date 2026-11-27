@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"slices"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -146,8 +147,21 @@ func TestDuplicateAfterAnAckNotYetMarkedChangesNothingInTheConsumer(t *testing.T
 
 func TestEventsOfAnAggregateKeepTheOrderOfTheirTransactionsWithCompetingPublishers(t *testing.T) {
 	f := newFixture(t)
-	_, stopFirst := f.run(t, f.kafka(t))
-	_, stopSecond := f.run(t, f.kafka(t))
+	// Each replica holds its first publication until the gate opens, so the other one meets its lock.
+	gate := make(chan struct{})
+	var once sync.Once
+	open := func() { once.Do(func() { close(gate) }) }
+	gated := func() (message.Publisher, error) {
+		kafka, err := event.NewPublisher(f.brokers, slog.New(slog.DiscardHandler))
+		if err != nil {
+			return nil, err
+		}
+		return gatedPublisher{kafka, gate}, nil
+	}
+	fwd, stopFirst := f.run(t, gated)
+	_, stopSecond := f.run(t, gated)
+	// Runs before the replicas stop, so a failing test does not leave one at the gate.
+	t.Cleanup(open)
 	aggregates := []string{watermill.NewUUID(), watermill.NewUUID()}
 	const writers, commandsEach = 8, 10
 
@@ -175,6 +189,8 @@ func TestEventsOfAnAggregateKeepTheOrderOfTheirTransactionsWithCompetingPublishe
 	if failed != nil {
 		t.Fatal(failed)
 	}
+	f.waitForLockWaiter(t, "a replica waits for the lock of the other one")
+	open()
 
 	total := writers * commandsEach
 	var got []received
@@ -182,7 +198,8 @@ func TestEventsOfAnAggregateKeepTheOrderOfTheirTransactionsWithCompetingPublishe
 		got = decode(t, records)
 		return len(unique(got)) == total
 	})
-	// The replicas share one lock, so with no failure each event is sent once.
+	// The replicas share one lock, so with no failure each event is sent once. Stopped before the rows are marked as sent, a replica would leave them to be sent again.
+	waitSent(t, fwd)
 	stopFirst()
 	stopSecond()
 	if n := chassistest.Count(t, f.brokers, f.topic); n != int64(total) {
@@ -230,15 +247,7 @@ func TestAnotherReplicaTakesOverWhenTheActivePublisherStops(t *testing.T) {
 		t.Fatal("the first replica did not start publishing")
 	}
 	f.run(t, f.kafka(t))
-	chassistest.Eventually(t, 30*time.Second, "the second replica waits for the lock of the first one", func() bool {
-		var waiting bool
-		err := f.pool.QueryRow(t.Context(), `SELECT EXISTS (SELECT FROM pg_stat_activity
-			WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%')`).Scan(&waiting)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return waiting
-	})
+	f.waitForLockWaiter(t, "the second replica waits for the lock of the first one")
 	if n := chassistest.Count(t, f.brokers, f.topic); n != 0 {
 		t.Fatalf("the second replica published %d events while the first one held the lock", n)
 	}
@@ -248,9 +257,38 @@ func TestAnotherReplicaTakesOverWhenTheActivePublisherStops(t *testing.T) {
 	f.read(t, e)
 }
 
+// gatedPublisher publishes to Kafka once its gate is open.
+type gatedPublisher struct {
+	message.Publisher
+	gate <-chan struct{}
+}
+
+func (p gatedPublisher) Publish(topic string, messages ...*message.Message) error {
+	<-p.gate
+	return p.Publisher.Publish(topic, messages...)
+}
+
+// waitForLockWaiter waits until a replica of the Forwarder waits for the lock that another one holds.
+func (f fixture) waitForLockWaiter(t *testing.T, what string) {
+	t.Helper()
+	chassistest.Eventually(t, 30*time.Second, what, func() bool {
+		var waiting bool
+		err := f.pool.QueryRow(t.Context(), `SELECT EXISTS (SELECT FROM pg_stat_activity
+			WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%')`).Scan(&waiting)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return waiting
+	})
+}
+
 // versioned bumps the version of the aggregate and raises an event with the new version, in one transaction.
+// It locks the aggregate before any write, as a command must: the first upsert of a new aggregate would take its transaction id before it waits for the row.
 func (f fixture) versioned(ctx context.Context, aggregate string) error {
 	return pgx.BeginFunc(ctx, f.pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", aggregate); err != nil {
+			return err
+		}
 		var version int
 		err := tx.QueryRow(ctx, "INSERT INTO aggregates (id, version) VALUES ($1, 1) ON CONFLICT (id) DO UPDATE SET version = aggregates.version + 1 RETURNING version", aggregate).Scan(&version)
 		if err != nil {
