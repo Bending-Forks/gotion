@@ -130,6 +130,17 @@ type received struct {
 	key string
 }
 
+// waitSent waits until the Forwarder has marked every row as sent, which it does just after Kafka acknowledges them: stopped earlier, it would leave them pending.
+func waitSent(t *testing.T, fwd *Forwarder) {
+	t.Helper()
+	chassistest.Eventually(t, 30*time.Second, "every row is marked as sent", func() bool {
+		if err := fwd.measure(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		return testutil.ToFloat64(fwd.pending) == 0
+	})
+}
+
 func (f fixture) rows(t *testing.T) int {
 	t.Helper()
 	var n int
@@ -187,6 +198,7 @@ func TestCleanupDeletesOnlyTheOldSentRows(t *testing.T) {
 	}
 	fwd, stop := f.run(t, f.kafka(t))
 	f.read(t, sent)
+	waitSent(t, fwd)
 	stop()
 	if err := f.command(t.Context(), aggregate, false, pending); err != nil {
 		t.Fatal(err)
@@ -241,6 +253,7 @@ func TestMetricsCountThePendingEventsAndTheAgeOfTheOldest(t *testing.T) {
 
 	fwd, stop := f.run(t, f.kafka(t))
 	f.read(t, first, second)
+	waitSent(t, fwd)
 	stop()
 	if err := fwd.measure(t.Context()); err != nil {
 		t.Fatal(err)
