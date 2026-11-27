@@ -38,6 +38,11 @@ func (m *Metrics) Instrument(adapter string, next http.Handler) http.Handler {
 	return promhttp.InstrumentHandlerCounter(m.requests.MustCurryWith(labels), timed)
 }
 
+// Registerer is where the other packages of the chassis, such as the outbox, register their metrics.
+func (m *Metrics) Registerer() prometheus.Registerer {
+	return m.registry
+}
+
 // Handler returns the Prometheus scrape handler for /metrics.
 func (m *Metrics) Handler() http.Handler {
 	return promhttp.HandlerFor(m.registry, promhttp.HandlerOpts{})
