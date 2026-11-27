@@ -2,9 +2,6 @@ package postgres_test
 
 import (
 	"context"
-	"fmt"
-	"net/url"
-	"os"
 	"slices"
 	"testing"
 	"testing/fstest"
@@ -14,18 +11,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pressly/goose/v3/lock"
 
+	"github.com/Bending-Forks/gotion/packages/chassis/internal/chassistest"
 	"github.com/Bending-Forks/gotion/packages/chassis/postgres"
 )
 
 // Integration test against a real PostgreSQL: TEST_DATABASE_URL names a server where the test may create and drop a database.
 // A session of the test holds the migration lock, as an instance still migrating would: Open must try the lock, wait without migrating, and migrate once the lock is free.
 func TestOpenMigratesOnlyUnderTheLock(t *testing.T) {
-	server := os.Getenv("TEST_DATABASE_URL")
-	if server == "" {
-		t.Skip("TEST_DATABASE_URL is not set")
-	}
 	ctx := t.Context()
-	dbURL := emptyDatabase(t, server)
+	dbURL := chassistest.Database(t, "")
 	migrations := fstest.MapFS{"00001_first.sql": {Data: []byte("-- +goose Up\nCREATE TABLE first (id int);\n")}}
 
 	holder, err := pgx.Connect(ctx, dbURL)
@@ -88,32 +82,4 @@ func TestOpenMigratesOnlyUnderTheLock(t *testing.T) {
 	if !slices.Equal(versions, []int64{1}) {
 		t.Fatalf("applied versions = %v, want [1]", versions)
 	}
-}
-
-// emptyDatabase creates a database on server, drops it at the end of the test and returns its URL.
-func emptyDatabase(t *testing.T, server string) string {
-	t.Helper()
-	ctx := t.Context()
-	admin, err := pgx.Connect(ctx, server)
-	if err != nil {
-		t.Fatal(err)
-	}
-	name := fmt.Sprintf("chassis_test_%d", time.Now().UnixNano())
-	if _, err := admin.Exec(ctx, "CREATE DATABASE "+name); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		// t.Context() is cancelled before the cleanup runs.
-		ctx := context.WithoutCancel(ctx)
-		if _, err := admin.Exec(ctx, "DROP DATABASE "+name+" WITH (FORCE)"); err != nil {
-			t.Error(err)
-		}
-		_ = admin.Close(ctx)
-	})
-	u, err := url.Parse(server)
-	if err != nil {
-		t.Fatal(err)
-	}
-	u.Path = "/" + name
-	return u.String()
 }

@@ -421,6 +421,7 @@ Watermill realizes the outbox of ADR-05 as follows:
 - The `PollInterval` of the Forwarder is set well within the 5 s (p99) of QA-06.
 - The Kafka key of each event is the identity of its aggregate, set through `NewWithPartitioningMarshaler`.
 - The consumers deduplicate on the identifier in the envelope of [Contracts](#contracts), never on the `UUID` of a Watermill message, which is empty for the events published by Editing.
+- A consumer logs and skips a record that is not a valid envelope: delivered again, it would fail the same way and hold up every event after it in its partition.
 - The Go producer is synchronous, so the Forwarder confirms a row only after Kafka acknowledges it.
 
 This narrows the skeleton that ADR-04 records twice to one thin chassis per runtime.
