@@ -53,3 +53,16 @@ func TestDecodeRefusesAnEnvelopeWithMalformedIdentifiers(t *testing.T) {
 		t.Fatalf("Decode of a valid envelope = %+v, %v", e, err)
 	}
 }
+
+// encoding/json matches a field whatever its case, so another field such as AggregateId must not stand in for aggregateId; and one UUID in two cases is one identity.
+func TestDecodeReadsTheIdentitiesByTheirExactNamesInLowerCase(t *testing.T) {
+	e, err := event.Decode([]byte(`{"eventId":"0B9A6C1E-6F0D-4C7A-9A43-2F1D5E8B7C10","aggregateId":"8F14E45F-CEEA-467A-9575-1B4F0C3A2D11",` +
+		`"AggregateId":"c4ca4238-a0b9-4382-8dcc-509a6f75849b","EventId":"c4ca4238-a0b9-4382-8dcc-509a6f75849b",` +
+		`"type":"SomethingHappened","version":1,"occurredAt":"2026-11-27T10:00:00Z","data":{}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e.EventId != "0b9a6c1e-6f0d-4c7a-9a43-2f1d5e8b7c10" || e.AggregateId != "8f14e45f-ceea-467a-9575-1b4f0c3a2d11" {
+		t.Fatalf("Decode read event %s of aggregate %s", e.EventId, e.AggregateId)
+	}
+}

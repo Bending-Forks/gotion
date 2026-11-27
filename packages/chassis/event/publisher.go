@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"strings"
 
 	"github.com/IBM/sarama"
 	"github.com/ThreeDotsLabs/watermill"
@@ -19,10 +20,22 @@ const maxEventBytes = 512 << 10
 var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // Decode reads an envelope and checks it against api/envelope.schema.json, including what the generated type does not check: the UUID format of the identifiers, and a body and a time that are not null.
+// It returns the identifiers in lower case, so one UUID written in two cases keys and identifies one aggregate and one event.
 func Decode(payload []byte) (EventEnvelope, error) {
 	var e EventEnvelope
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return EventEnvelope{}, fmt.Errorf("read the envelope: %w", err)
+	}
+	// encoding/json matches a field whatever its case, so a field such as AggregateId could stand in for aggregateId: read the identifiers by their exact names.
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(payload, &fields); err != nil {
+		return EventEnvelope{}, fmt.Errorf("read the envelope: %w", err)
+	}
+	for name, id := range map[string]*string{"eventId": &e.EventId, "aggregateId": &e.AggregateId} {
+		if err := json.Unmarshal(fields[name], id); err != nil {
+			return EventEnvelope{}, fmt.Errorf("read the %s of the envelope: %w", name, err)
+		}
+		*id = strings.ToLower(*id)
 	}
 	if !uuidPattern.MatchString(e.EventId) || !uuidPattern.MatchString(e.AggregateId) {
 		return EventEnvelope{}, fmt.Errorf("event %q of aggregate %q: the identifiers must be UUIDs", e.EventId, e.AggregateId)
