@@ -9,7 +9,7 @@
 name: gotion
 
 x-postgres: &postgres
-  image: postgres:18-alpine
+  image: postgres:19-alpine
   healthcheck:
     # Over TCP like the clients: on the first start the entrypoint runs a temporary server on the Unix socket only, to create the database
     test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
